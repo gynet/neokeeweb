@@ -5,8 +5,9 @@ export default defineConfig({
     timeout: 30000,
     retries: 1,
     use: {
-        // Chrome extensions require headed mode
         headless: false,
+        video: 'retain-on-failure',
+        screenshot: 'only-on-failure',
     },
     projects: [
         {
