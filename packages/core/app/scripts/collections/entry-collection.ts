@@ -2,7 +2,7 @@ import { Collection } from 'framework/collection';
 import { EntryModel } from 'models/entry-model';
 
 class EntryCollection extends Collection {
-    static model = EntryModel;
+    static override model = EntryModel;
 }
 
 export { EntryCollection };

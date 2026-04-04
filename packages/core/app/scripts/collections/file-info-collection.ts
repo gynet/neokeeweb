@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection } from 'framework/collection';
 import { SettingsStore } from 'comp/settings/settings-store';
 import { FileInfoModel } from 'models/file-info-model';
 
 class FileInfoCollection extends Collection {
-    static model = FileInfoModel;
+    static override model = FileInfoModel;
 
-    load() {
-        return SettingsStore.load('file-info').then((data) => {
+    load(): Promise<void> {
+        return SettingsStore.load('file-info').then((data: any) => {
             if (data) {
                 for (const item of data) {
                     this.push(new FileInfoModel(item));
@@ -15,12 +16,12 @@ class FileInfoCollection extends Collection {
         });
     }
 
-    save() {
+    save(): void {
         SettingsStore.save('file-info', this);
     }
 
-    getMatch(storage, name, path) {
-        return this.find((fi) => {
+    getMatch(storage: string | null, name: string | null, path: string | null): unknown | undefined {
+        return this.find((fi: any) => {
             return (
                 (fi.storage || '') === (storage || '') &&
                 (fi.name || '') === (name || '') &&
@@ -29,8 +30,8 @@ class FileInfoCollection extends Collection {
         });
     }
 
-    getByName(name) {
-        return this.find((file) => file.name.toLowerCase() === name.toLowerCase());
+    getByName(name: string): unknown | undefined {
+        return this.find((file: any) => file.name.toLowerCase() === name.toLowerCase());
     }
 }
 
