@@ -1,25 +1,41 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Events } from 'framework/events';
 import { AppSettingsModel } from 'models/app-settings-model';
 import { Locale } from 'util/locale';
 import { Tip } from 'util/ui/tip';
 import { Timeouts } from 'const/timeouts';
 
+interface CopyEvent {
+    source: {
+        labelEl: any;
+        model: { name: string };
+    };
+    copyRes: {
+        seconds?: number;
+    };
+}
+
+interface TipInstance {
+    show(): void;
+    hide(): void;
+}
+
 const Copyable = {
-    hideFieldCopyTip() {
+    hideFieldCopyTip(this: any): void {
         if (this.fieldCopyTip) {
             this.fieldCopyTip.hide();
             this.fieldCopyTip = null;
         }
     },
 
-    fieldCopied(e) {
+    fieldCopied(this: any, e: CopyEvent): void {
         this.hideFieldCopyTip();
         const fieldLabel = e.source.labelEl;
         const clipboardTime = e.copyRes.seconds;
-        const msg = clipboardTime
-            ? Locale.detFieldCopiedTime.replace('{}', clipboardTime)
-            : Locale.detFieldCopied;
-        let tip;
+        const msg: string = clipboardTime
+            ? (Locale as any).detFieldCopiedTime.replace('{}', String(clipboardTime))
+            : (Locale as any).detFieldCopied;
+        let tip: TipInstance | undefined;
         if (!this.isHidden()) {
             tip = Tip.createTip(fieldLabel[0], {
                 title: msg,

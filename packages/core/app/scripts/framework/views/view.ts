@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import morphdom from 'morphdom';
 import EventEmitter from 'events';
 import { Tip } from 'util/ui/tip';
@@ -5,7 +6,20 @@ import { KeyHandler } from 'comp/browser/key-handler';
 import { FocusManager } from 'comp/app/focus-manager';
 import { Logger } from 'util/logger';
 
-const DoesNotBubble = {
+interface EventHandler {
+    selector?: string;
+    method: string;
+}
+
+interface ElementEventListener {
+    event: string;
+    selector: string;
+    method: string;
+    els: Element[];
+    listener?: (e: Event) => void;
+}
+
+const DoesNotBubble: Record<string, boolean> = {
     mouseenter: true,
     mouseleave: true,
     blur: true,
@@ -18,20 +32,24 @@ const DefaultTemplateOptions = {
 };
 
 class View extends EventEmitter {
-    parent = undefined;
-    template = undefined;
-    events = {};
-    model = undefined;
-    options = {};
-    views = {};
-    hidden = undefined;
+    parent: string | Element | undefined = undefined;
+    template: ((data: any, options?: any) => string) | undefined = undefined;
+    events: Record<string, string> = {};
+    model: any = undefined;
+    options: Record<string, any> = {};
+    views: Record<string, View | View[] | undefined> = {};
+    hidden: boolean | undefined = undefined;
     removed = false;
-    modal = undefined;
-    eventListeners = {};
-    elementEventListeners = [];
-    debugLogger = localStorage.debugView ? new Logger('view', this.constructor.name) : undefined;
+    modal: string | undefined = undefined;
+    el!: HTMLElement;
+    $el: any; // legacy jQuery wrapper
+    eventListeners: Record<string, (e: Event) => void> = {};
+    elementEventListeners: ElementEventListener[] = [];
+    debugLogger: Logger | undefined = (localStorage as any).debugView
+        ? new Logger('view', this.constructor.name)
+        : undefined;
 
-    constructor(model = undefined, options = {}) {
+    constructor(model: any = undefined, options: Record<string, any> = {}) {
         super();
 
         this.model = model;
@@ -40,12 +58,12 @@ class View extends EventEmitter {
         this.setMaxListeners(100);
     }
 
-    render(templateData) {
+    render(templateData?: any): this | undefined {
         if (this.removed) {
             return;
         }
 
-        let ts;
+        let ts: number | string | undefined;
         if (this.debugLogger) {
             this.debugLogger.debug('Render start');
             ts = this.debugLogger.ts();
@@ -59,19 +77,20 @@ class View extends EventEmitter {
 
         Tip.createTips(this.el);
 
-        this.debugLogger?.debug('Render finished', this.debugLogger.ts(ts));
+        this.debugLogger?.debug('Render finished', this.debugLogger.ts(ts as number));
 
         return this;
     }
 
-    renderElement(templateData) {
-        const html = this.template(templateData, DefaultTemplateOptions);
+    renderElement(templateData?: any): void {
+        const html = this.template!(templateData, DefaultTemplateOptions);
         if (this.el) {
             const mountRoot = this.options.ownParent ? this.el.firstChild : this.el;
-            morphdom(mountRoot, html);
+            morphdom(mountRoot as Node, html);
             this.bindElementEvents();
         } else {
-            let parent = this.options.parent || this.parent;
+            let parent: string | Element | null | undefined =
+                this.options.parent || this.parent;
             if (parent) {
                 if (typeof parent === 'string') {
                     parent = document.querySelector(parent);
@@ -80,20 +99,20 @@ class View extends EventEmitter {
                     throw new Error(`Error rendering ${this.constructor.name}: parent not found`);
                 }
                 if (this.options.replace) {
-                    Tip.destroyTips(parent);
-                    parent.innerHTML = '';
+                    Tip.destroyTips(parent as Element);
+                    (parent as Element).innerHTML = '';
                 }
                 const el = document.createElement('div');
                 el.innerHTML = html;
-                const root = el.firstChild;
+                const root = el.firstChild as HTMLElement;
                 if (this.options.ownParent) {
                     if (root) {
-                        parent.appendChild(root);
+                        (parent as Element).appendChild(root);
                     }
-                    this.el = parent;
+                    this.el = parent as HTMLElement;
                 } else {
                     this.el = root;
-                    parent.appendChild(this.el);
+                    (parent as Element).appendChild(this.el);
                 }
                 if (this.modal) {
                     FocusManager.setModal(this.modal);
@@ -108,11 +127,12 @@ class View extends EventEmitter {
         }
     }
 
-    bindEvents() {
-        const eventsMap = {};
+    bindEvents(): void {
+        const eventsMap: Record<string, EventHandler[]> = {};
         for (const [eventDef, method] of Object.entries(this.events)) {
             const spaceIx = eventDef.indexOf(' ');
-            let event, selector;
+            let event: string;
+            let selector: string | undefined;
             if (spaceIx > 0) {
                 event = eventDef.substr(0, spaceIx);
                 selector = eventDef.substr(spaceIx + 1);
@@ -130,21 +150,21 @@ class View extends EventEmitter {
         }
         for (const [event, handlers] of Object.entries(eventsMap)) {
             this.debugLogger?.debug('Bind', 'view', event, handlers);
-            const listener = (e) => this.eventListener(e, handlers);
+            const listener = (e: Event): void => this.eventListener(e, handlers);
             this.eventListeners[event] = listener;
             this.el.addEventListener(event, listener);
         }
         this.bindElementEvents();
     }
 
-    unbindEvents() {
+    unbindEvents(): void {
         for (const [event, listener] of Object.entries(this.eventListeners)) {
             this.el.removeEventListener(event, listener);
         }
         this.unbindElementEvents();
     }
 
-    bindElementEvents() {
+    bindElementEvents(): void {
         if (!this.elementEventListeners.length) {
             return;
         }
@@ -152,7 +172,7 @@ class View extends EventEmitter {
         for (const cfg of this.elementEventListeners) {
             const els = this.el.querySelectorAll(cfg.selector);
             this.debugLogger?.debug('Bind', 'element', cfg.event, cfg.selector, els.length);
-            cfg.listener = (e) => this.eventListener(e, [cfg]);
+            cfg.listener = (e: Event): void => this.eventListener(e, [cfg]);
             for (const el of els) {
                 el.addEventListener(cfg.event, cfg.listener);
                 cfg.els.push(el);
@@ -160,37 +180,37 @@ class View extends EventEmitter {
         }
     }
 
-    unbindElementEvents() {
+    unbindElementEvents(): void {
         if (!this.elementEventListeners.length) {
             return;
         }
         for (const cfg of this.elementEventListeners) {
             for (const el of cfg.els) {
-                el.removeEventListener(cfg.event, cfg.listener);
+                el.removeEventListener(cfg.event, cfg.listener!);
             }
             cfg.els = [];
         }
     }
 
-    eventListener(e, handlers) {
+    eventListener(e: Event, handlers: EventHandler[]): void {
         this.debugLogger?.debug('Listener fired', e.type);
         for (const { selector, method } of handlers) {
             if (selector) {
-                const closest = e.target.closest(selector);
+                const closest = (e.target as Element).closest(selector);
                 if (!closest || !this.el.contains(closest)) {
                     continue;
                 }
             }
-            if (!this[method]) {
+            if (!(this as any)[method]) {
                 this.debugLogger?.debug('Method not defined', method);
                 continue;
             }
             this.debugLogger?.debug('Handling event', e.type, method);
-            this[method](e);
+            (this as any)[method](e);
         }
     }
 
-    remove() {
+    remove(): void {
         if (this.modal && FocusManager.modal === this.modal) {
             FocusManager.setModal(null);
         }
@@ -204,7 +224,7 @@ class View extends EventEmitter {
         this.debugLogger?.debug('Remove');
     }
 
-    removeInnerViews() {
+    removeInnerViews(): void {
         if (this.views) {
             for (const view of Object.values(this.views)) {
                 if (view) {
@@ -219,25 +239,25 @@ class View extends EventEmitter {
         }
     }
 
-    listenTo(model, event, callback) {
+    listenTo(model: any, event: string, callback: (...args: unknown[]) => void): void {
         const boundCallback = callback.bind(this);
         model.on(event, boundCallback);
         this.once('remove', () => model.off(event, boundCallback));
     }
 
-    hide() {
+    hide(): void {
         Tip.hideTips(this.el);
-        return this.toggle(false);
+        this.toggle(false);
     }
 
-    show() {
-        return this.toggle(true);
+    show(): void {
+        this.toggle(true);
     }
 
-    toggle(visible) {
+    toggle(visible?: boolean): void {
         this.debugLogger?.debug(visible ? 'Show' : 'Hide');
         if (visible === undefined) {
-            visible = this.hidden;
+            visible = !!this.hidden;
         }
         if (this.hidden === !visible) {
             this.debugLogger?.debug('Toggle: noop', visible);
@@ -261,24 +281,30 @@ class View extends EventEmitter {
         this.emit(visible ? 'show' : 'hide');
     }
 
-    isHidden() {
+    isHidden(): boolean {
         return !!this.hidden;
     }
 
-    isVisible() {
+    isVisible(): boolean {
         return !this.hidden;
     }
 
-    afterPaint(callback) {
+    afterPaint(callback: () => void): void {
         requestAnimationFrame(() => requestAnimationFrame(callback));
     }
 
-    onKey(key, handler, shortcut, modal, noPrevent) {
+    onKey(
+        key: string,
+        handler: (...args: unknown[]) => void,
+        shortcut?: string,
+        modal?: string,
+        noPrevent?: boolean
+    ): void {
         KeyHandler.onKey(key, handler, this, shortcut, modal, noPrevent);
         this.once('remove', () => KeyHandler.offKey(key, handler, this));
     }
 
-    off(event, listener) {
+    off(event: string, listener?: (...args: unknown[]) => void): this {
         if (listener === undefined) {
             return super.removeAllListeners(event);
         } else {

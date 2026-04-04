@@ -1,11 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Collection } from 'framework/collection';
 import { Model } from 'framework/model';
 import { Comparators } from 'util/data/comparators';
 
-class SearchResultCollection extends Collection {
-    static model = Model;
+type ComparatorFn = ((x: any, y: any) => number) | null;
 
-    comparators = {
+class SearchResultCollection extends Collection {
+    static override model = Model;
+
+    comparators: Record<string, ComparatorFn> = {
         'none': null,
         'title': Comparators.stringComparator('title', true),
         '-title': Comparators.stringComparator('title', false),
@@ -17,7 +20,7 @@ class SearchResultCollection extends Collection {
         '-created': Comparators.dateComparator('created', false),
         'updated': Comparators.dateComparator('updated', true),
         '-updated': Comparators.dateComparator('updated', false),
-        '-attachments': (x, y) => {
+        '-attachments': (x: any, y: any): number => {
             return this.attachmentSortVal(x).localeCompare(this.attachmentSortVal(y));
         },
         '-rank': Comparators.rankComparator().bind(this)
@@ -25,23 +28,23 @@ class SearchResultCollection extends Collection {
 
     defaultComparator = 'title';
 
-    entryFilter = null;
+    entryFilter: unknown = null;
 
-    constructor(models, options) {
+    constructor(models?: unknown[], options?: { comparator?: string }) {
         super(models);
-        const comparatorName = (options && options.comparator) || this.defaultComparator;
+        const comparatorName: string = (options?.comparator) || this.defaultComparator;
         this.comparator = this.comparators[comparatorName];
     }
 
-    sortEntries(comparator, filter) {
+    sortEntries(comparator: string, filter: unknown): void {
         this.entryFilter = filter;
         this.comparator = this.comparators[comparator] || this.comparators[this.defaultComparator];
         this.sort();
     }
 
-    attachmentSortVal(entry) {
+    attachmentSortVal(entry: any): string {
         const att = entry.attachments;
-        let str = att.length ? String.fromCharCode(64 + att.length) : 'Z';
+        let str: string = att.length ? String.fromCharCode(64 + att.length) : 'Z';
         if (att[0]) {
             str += att[0].title;
         }

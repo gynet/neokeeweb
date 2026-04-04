@@ -18,14 +18,21 @@
       "comp/*": ["./app/scripts/comp/*"],
       "collections/*": ["./app/scripts/collections/*"],
       "storage": ["./app/scripts/storage/index.js"],
-      "hbs": ["./node_modules/handlebars/types/index.d.ts"],
+      "hbs-helpers/*": ["./app/scripts/hbs-helpers/*"],
+      "presenters/*": ["./app/scripts/presenters/*"],
+      "hbs": ["./app/scripts/types.d.ts"],
       "locales/*": ["./app/resources/locales/*"]
     }
   },
   "include": [
+    "app/scripts/types.d.ts",
     "app/scripts/const/**/*.ts",
     "app/scripts/util/**/*.ts",
-    "app/scripts/models/**/*.ts"
+    "app/scripts/models/**/*.ts",
+    "app/scripts/framework/**/*.ts",
+    "app/scripts/collections/**/*.ts",
+    "app/scripts/hbs-helpers/**/*.ts",
+    "app/scripts/presenters/**/*.ts"
   ],
   "exclude": [
     "node_modules"
