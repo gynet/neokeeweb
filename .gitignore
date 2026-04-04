@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.nyc_output/
+coverage/
+*.tgz
+.DS_Store
+.env
+.env.local
+*.log
+tmp/
+.worktrees/

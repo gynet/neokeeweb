@@ -1,0 +1,27 @@
+{
+  "name": "neokeeweb",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Modern KeePass web client - TypeScript monorepo",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter @neokeeweb/core dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "lint": "bun run --filter '*' lint",
+    "test:db": "bun run --filter @neokeeweb/db test",
+    "test:core": "bun run --filter @neokeeweb/core test",
+    "test:extension": "bun run --filter @neokeeweb/extension test"
+  },
+  "author": "gynet",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gynet/neokeeweb.git"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

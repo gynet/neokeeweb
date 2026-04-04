@@ -1,0 +1,15 @@
+{
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "keeweb-connect-addon@keeweb.info"
+    }
+  },
+  "commands": {
+    "submit-auto": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      }
+    }
+  }
+}
