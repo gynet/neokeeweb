@@ -24,15 +24,28 @@
 
 $fa-glyph-counter: 61440; // 0xf000
 
+// Hex digit lookup
+$_hex-chars: '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f';
+
+@function _to-hex-digit($n) {
+    @return nth($_hex-chars, $n + 1);
+}
+
+@function _to-hex4($n) {
+    $d4: $n % 16;
+    $n: ($n - $d4) / 16;
+    $d3: $n % 16;
+    $n: ($n - $d3) / 16;
+    $d2: $n % 16;
+    $n: ($n - $d2) / 16;
+    $d1: $n % 16;
+    @return _to-hex-digit($d1) + _to-hex-digit($d2) + _to-hex-digit($d3) + _to-hex-digit($d4);
+}
+
 @function next-fa-glyph() {
     $fa-glyph-counter: $fa-glyph-counter + 1 !global;
-
-    $lo-part: $fa-glyph-counter % 256;
-    $hi-part: ($fa-glyph-counter - $lo-part) / 256;
-    $hex-num-str: str-slice(#{rgb($hi-part, $lo-part, 1)}, 2, 5);
-
+    $hex-num-str: _to-hex4($fa-glyph-counter);
     $glyph: unquote('"\\#{$hex-num-str}"');
-
     @return $glyph;
 }
 

@@ -35,7 +35,8 @@ module.exports = (env, argv) => {
             modules: [
                 path.join(rootDir, 'app/scripts'),
                 path.join(rootDir, 'app/styles'),
-                path.join(rootDir, 'node_modules')
+                path.join(rootDir, 'node_modules'),
+                path.join(rootDir, '../../node_modules')
             ],
             alias: {
                 // Module aliases matching app/scripts/ directories
@@ -244,7 +245,10 @@ module.exports = (env, argv) => {
             port: 8085,
             hot: true,
             open: false,
-            historyApiFallback: true
+            historyApiFallback: true,
+            client: {
+                overlay: false
+            }
         }
     };
 };
