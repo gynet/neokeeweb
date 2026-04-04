@@ -7,13 +7,13 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
 
-  reporter: [['html', { open: 'never' }]],
+  reporter: [['html', { open: 'on-failure' }]],
 
   use: {
     baseURL: 'http://localhost:8085',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
     trace: 'on-first-retry',
-    video: 'retain-on-failure',
+    video: 'on',
   },
 
   projects: [

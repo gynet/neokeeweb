@@ -15,7 +15,9 @@
     "test:db": "bun run --filter @neokeeweb/db test",
     "test:core": "bun run --filter @neokeeweb/core test",
     "test:extension": "bun run --filter @neokeeweb/extension test",
-    "test:e2e": "bunx playwright test"
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ext": "cd packages/extension && bunx playwright test",
+    "report": "bunx playwright show-report"
   },
   "author": "gynet",
   "repository": {
