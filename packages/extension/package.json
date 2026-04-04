@@ -26,7 +26,6 @@
   "license": "MIT",
   "homepage": "https://github.com/gynet/neokeeweb#readme",
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
     "@types/chrome": "^0.0.268",
     "@types/copy-webpack-plugin": "^8.0.0",
     "@types/node": "^20.12.10",
