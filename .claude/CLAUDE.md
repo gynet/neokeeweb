@@ -97,27 +97,39 @@ e2e/                                Playwright E2E tests
 - Protocol encryption
 - Multi-browser testing
 
-## Agent Communication — Bus File
+## Agent Communication — Per-Agent Log Files
 
-All agents communicate through `/tmp/neokeeweb-agent-bus.md`.
+Each agent writes to its own file to **prevent write conflicts**.
 
-**Before launching agents**, main agent creates the bus:
+**Before launching**, main agent creates the directory:
 ```bash
-echo "# Agent Bus - $(date)" > /tmp/neokeeweb-agent-bus.md
+mkdir -p /tmp/neokeeweb-agents/
 ```
 
-**Every agent appends progress under its section**:
-```markdown
-## SWE-Core | IN_PROGRESS
-- [14:30] Starting TS migration Phase B
-- [14:35] Migrated models/app-model.ts (145 lines)
-- [14:40] ALERT: changed AppSettings interface, other agents check imports
-- [14:52] 5/12 files done, bun test passing
-- [15:01] DONE — 12 files migrated, tsc clean
+**Each agent writes to**: `/tmp/neokeeweb-agents/{role}.log`
+```
+/tmp/neokeeweb-agents/
+├── tl.log
+├── sdet.log
+├── swe-core.log
+├── swe-db.log
+└── swe-ext.log
 ```
 
-**ALERT prefix** = cross-agent notification (breaking change, conflict, dependency).
-TL Agent reads the bus to coordinate, detect blockers, and summarize.
+**File format** (each agent's own file):
+```
+STATUS: IN_PROGRESS
+[14:30] Starting TS migration Phase B
+[14:35] Migrated 5 files
+[14:40] ALERT: changed AppSettings interface, SWE-DB check imports
+[15:01] All done, 12 files migrated
+STATUS: DONE
+```
+
+**ALERT prefix** = cross-agent notification. TL reads all logs to coordinate.
+
+**Main agent checks progress**: `head -1 /tmp/neokeeweb-agents/*.log`
+**Cleanup after all done**: `rm -rf /tmp/neokeeweb-agents/`
 
 ## Workflow Rules
 
