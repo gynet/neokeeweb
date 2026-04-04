@@ -14,7 +14,8 @@
     "lint": "bun run --filter '*' lint",
     "test:db": "bun run --filter @neokeeweb/db test",
     "test:core": "bun run --filter @neokeeweb/core test",
-    "test:extension": "bun run --filter @neokeeweb/extension test"
+    "test:extension": "bun run --filter @neokeeweb/extension test",
+    "test:e2e": "bunx playwright test"
   },
   "author": "gynet",
   "repository": {
@@ -23,5 +24,8 @@
   },
   "engines": {
     "bun": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }

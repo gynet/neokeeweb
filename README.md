@@ -2,6 +2,8 @@
 
 Modern, web-only KeePass client. TypeScript monorepo.
 
+Demo: https://gynet.github.io/neokeeweb/
+
 Forked from [KeeWeb](https://github.com/keeweb/keeweb) (12.9k stars, stalled since 2021). Rebuilt with a focus on simplicity, security, and maintainability.
 
 ## What Changed from KeeWeb
