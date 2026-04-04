@@ -53,13 +53,18 @@ packages/
 - Never add npm packages without checking if Bun built-ins or existing deps cover it.
 - All new code must be TypeScript with strict mode.
 
-## Phase 1 Goals (Current)
+## Phase 1 Checklist
 
-See GitHub milestones: https://github.com/gynet/neokeeweb/milestones
+See milestone: https://github.com/gynet/neokeeweb/milestone/1
 
-1. Merge 3 repos into monorepo (done)
-2. Strip desktop/Electron code, web-only focus
-3. Migrate core from JS to TypeScript
-4. Drop KDBX3, keep KDBX4 only
-5. E2E testing: database create -> read -> write -> verify
-6. Remove dead code and legacy dependencies
+- [x] Merge 3 repos into monorepo
+- [x] Strip Electron/desktop code (#1 closed)
+- [x] Drop KDBX3, keep KDBX4 only (#3 closed)
+- [x] Strip OAuth providers, keep WebDAV + IndexedDB (#8 closed)
+- [x] Modernize build: Grunt -> Bun + Webpack (#5 closed)
+- [x] CI/CD with GitHub Actions (#7 closed)
+- [x] Playwright E2E framework (config + spec stubs)
+- [x] keepass-rs interop tests (360 db tests passing)
+- [ ] Remove dead code and legacy deps (#6 open — 73 broken imports remain)
+- [ ] TypeScript migration for packages/core (#2 open — not started)
+- [ ] E2E test scenarios (#4 open — blocked on core build)
