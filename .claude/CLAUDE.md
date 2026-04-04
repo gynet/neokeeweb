@@ -97,15 +97,38 @@ e2e/                                Playwright E2E tests
 - Protocol encryption
 - Multi-browser testing
 
+## Agent Communication — Bus File
+
+All agents communicate through `/tmp/neokeeweb-agent-bus.md`.
+
+**Before launching agents**, main agent creates the bus:
+```bash
+echo "# Agent Bus - $(date)" > /tmp/neokeeweb-agent-bus.md
+```
+
+**Every agent appends progress under its section**:
+```markdown
+## SWE-Core | IN_PROGRESS
+- [14:30] Starting TS migration Phase B
+- [14:35] Migrated models/app-model.ts (145 lines)
+- [14:40] ALERT: changed AppSettings interface, other agents check imports
+- [14:52] 5/12 files done, bun test passing
+- [15:01] DONE — 12 files migrated, tsc clean
+```
+
+**ALERT prefix** = cross-agent notification (breaking change, conflict, dependency).
+TL Agent reads the bus to coordinate, detect blockers, and summarize.
+
 ## Workflow Rules
 
 1. **Main agent never blocks** — all agents use `run_in_background: true`
-2. **Closed-loop**: SDET finds bug → GitHub issue → SWE fixes → SDET verifies
-3. **Commit directly to master**, push immediately
-4. **All agents must run `bun test` before committing**
-5. **Worktree agents** get merged to master by main agent after completion
-6. **File GitHub issues** for anything non-trivial found during work
-7. **Monitor usage** — pause at ~90% subscription, resume after reset
+2. **All agents write to the bus file** at start, milestones, blockers, and completion
+3. **Closed-loop**: SDET finds bug → GitHub issue → SWE fixes → SDET verifies
+4. **Commit directly to master**, push immediately
+5. **All agents must run `bun test` before committing**
+6. **Worktree agents** get merged to master by main agent after completion
+7. **File GitHub issues** for anything non-trivial found during work
+8. **Monitor usage** — pause at ~90% subscription, resume after reset
 
 ## Launching the Team
 
