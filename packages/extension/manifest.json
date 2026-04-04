@@ -1,5 +1,5 @@
 {
-  "name": "KeeWeb Connect",
+  "name": "NeoKeeWeb Connect",
   "version": "1.0.0",
   "manifest_version": 3,
   "description": "__MSG_description__",
@@ -10,7 +10,6 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "scripts": ["js/background.js"],
     "service_worker": "js/background.js"
   },
   "permissions": [
@@ -18,7 +17,6 @@
     "tabs",
     "contextMenus",
     "storage",
-    "nativeMessaging",
     "webNavigation",
     "scripting"
   ],
