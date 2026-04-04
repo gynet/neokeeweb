@@ -166,14 +166,18 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Drop KDBX3, keep KDBX4 only
 - [x] Strip OAuth providers (WebDAV + IndexedDB only)
 - [x] Modernize build (Grunt → Bun + Webpack)
-- [x] Remove dead code and legacy deps
+- [x] Remove dead desktop/plugin/YubiKey code (-1500 lines)
 - [x] CI/CD with GitHub Actions
 - [x] Playwright E2E framework
-- [x] keepass-rs interop tests
-- [ ] TypeScript migration (core)
-- [ ] E2E test scenarios
+- [x] keepass-rs interop tests (607 tests passing)
+- [ ] Remove legacy deps (#6 — jquery, lodash, baron still in package.json)
+- [ ] TypeScript migration for core (#2 — Phase A done, 21 files migrated)
+- [ ] E2E test scenarios (#4 — database open tests added, more needed)
 
 ## Phase 2 Goals (Planned)
 
+See: https://github.com/gynet/neokeeweb/milestone/2
+
 - Passkey support (store + WebAuthn PRF unlock) — Issue #9
 - Cloud storage with user-provided OAuth (BYOK model)
+- UX improvements

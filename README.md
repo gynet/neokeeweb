@@ -128,19 +128,25 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 
 ## Roadmap
 
-### Phase 1: Foundation (current)
+### Phase 1: Foundation (current) — [milestone](https://github.com/gynet/neokeeweb/milestone/1)
 - [x] Merge 3 repos into monorepo
-- [x] Strip Electron/desktop code
-- [x] Set up Bun workspace + modern build
-- [x] Strip OAuth storage providers (keep WebDAV + IndexedDB)
-- [ ] Complete TypeScript migration (core)
-- [ ] Drop KDBX3 support
-- [ ] E2E testing: create → read → write → verify
-- [ ] CI/CD with GitHub Actions
+- [x] Strip Electron/desktop code (#1)
+- [x] Drop KDBX3 support, keep KDBX4 only (#3)
+- [x] Modernize build: Grunt -> Bun + Webpack (#5)
+- [x] Strip OAuth storage providers, keep WebDAV + IndexedDB (#8)
+- [x] CI/CD with GitHub Actions (#7)
+- [x] Playwright E2E framework (config + spec stubs)
+- [x] keepass-rs interop tests (607 tests passing)
+- [x] Remove dead desktop/plugin/YubiKey code (-1500 lines)
+- [ ] Remove legacy dependencies (#6 — jquery, lodash, baron, etc.)
+- [ ] Complete TypeScript migration for packages/core (#2)
+- [ ] E2E test scenarios (#4)
 
-### Phase 2: New Features (planned)
-- Cloud storage with user-provided OAuth credentials
-- More TBD — see [GitHub Issues](https://github.com/gynet/neokeeweb/issues)
+### Phase 2: Features (planned) — [milestone](https://github.com/gynet/neokeeweb/milestone/2)
+- Passkey support (store + WebAuthn PRF unlock)
+- Cloud storage with user-provided OAuth credentials (BYOK)
+- UX improvements
+- See [GitHub Issues](https://github.com/gynet/neokeeweb/issues)
 
 ## License
 
