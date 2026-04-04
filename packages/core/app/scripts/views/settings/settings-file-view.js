@@ -3,8 +3,6 @@ import { View } from 'framework/views/view';
 import { Storage } from 'storage';
 import { Shortcuts } from 'comp/app/shortcuts';
 import { Alerts } from 'comp/ui/alerts';
-import { YubiKey } from 'comp/app/yubikey';
-import { UsbListener } from 'comp/app/usb-listener';
 import { Links } from 'const/links';
 import { AppSettingsModel } from 'models/app-settings-model';
 import { DateFormat } from 'comp/i18n/date-format';
@@ -689,33 +687,8 @@ class SettingsFileView extends View {
         }
     }
 
-    refreshYubiKeys(userInitiated) {
-        if (!AppSettingsModel.enableUsb || !AppSettingsModel.yubiKeyShowChalResp) {
-            return;
-        }
-        if (!UsbListener.attachedYubiKeys) {
-            if (this.yubiKeys.length) {
-                this.yubiKeys = [];
-                this.render();
-            }
-        }
-        YubiKey.list((err, yubiKeys) => {
-            if (err || this.removed) {
-                return;
-            }
-            this.yubiKeys = yubiKeys;
-            this.render();
-            if (
-                userInitiated &&
-                UsbListener.attachedYubiKeys &&
-                !yubiKeys.length &&
-                Features.isMac
-            ) {
-                Alerts.error({
-                    body: Locale.setFileYubiKeyErrorEmptyMac
-                });
-            }
-        });
+    refreshYubiKeys() {
+        // No-op: YubiKey support removed in web-only fork
     }
 
     changeYubiKey(e) {

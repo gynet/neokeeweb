@@ -1,8 +1,6 @@
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
-import { AutoType } from 'auto-type';
 import { Scrollable } from 'framework/views/scrollable';
-import { AutoTypeHintView } from 'views/auto-type/auto-type-hint-view';
 import { IconSelectView } from 'views/icon-select-view';
 import template from 'templates/grp.hbs';
 
@@ -30,7 +28,7 @@ class GrpView extends View {
             customIcon: this.model.customIcon,
             enableSearching: this.model.getEffectiveEnableSearching(),
             readonly: this.model.top,
-            canAutoType: AutoType.enabled,
+            canAutoType: false,
             autoTypeSeq: this.model.autoTypeSeq,
             autoTypeEnabled: this.model.getEffectiveEnableAutoType(),
             defaultAutoTypeSeq: this.model.getParentEffectiveAutoTypeSeq()
@@ -68,24 +66,8 @@ class GrpView extends View {
     }
 
     changeAutoTypeSeq(e) {
-        const el = e.target;
-        const seq = $.trim(el.value);
-        AutoType.validate(null, seq, (err) => {
-            $(e.target).toggleClass('input--error', !!err);
-            if (!err) {
-                this.model.setAutoTypeSeq(seq);
-            }
-        });
-    }
-
-    focusAutoTypeSeq(e) {
-        if (!this.views.hint) {
-            this.views.hint = new AutoTypeHintView({ input: e.target });
-            this.views.hint.render();
-            this.views.hint.on('remove', () => {
-                delete this.views.hint;
-            });
-        }
+        const seq = $.trim(e.target.value);
+        this.model.setAutoTypeSeq(seq);
     }
 
     showIconsSelect() {

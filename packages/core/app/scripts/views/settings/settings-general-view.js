@@ -1,9 +1,7 @@
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
-import { AutoType } from 'auto-type';
 import { Storage } from 'storage';
 import { RuntimeInfo } from 'const/runtime-info';
-import { Updater } from 'comp/app/updater';
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { Alerts } from 'comp/ui/alerts';
 import { Links } from 'const/links';
@@ -102,12 +100,12 @@ class SettingsGeneralView extends View {
             minimizeOnClose: AppSettingsModel.minimizeOnClose,
             minimizeOnFieldCopy: AppSettingsModel.minimizeOnFieldCopy,
             devTools: false,
-            canAutoUpdate: Updater.enabled,
+            canAutoUpdate: false,
             canAutoSaveOnClose: false,
             canMinimize: false,
             canDetectMinimize: false,
             canDetectOsSleep: false,
-            canAutoType: AutoType.enabled,
+            canAutoType: false,
             auditPasswords: AppSettingsModel.auditPasswords,
             auditPasswordEntropy: AppSettingsModel.auditPasswordEntropy,
             excludePinsFromAudit: AppSettingsModel.excludePinsFromAudit,
@@ -121,11 +119,11 @@ class SettingsGeneralView extends View {
             lockOnOsLock: AppSettingsModel.lockOnOsLock,
             tableView: AppSettingsModel.tableView,
             canSetTableView: !Features.isMobile,
-            autoUpdate: Updater.getAutoUpdateType(),
-            updateInProgress: Updater.updateInProgress(),
+            autoUpdate: null,
+            updateInProgress: false,
             updateInfo: this.getUpdateInfo(),
             updateWaitingReload: updateReady,
-            showUpdateBlock: Updater.enabled && !updateManual,
+            showUpdateBlock: false,
             updateReady,
             updateFound,
             updateManual,
@@ -313,16 +311,12 @@ class SettingsGeneralView extends View {
         AppSettingsModel.idleMinutes = idleMinutes;
     }
 
-    changeAutoUpdate(e) {
-        const autoUpdate = e.target.value || false;
-        AppSettingsModel.autoUpdate = autoUpdate;
-        if (autoUpdate) {
-            Updater.scheduleNextCheck();
-        }
+    changeAutoUpdate() {
+        // No-op: auto-update removed in web-only fork
     }
 
     checkUpdate() {
-        Updater.check(true);
+        // No-op: auto-update removed in web-only fork
     }
 
     changeAutoSave(e) {
@@ -472,9 +466,7 @@ class SettingsGeneralView extends View {
     }
 
     installFoundUpdate() {
-        Updater.update(true, () => {
-            Updater.installAndRestart();
-        });
+        // No-op: auto-update removed in web-only fork
     }
 
     changeExpandGroups(e) {

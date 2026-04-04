@@ -1,7 +1,6 @@
 import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
-import { AutoType } from 'auto-type';
 import { CopyPaste } from 'comp/browser/copy-paste';
 import { KeyHandler } from 'comp/browser/key-handler';
 import { OtpQrReader } from 'comp/format/otp-qr-reader';
@@ -18,7 +17,6 @@ import { Copyable } from 'framework/views/copyable';
 import { Scrollable } from 'framework/views/scrollable';
 import { DetailsAddFieldView } from 'views/details/details-add-field-view';
 import { DetailsAttachmentView } from 'views/details/details-attachment-view';
-import { DetailsAutoTypeView } from 'views/details/details-auto-type-view';
 import { DetailsHistoryView } from 'views/details/details-history-view';
 import { DetailsIssuesView } from 'views/details/details-issues-view';
 import { DropdownView } from 'views/dropdown-view';
@@ -75,9 +73,6 @@ class DetailsView extends View {
         this.onKey(Keys.DOM_VK_B, this.copyUserName, KeyHandler.SHORTCUT_ACTION);
         this.onKey(Keys.DOM_VK_U, this.copyUrl, KeyHandler.SHORTCUT_ACTION);
         this.onKey(Keys.DOM_VK_2, this.copyOtp, KeyHandler.SHORTCUT_OPT);
-        if (AutoType.enabled) {
-            this.onKey(Keys.DOM_VK_T, () => this.autoType(), KeyHandler.SHORTCUT_ACTION);
-        }
         this.onKey(
             Keys.DOM_VK_DELETE,
             this.deleteKeyPress,
@@ -281,13 +276,6 @@ class DetailsView extends View {
                     });
                 }
                 moreOptions.push({ value: 'otp', icon: 'clock', text: Locale.detSetupOtp });
-                if (AutoType.enabled) {
-                    moreOptions.push({
-                        value: 'auto-type',
-                        icon: 'keyboard',
-                        text: Locale.detAutoTypeSettings
-                    });
-                }
                 moreOptions.push({ value: 'clone', icon: 'clone', text: Locale.detClone });
                 moreOptions.push({
                     value: 'copy-to-clipboard',
@@ -322,9 +310,6 @@ class DetailsView extends View {
             }
             case 'otp':
                 this.setupOtp();
-                break;
-            case 'auto-type':
-                this.toggleAutoType();
                 break;
             case 'clone':
                 this.clone();
@@ -923,9 +908,6 @@ class DetailsView extends View {
                 });
             }
         }
-        if (AutoType.enabled) {
-            options.push({ value: 'det-auto-type', icon: 'keyboard', text: Locale.detAutoType });
-        }
         Events.emit('show-context-menu', Object.assign(e, { options }));
     }
 
@@ -992,33 +974,7 @@ class DetailsView extends View {
     }
 
     toggleAutoType() {
-        if (this.views.autoType) {
-            this.views.autoType.remove();
-            delete this.views.autoType;
-            return;
-        }
-        this.views.autoType = new DetailsAutoTypeView(this.model);
-        this.views.autoType.render();
-    }
-
-    autoType(sequence) {
-        const entry = this.model;
-        const hasOtp =
-            sequence?.includes('{TOTP}') || (entry.backend === 'otp-device' && !sequence);
-        if (hasOtp) {
-            const otpField = this.getFieldView('$otp');
-            otpField.refreshOtp((err) => {
-                if (!err) {
-                    Events.emit('auto-type', {
-                        entry,
-                        sequence,
-                        context: { resolved: { totp: otpField.otpValue } }
-                    });
-                }
-            });
-        } else {
-            Events.emit('auto-type', { entry, sequence });
-        }
+        // No-op: auto-type removed in web-only fork
     }
 
     checkPasswordIssues() {

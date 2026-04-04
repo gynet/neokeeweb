@@ -6,7 +6,6 @@ import { Tip } from 'util/ui/tip';
 import { isEqual } from 'util/fn';
 import { Features } from 'util/features';
 import { Locale } from 'util/locale';
-import { AutoType } from 'auto-type';
 import { PasswordPresenter } from 'util/formatting/password-presenter';
 import { DropdownView } from 'views/dropdown-view';
 import { AppSettingsModel } from 'models/app-settings-model';
@@ -79,20 +78,7 @@ class FieldView extends View {
         if (this.preventCopy) {
             return;
         }
-        if (AutoType.enabled && AppSettingsModel.fieldLabelDblClickAutoType) {
-            if (this.fieldLabelClickTimer) {
-                clearTimeout(this.fieldLabelClickTimer);
-                this.fieldLabelClickTimer = null;
-                this.emit('autotype', { source: this });
-                return;
-            }
-            this.fieldLabelClickTimer = setTimeout(() => {
-                this.copyValue();
-                this.fieldLabelClickTimer = null;
-            }, Timeouts.FieldLabelDoubleClick);
-        } else {
-            this.copyValue();
-        }
+        this.copyValue();
     }
 
     copyValue() {
@@ -240,10 +226,6 @@ class FieldView extends View {
             } else {
                 options.push({ value: 'reveal', icon: 'eye', text: Locale.detRevealField });
             }
-        }
-
-        if (AutoType.enabled && this.model.sequence) {
-            options.push({ value: 'autotype', icon: 'keyboard', text: Locale.detAutoTypeField });
         }
 
         const rect = this.$el[0].getBoundingClientRect();
