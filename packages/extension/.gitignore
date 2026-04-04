@@ -20,3 +20,7 @@ native-messaging-host/build/
 
 # Artifacts from signing the addon for Firefox
 web-ext-artifacts
+
+# Playwright
+test-results/
+playwright-report/
