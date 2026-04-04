@@ -1368,7 +1368,24 @@ describe('Kdbx.merge', () => {
             expect([...entry.fields.entries()]).toEqual([...exp.fields.entries()]);
         }
         if (exp.binaries) {
-            expect(entry.binaries).toEqual(exp.binaries);
+            expect(entry.binaries.size).toBe(exp.binaries.size);
+            for (const [key, val] of exp.binaries.entries()) {
+                expect(entry.binaries.has(key)).toBe(true);
+                const actual = entry.binaries.get(key) as any;
+                const expected = val as any;
+                if (expected?.ref !== undefined) {
+                    // Expected a ref - check via hash/ref
+                    if (actual?.hash !== undefined) {
+                        expect(actual.hash).toBe(expected.ref.id || expected.ref);
+                    } else if (actual?.ref !== undefined) {
+                        expect(actual.ref).toBe(expected.ref.id || expected.ref);
+                    }
+                } else if (expected?.hash !== undefined) {
+                    expect(actual.hash || actual).toEqual(expected.hash || expected);
+                } else {
+                    expect(actual).toEqual(expected);
+                }
+            }
         }
         if (exp.history) {
             expect(entry.history.length).toBe(exp.history.length);

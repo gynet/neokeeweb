@@ -248,6 +248,7 @@ describe('CryptoEngine', () => {
     describe('argon2', () => {
         test('throws error if argon2 is not implemented', async () => {
             useDefaultImpl();
+            CryptoEngine.setArgon2Impl(undefined as any);
             try {
                 await CryptoEngine.argon2(
                     new ArrayBuffer(0),

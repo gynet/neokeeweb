@@ -22,7 +22,7 @@ describe('KdbxCustomData', () => {
     test('reads empty custom data from empty xml', () => {
         const xml = XmlUtils.parse('<CustomData></CustomData>');
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect(cd).toEqual({});
+        expect(cd.size).toBe(0);
     });
 
     test('skips unknown tags', () => {
@@ -38,7 +38,7 @@ describe('KdbxCustomData', () => {
             '<CustomData><Item><Key></Key><Value>v</Value></Item></CustomData>'
         );
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect(cd).toEqual({});
+        expect(cd.size).toBe(0);
     });
 
     test('writes custom data to xml', () => {

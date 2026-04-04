@@ -8,8 +8,6 @@ describe('KeyEncryptorKdf', () => {
     );
     const exp = '5d2a000401200200130000000000000000000000000000000000000000000000';
 
-    const cryptoEngineArgon2 = CryptoEngine.argon2;
-
     beforeAll(() => {
         CryptoEngine.setArgon2Impl(
             (password, salt, memory, iterations, length, parallelism, type, version) => {
@@ -29,7 +27,7 @@ describe('KeyEncryptorKdf', () => {
     });
 
     afterAll(() => {
-        CryptoEngine.argon2 = cryptoEngineArgon2;
+        CryptoEngine.setArgon2Impl(undefined as any);
     });
 
     test('calls argon2 function', async () => {
@@ -185,14 +183,44 @@ describe('KeyEncryptorKdf', () => {
         }
     });
 
-    test('throws error for AES KDF (removed)', async () => {
+    test('calls aes function', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
+        const key = ByteUtils.hexToBytes(
+            'ee66af917de0b0336e659fe6bd40a337d04e3c2b3635210fa16f28fb24d563ac'
+        );
+        const salt = ByteUtils.hexToBytes(
+            '5d18f8a5ae0e7ea86f0ad817f0c0d40656ef1da6367d8a88508b3c13cec0d7af'
+        );
+        const result = 'af0be2c639224ad37bd2bc7967d6c3303a8a6d4b7813718918a66bde96dc3132';
+        params.set('S', ValueType.Bytes, salt);
+        params.set('R', ValueType.Int64, new Int64(2));
+        const res = await KeyEncryptorKdf.encrypt(key, params);
+        expect(ByteUtils.bytesToHex(res)).toBe(result);
+    });
+
+    test('throws error for bad aes salt', async () => {
+        const params = new VarDictionary();
+        params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
+        params.set('S', ValueType.Bytes, new ArrayBuffer(10));
         try {
             await KeyEncryptorKdf.encrypt(data, params);
             throw new Error('Not expected');
         } catch (e) {
-            expect((e as Error).message).toContain('Unsupported: bad kdf');
+            expect((e as Error).message).toContain('FileCorrupt: bad aes salt');
+        }
+    });
+
+    test('throws error for bad aes rounds', async () => {
+        const params = new VarDictionary();
+        params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
+        params.set('S', ValueType.Bytes, new ArrayBuffer(32));
+        params.set('R', ValueType.Int64, new Int64(-1));
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad aes rounds');
         }
     });
 });

@@ -1,7 +1,7 @@
 {
   "extends": "./conf/tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "mocha"],
+    "types": ["node"],
     "esModuleInterop": true,
     "resolveJsonModule": true
   },

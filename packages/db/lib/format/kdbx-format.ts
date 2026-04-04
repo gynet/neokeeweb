@@ -103,22 +103,21 @@ export class KdbxFormat {
 
     save(): Promise<ArrayBuffer> {
         return this.kdbx.credentials.ready.then(() => {
-            const stm = new BinaryStream();
-            this.kdbx.header.generateSalts();
-            this.kdbx.header.write(stm);
             if (this.kdbx.versionMajor === 3) {
                 throw new KdbxError(
                     ErrorCodes.InvalidVersion,
                     'KDBX3 is not supported. Please convert to KDBX4 format.'
                 );
-            } else if (this.kdbx.versionMajor === 4) {
-                return this.saveV4(stm);
-            } else {
+            } else if (this.kdbx.versionMajor !== 4) {
                 throw new KdbxError(
                     ErrorCodes.InvalidVersion,
                     `bad version: ${this.kdbx.versionMajor}`
                 );
             }
+            const stm = new BinaryStream();
+            this.kdbx.header.generateSalts();
+            this.kdbx.header.write(stm);
+            return this.saveV4(stm);
         });
     }
 

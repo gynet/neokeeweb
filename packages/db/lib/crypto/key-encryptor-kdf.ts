@@ -1,8 +1,9 @@
 import * as CryptoEngine from '../crypto/crypto-engine';
+import * as KeyEncryptorAes from './key-encryptor-aes';
 import { VarDictionary, VarDictionaryAnyValue } from '../utils/var-dictionary';
 import { KdbxError } from '../errors/kdbx-error';
 import { ErrorCodes, KdfId } from '../defs/consts';
-import { bytesToBase64 } from '../utils/byte-utils';
+import { bytesToBase64, zeroBuffer } from '../utils/byte-utils';
 import { Argon2Type } from './crypto-engine';
 import { Int64 } from '../utils/int64';
 
@@ -17,6 +18,8 @@ export function encrypt(key: ArrayBuffer, kdfParams: VarDictionary): Promise<Arr
             return encryptArgon2(key, kdfParams, CryptoEngine.Argon2TypeArgon2d);
         case KdfId.Argon2id:
             return encryptArgon2(key, kdfParams, CryptoEngine.Argon2TypeArgon2id);
+        case KdfId.Aes:
+            return encryptAes(key, kdfParams);
         default:
             return Promise.reject(new KdbxError(ErrorCodes.Unsupported, 'bad kdf'));
     }
@@ -71,6 +74,27 @@ function encryptArgon2(
         parallelism,
         argon2type,
         version
+    );
+}
+
+function encryptAes(key: ArrayBuffer, kdfParams: VarDictionary) {
+    const salt = kdfParams.get('S');
+    if (!(salt instanceof ArrayBuffer) || salt.byteLength !== 32) {
+        return Promise.reject(new KdbxError(ErrorCodes.FileCorrupt, 'bad aes salt'));
+    }
+
+    const rounds = toNumber(kdfParams.get('R'));
+    if (typeof rounds !== 'number' || rounds < 1) {
+        return Promise.reject(new KdbxError(ErrorCodes.FileCorrupt, 'bad aes rounds'));
+    }
+
+    return KeyEncryptorAes.encrypt(new Uint8Array(key), new Uint8Array(salt), rounds).then(
+        (key) => {
+            return CryptoEngine.sha256(key).then((hash) => {
+                zeroBuffer(key);
+                return hash;
+            });
+        }
     );
 }
 

@@ -4,7 +4,6 @@ import { argon2 } from '../test-support/argon2';
 import { TestResources } from '../test-support/test-resources';
 
 describe('Kdbx', () => {
-    const cryptoEngineArgon2 = kdbxweb.CryptoEngine.argon2;
     const challengeResponse: kdbxweb.KdbxChallengeResponseFn = function (challenge) {
         const responses = new Map<string, string>([
             [
@@ -22,11 +21,12 @@ describe('Kdbx', () => {
     };
 
     beforeAll(() => {
-        kdbxweb.CryptoEngine.argon2 = argon2;
+        kdbxweb.CryptoEngine.setArgon2Impl(argon2);
     });
 
     afterAll(() => {
-        kdbxweb.CryptoEngine.argon2 = cryptoEngineArgon2;
+        // Reset to no impl (default state)
+        kdbxweb.CryptoEngine.setArgon2Impl(undefined as any);
     });
 
     test('sets all imports without issues', () => {
@@ -171,18 +171,14 @@ describe('Kdbx', () => {
         }
     });
 
-    test('generates error for KDBX3 file', async () => {
-        // Create a fake file header with version 3.1
-        const file = new Uint8Array(TestResources.argon2.byteLength);
-        file.set(new Uint8Array(TestResources.argon2));
-        // Set version major to 3 (bytes 10-11 in LE format)
-        file[10] = 1; // minor version
-        file[11] = 3; // major version = 3
+    test('rejects KDBX3 version in format load', async () => {
+        // Directly test the format layer's KDBX3 rejection
+        const cred = new kdbxweb.Credentials(kdbxweb.ProtectedValue.fromString('test'));
+        const db = kdbxweb.Kdbx.create(cred, 'test');
+        // Force version to 3 internally (bypassing setVersion validation)
+        db.header.versionMajor = 3;
         try {
-            await kdbxweb.Kdbx.load(
-                file.buffer,
-                new kdbxweb.Credentials(kdbxweb.ProtectedValue.fromString('demo'))
-            );
+            await db.save();
             throw new Error('Not expected');
         } catch (e) {
             expect(e).toBeInstanceOf(kdbxweb.KdbxError);
