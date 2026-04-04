@@ -9,3 +9,4 @@ coverage/
 *.log
 tmp/
 .worktrees/
+.claude/worktrees/
