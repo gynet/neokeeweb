@@ -4,12 +4,17 @@
 //  which you embed in the source code of your application.
 //  (In this context, the client secret is obviously not treated as a secret.)
 
-const DropboxApps = {
+interface CloudStorageApp {
+    readonly id: string;
+    readonly secret?: string;
+}
+
+const DropboxApps: Readonly<Record<string, CloudStorageApp>> = {
     AppFolder: { id: 'qp7ctun6qt5n9d6', secret: '07s5r4ck1uvlj6a' },
     FullDropbox: { id: 'eor7hvv6u6oslq9', secret: 'ez04o1iwf6yprq3' }
 };
 
-const GDriveApps = {
+const GDriveApps: Readonly<Record<string, CloudStorageApp>> = {
     Local: {
         id: '783608538594-36tkdh8iscrq8t8dq87gghubnhivhjp5.apps.googleusercontent.com',
         secret: 'yAtyfc9TIQ9GyQgQmo3i0HAP'
@@ -24,7 +29,7 @@ const GDriveApps = {
     }
 };
 
-const OneDriveApps = {
+const OneDriveApps: Readonly<Record<string, CloudStorageApp>> = {
     Local: {
         id: 'b97c53d5-db5b-4124-aab9-d39195293815'
     },
@@ -37,7 +42,7 @@ const OneDriveApps = {
     }
 };
 
-const MsTeamsApps = {
+const MsTeamsApps: Readonly<Record<string, CloudStorageApp>> = {
     Local: {
         id: '8fbe2245-13d5-446f-bedc-74c3b2e1f635'
     },
@@ -51,3 +56,4 @@ const MsTeamsApps = {
 };
 
 export { DropboxApps, GDriveApps, OneDriveApps, MsTeamsApps };
+export type { CloudStorageApp };

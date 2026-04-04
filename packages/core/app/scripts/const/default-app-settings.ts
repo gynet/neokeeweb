@@ -1,4 +1,102 @@
-const DefaultAppSettings = {
+interface AppSettings {
+    theme: string | null;
+    autoSwitchTheme: boolean;
+    locale: string | null;
+    expandGroups: boolean;
+    listViewWidth: number | null;
+    menuViewWidth: number | null;
+    tagsViewHeight: number | null;
+    autoUpdate: string;
+    clipboardSeconds: number;
+    autoSave: boolean;
+    autoSaveInterval: number;
+    rememberKeyFiles: string;
+    idleMinutes: number;
+    minimizeOnClose: boolean;
+    minimizeOnFieldCopy: boolean;
+    tableView: boolean;
+    colorfulIcons: boolean;
+    useMarkdown: boolean;
+    directAutotype: boolean;
+    autoTypeTitleFilterEnabled: boolean;
+    titlebarStyle: string;
+    lockOnMinimize: boolean;
+    lockOnCopy: boolean;
+    lockOnAutoType: boolean;
+    lockOnOsLock: boolean;
+    helpTipCopyShown: boolean;
+    templateHelpShown: boolean;
+    skipOpenLocalWarn: boolean;
+    hideEmptyFields: boolean;
+    skipHttpsWarning: boolean;
+    demoOpened: boolean;
+    fontSize: number;
+    tableViewColumns: string[] | null;
+    generatorPresets: unknown | null;
+    generatorHidePassword: boolean;
+    cacheConfigSettings: boolean;
+    allowIframes: boolean;
+    useGroupIconForEntries: boolean;
+    enableUsb: boolean;
+    fieldLabelDblClickAutoType: boolean;
+    auditPasswords: boolean;
+    auditPasswordEntropy: boolean;
+    excludePinsFromAudit: boolean;
+    checkPasswordsOnHIBP: boolean;
+    auditPasswordAge: number;
+    deviceOwnerAuth: string | null;
+    deviceOwnerAuthTimeoutMinutes: number;
+    disableOfflineStorage: boolean;
+    shortLivedStorageToken: boolean;
+    extensionFocusIfLocked: boolean;
+    extensionFocusIfEmpty: boolean;
+
+    yubiKeyShowIcon: boolean;
+    yubiKeyAutoOpen: boolean;
+    yubiKeyMatchEntries: boolean;
+    yubiKeyShowChalResp: boolean;
+    yubiKeyRememberChalResp: boolean;
+    yubiKeyStuckWorkaround: boolean;
+
+    canOpen: boolean;
+    canOpenDemo: boolean;
+    canOpenSettings: boolean;
+    canCreate: boolean;
+    canImportXml: boolean;
+    canImportCsv: boolean;
+    canRemoveLatest: boolean;
+    canExportXml: boolean;
+    canExportHtml: boolean;
+    canSaveTo: boolean;
+    canOpenStorage: boolean;
+    canOpenGenerator: boolean;
+    canOpenOtpDevice: boolean;
+
+    dropbox: boolean;
+    dropboxFolder: string | null;
+    dropboxAppKey: string | null;
+    dropboxSecret: string | null;
+
+    webdav: boolean;
+    webdavSaveMethod: string;
+    webdavStatReload: boolean;
+
+    gdrive: boolean;
+    gdriveClientId: string | null;
+    gdriveClientSecret: string | null;
+
+    onedrive: boolean;
+    onedriveClientId: string | null;
+    onedriveClientSecret: string | null;
+    onedriveTenantId: string | null;
+
+    msteams: boolean;
+    msteamsClientId: string | null;
+    msteamsClientSecret: string | null;
+    msteamsTenantId: string | null;
+}
+
+const DefaultAppSettings: AppSettings = {
     theme: null, // UI theme
     autoSwitchTheme: false, // automatically switch between light and dark theme
     locale: null, // user interface language
@@ -97,3 +195,4 @@ const DefaultAppSettings = {
 };
 
 export { DefaultAppSettings };
+export type { AppSettings };

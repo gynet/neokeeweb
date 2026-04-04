@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": "app/scripts",
+    "paths": {
+      "const/*": ["const/*"],
+      "util/*": ["util/*"],
+      "hbs": ["../../node_modules/handlebars/types/index.d.ts"],
+      "locales/*": ["../resources/locales/*"]
+    }
+  },
+  "include": [
+    "app/scripts/const/**/*.ts",
+    "app/scripts/util/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
