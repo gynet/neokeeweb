@@ -6,7 +6,6 @@ import {
     CipherId,
     CompressionAlgorithm,
     CrsAlgorithm,
-    Defaults,
     ErrorCodes,
     KdfId,
     Signatures
@@ -549,20 +548,6 @@ export class KdbxHeader {
                 );
                 this.kdfParameters.set('V', ValueType.UInt32, HeaderConst.DefaultKdfVersion);
                 break;
-            case KdfId.Aes:
-                this.kdfParameters = new VarDictionary();
-                this.kdfParameters.set('$UUID', ValueType.Bytes, base64ToBytes(KdfId.Aes));
-                this.kdfParameters.set(
-                    'S',
-                    ValueType.Bytes,
-                    CryptoEngine.random(HeaderConst.DefaultKdfSaltLength)
-                );
-                this.kdfParameters.set(
-                    'R',
-                    ValueType.UInt64,
-                    new Int64(Defaults.KeyEncryptionRounds)
-                );
-                break;
             default:
                 throw new KdbxError(ErrorCodes.InvalidArg, 'bad KDF algo');
         }
@@ -606,22 +591,16 @@ export class KdbxHeader {
     }
 
     setVersion(version: number): void {
-        if (version !== 3 && version !== 4) {
+        if (version !== 4) {
             throw new KdbxError(ErrorCodes.InvalidArg, 'bad file version');
         }
         this.versionMajor = version;
         this.versionMinor = DefaultMinorVersions[version];
-        if (this.versionMajor === 4) {
-            if (!this.kdfParameters) {
-                this.createKdfParameters();
-            }
-            this.crsAlgorithm = CrsAlgorithm.ChaCha20;
-            this.keyEncryptionRounds = undefined;
-        } else {
-            this.kdfParameters = undefined;
-            this.crsAlgorithm = CrsAlgorithm.Salsa20;
-            this.keyEncryptionRounds = Defaults.KeyEncryptionRounds;
+        if (!this.kdfParameters) {
+            this.createKdfParameters();
         }
+        this.crsAlgorithm = CrsAlgorithm.ChaCha20;
+        this.keyEncryptionRounds = undefined;
     }
 
     setKdf(kdf: string): void {

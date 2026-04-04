@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "webpack serve --mode=development --open",
     "build": "webpack --mode=production",
-    "test": "echo 'TODO: migrate tests to bun test'",
+    "test": "bun test tests/",
     "lint": "eslint app/scripts/"
   },
   "author": "gynet",

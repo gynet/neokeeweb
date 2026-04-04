@@ -15,9 +15,7 @@ import {
 import { ProtectSaltGenerator } from '../crypto/protect-salt-generator';
 import * as XmlUtils from '../utils/xml-utils';
 import * as HmacBlockTransform from '../crypto/hmac-block-transform';
-import * as HashedBlockTransform from '../crypto/hashed-block-transform';
 import * as CryptoEngine from '../crypto/crypto-engine';
-import * as KeyEncryptorAes from '../crypto/key-encryptor-aes';
 import * as KeyEncryptorKdf from '../crypto/key-encryptor-kdf';
 import { Int64 } from '../utils/int64';
 
@@ -37,7 +35,10 @@ export class KdbxFormat {
         return this.kdbx.credentials.ready.then(() => {
             this.kdbx.header = KdbxHeader.read(stm, this.ctx);
             if (this.kdbx.header.versionMajor === 3) {
-                return this.loadV3(stm);
+                throw new KdbxError(
+                    ErrorCodes.InvalidVersion,
+                    'KDBX3 is not supported. Please convert to KDBX4 format.'
+                );
             } else if (this.kdbx.header.versionMajor === 4) {
                 return this.loadV4(stm);
             } else {
@@ -46,20 +47,6 @@ export class KdbxFormat {
                     `bad version: ${this.kdbx.versionMajor}`
                 );
             }
-        });
-    }
-
-    private loadV3(stm: BinaryStream): Promise<Kdbx> {
-        return this.decryptXmlV3(stm).then((xmlStr) => {
-            this.kdbx.xml = XmlUtils.parse(xmlStr);
-            return this.setProtectedValues().then(() => {
-                return this.kdbx.loadFromXml(this.ctx).then(() => {
-                    return this.checkHeaderHashV3(stm).then(() => {
-                        this.cleanXml();
-                        return this.kdbx;
-                    });
-                });
-            });
         });
     }
 
@@ -120,7 +107,10 @@ export class KdbxFormat {
             this.kdbx.header.generateSalts();
             this.kdbx.header.write(stm);
             if (this.kdbx.versionMajor === 3) {
-                return this.saveV3(stm);
+                throw new KdbxError(
+                    ErrorCodes.InvalidVersion,
+                    'KDBX3 is not supported. Please convert to KDBX4 format.'
+                );
             } else if (this.kdbx.versionMajor === 4) {
                 return this.saveV4(stm);
             } else {
@@ -129,24 +119,6 @@ export class KdbxFormat {
                     `bad version: ${this.kdbx.versionMajor}`
                 );
             }
-        });
-    }
-
-    private saveV3(stm: BinaryStream): Promise<ArrayBuffer> {
-        return this.getHeaderHash(stm).then((headerHash) => {
-            this.kdbx.meta.headerHash = headerHash;
-            this.kdbx.buildXml(this.ctx);
-            return this.getProtectSaltGenerator().then((gen) => {
-                if (!this.kdbx.xml) {
-                    throw new KdbxError(ErrorCodes.InvalidState, 'no xml');
-                }
-                XmlUtils.updateProtectedValuesSalt(this.kdbx.xml.documentElement, gen);
-                return this.encryptXmlV3().then((data) => {
-                    this.cleanXml();
-                    stm.writeBytes(data);
-                    return stm.getWrittenBytes();
-                });
-            });
         });
     }
 
@@ -211,112 +183,6 @@ export class KdbxFormat {
         });
     }
 
-    private decryptXmlV3(stm: BinaryStream): Promise<string> {
-        const data = stm.readBytesToEnd();
-        return this.getMasterKeyV3().then((masterKey) => {
-            return this.decryptData(data, masterKey).then((data) => {
-                zeroBuffer(masterKey);
-                data = this.trimStartBytesV3(data);
-                return HashedBlockTransform.decrypt(data).then((data) => {
-                    if (this.kdbx.header.compression === CompressionAlgorithm.GZip) {
-                        data = arrayToBuffer(gunzipSync(new Uint8Array(data)));
-                    }
-                    return bytesToString(data);
-                });
-            });
-        });
-    }
-
-    private encryptXmlV3(): Promise<ArrayBuffer> {
-        if (!this.kdbx.xml) {
-            throw new KdbxError(ErrorCodes.InvalidState, 'no xml');
-        }
-        const xml = XmlUtils.serialize(this.kdbx.xml);
-        let data = arrayToBuffer(stringToBytes(xml));
-        if (this.kdbx.header.compression === CompressionAlgorithm.GZip) {
-            data = arrayToBuffer(gzipSync(new Uint8Array(data)));
-        }
-        return HashedBlockTransform.encrypt(arrayToBuffer(data)).then((data) => {
-            if (!this.kdbx.header.streamStartBytes) {
-                throw new KdbxError(ErrorCodes.InvalidState, 'no header start bytes');
-            }
-            const ssb = new Uint8Array(this.kdbx.header.streamStartBytes);
-            const newData = new Uint8Array(data.byteLength + ssb.length);
-            newData.set(ssb);
-            newData.set(new Uint8Array(data), ssb.length);
-            data = newData;
-            return this.getMasterKeyV3().then((masterKey) => {
-                return this.encryptData(arrayToBuffer(data), masterKey).then((data) => {
-                    zeroBuffer(masterKey);
-                    return data;
-                });
-            });
-        });
-    }
-
-    private getMasterKeyV3(): Promise<ArrayBuffer> {
-        return this.kdbx.credentials.getHash().then((credHash) => {
-            if (
-                !this.kdbx.header.transformSeed ||
-                !this.kdbx.header.keyEncryptionRounds ||
-                !this.kdbx.header.masterSeed
-            ) {
-                throw new KdbxError(ErrorCodes.FileCorrupt, 'no header transform parameters');
-            }
-            const transformSeed = this.kdbx.header.transformSeed;
-            const transformRounds = this.kdbx.header.keyEncryptionRounds;
-            const masterSeed = this.kdbx.header.masterSeed;
-
-            return this.kdbx.credentials.getChallengeResponse(masterSeed).then((chalResp) => {
-                return KeyEncryptorAes.encrypt(
-                    new Uint8Array(credHash),
-                    transformSeed,
-                    transformRounds
-                ).then((encKey) => {
-                    zeroBuffer(credHash);
-                    return CryptoEngine.sha256(encKey).then((keyHash) => {
-                        zeroBuffer(encKey);
-
-                        const chalRespLength = chalResp ? chalResp.byteLength : 0;
-                        const all = new Uint8Array(
-                            masterSeed.byteLength + keyHash.byteLength + chalRespLength
-                        );
-                        all.set(new Uint8Array(masterSeed), 0);
-                        if (chalResp) {
-                            all.set(new Uint8Array(chalResp), masterSeed.byteLength);
-                        }
-                        all.set(new Uint8Array(keyHash), masterSeed.byteLength + chalRespLength);
-
-                        zeroBuffer(keyHash);
-                        zeroBuffer(masterSeed);
-                        if (chalResp) {
-                            zeroBuffer(chalResp);
-                        }
-
-                        return CryptoEngine.sha256(all.buffer).then((masterKey) => {
-                            zeroBuffer(all.buffer);
-                            return masterKey;
-                        });
-                    });
-                });
-            });
-        });
-    }
-
-    private trimStartBytesV3(data: ArrayBuffer): ArrayBuffer {
-        if (!this.kdbx.header.streamStartBytes) {
-            throw new KdbxError(ErrorCodes.FileCorrupt, 'no stream start bytes');
-        }
-        const ssb = this.kdbx.header.streamStartBytes;
-        if (data.byteLength < ssb.byteLength) {
-            throw new KdbxError(ErrorCodes.FileCorrupt, 'short start bytes');
-        }
-        if (!arrayBufferEquals(data.slice(0, this.kdbx.header.streamStartBytes.byteLength), ssb)) {
-            throw new KdbxError(ErrorCodes.InvalidKey);
-        }
-        return data.slice(ssb.byteLength);
-    }
-
     private setProtectedValues(): Promise<void> {
         return this.getProtectSaltGenerator().then((gen) => {
             if (!this.kdbx.xml) {
@@ -354,19 +220,6 @@ export class KdbxFormat {
                 return CryptoEngine.hmacSha256(keySha, src);
             }
         );
-    }
-
-    private checkHeaderHashV3(stm: BinaryStream) {
-        if (this.kdbx.meta.headerHash) {
-            const metaHash = this.kdbx.meta.headerHash;
-            return this.getHeaderHash(stm).then((actualHash) => {
-                if (!arrayBufferEquals(metaHash, actualHash)) {
-                    throw new KdbxError(ErrorCodes.FileCorrupt, 'header hash mismatch');
-                }
-            });
-        } else {
-            return Promise.resolve();
-        }
     }
 
     private computeKeysV4() {

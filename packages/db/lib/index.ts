@@ -1,12 +1,9 @@
 import { ChaCha20 } from './crypto/chacha20';
 import * as CryptoEngine from './crypto/crypto-engine';
-import * as HashedBlockTransform from './crypto/hashed-block-transform';
 import * as HmacBlockTransform from './crypto/hmac-block-transform';
-import * as KeyEncryptorAes from './crypto/key-encryptor-aes';
 import * as KeyEncryptorKdf from './crypto/key-encryptor-kdf';
 import { ProtectSaltGenerator } from './crypto/protect-salt-generator';
 import { ProtectedValue } from './crypto/protected-value';
-import { Salsa20 } from './crypto/salsa20';
 
 import * as Consts from './defs/consts';
 import * as XmlNames from './defs/xml-names';
@@ -55,13 +52,10 @@ import * as XmlUtils from './utils/xml-utils';
 export {
     ChaCha20,
     CryptoEngine,
-    HashedBlockTransform,
     HmacBlockTransform,
-    KeyEncryptorAes,
     KeyEncryptorKdf,
     ProtectSaltGenerator,
     ProtectedValue,
-    Salsa20,
     Consts,
     XmlNames,
     KdbxError,
