@@ -17,7 +17,6 @@ class SettingsModel extends TypedEmitter<SettingsModelEvents> {
     private _loaded = false;
     private _canAccessKeeWebTab: boolean | undefined;
     private _keeWebUrl: string | undefined;
-    private _useNativeApp: boolean | undefined;
     private _backgroundPagePort: chrome.runtime.Port | undefined;
     private _chromeCommands: chrome.commands.Command[] | undefined;
     private _backendConnectionState = BackendConnectionState.Initializing;
@@ -33,8 +32,7 @@ class SettingsModel extends TypedEmitter<SettingsModelEvents> {
 
     private loadStorageConfig(): Promise<void> {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['useNativeApp', 'keeWebUrl'], (result) => {
-                this._useNativeApp = <boolean>(result.useNativeApp ?? true);
+            chrome.storage.local.get(['keeWebUrl'], (result) => {
                 this._keeWebUrl = <string>result.keeWebUrl;
                 resolve();
             });
@@ -71,25 +69,6 @@ class SettingsModel extends TypedEmitter<SettingsModelEvents> {
             chrome.commands.getAll((commands) => {
                 if (Array.isArray(commands)) {
                     this._chromeCommands = commands;
-                } else if (chrome.runtime.id.startsWith('net.antelle.keeweb-connect.extension')) {
-                    // Safari returns an empty object {} instead of commands. Why?..
-                    const manifestCommands = chrome.runtime.getManifest().commands || {};
-
-                    this._chromeCommands = Object.entries(manifestCommands).map(([name, cmd]) => {
-                        let shortcut = cmd.suggested_key?.mac ?? cmd.suggested_key?.default;
-                        if (shortcut) {
-                            shortcut = shortcut
-                                .replace(/Ctrl|Command/g, '⌘')
-                                .replace(/Alt/g, '⌥')
-                                .replace(/Shift/g, '⇧')
-                                .replace(/\+/g, '');
-                        }
-                        return {
-                            name,
-                            shortcut,
-                            description: cmd.description
-                        };
-                    });
                 }
                 resolve();
             });
@@ -103,19 +82,6 @@ class SettingsModel extends TypedEmitter<SettingsModelEvents> {
 
     get loaded(): boolean {
         return this._loaded;
-    }
-
-    get useNativeApp(): boolean | undefined {
-        return this._useNativeApp;
-    }
-
-    setUseNativeApp(useNativeApp: boolean) {
-        this._useNativeApp = useNativeApp;
-        chrome.storage.local.set({ useNativeApp }, () => this.emit('change'));
-    }
-
-    get useWebApp(): boolean {
-        return !this._useNativeApp;
     }
 
     get keeWebUrl(): string {

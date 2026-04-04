@@ -6,7 +6,7 @@ import * as CopyPlugin from 'copy-webpack-plugin';
 
 const dev = process.argv.includes('--mode=development');
 
-const knownBrowsers = new Set(['chrome', 'firefox', 'safari', 'edge']);
+const knownBrowsers = new Set(['chrome', 'firefox', 'edge']);
 
 const browser = process.env.KW_BROWSER || 'chrome';
 if (!knownBrowsers.has(browser)) {

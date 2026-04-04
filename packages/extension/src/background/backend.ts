@@ -1,7 +1,6 @@
 import { TypedEmitter } from 'tiny-typed-emitter';
 import { BackendConnectionState } from 'common/backend-connection-state';
 import { TransportBase } from './transport/transport-base';
-import { TransportNativeMessaging } from './transport/transport-native-messaging';
 import { TransportBrowserTab } from './transport/transport-browser-tab';
 import {
     KeeWebConnectGetLoginsResponseEntry,
@@ -31,7 +30,6 @@ class Backend extends TypedEmitter<BackendEvents> {
     private readonly _consoleLogStyleIn = this._consoleLogStyle.replace('{}', '#825fe3');
     private readonly _consoleLogStyleOut = this._consoleLogStyle.replace('{}', '#15be5c');
 
-    private _useNativeApp = true;
     private _keeWebUrl = this._defaultKeeWebUrl;
 
     private _state = BackendConnectionState.Initializing;
@@ -62,8 +60,7 @@ class Backend extends TypedEmitter<BackendEvents> {
     init(): Promise<void> {
         return new Promise((resolve) => {
             chrome.storage.onChanged.addListener((changes) => this.storageChanged(changes));
-            chrome.storage.local.get(['useNativeApp', 'keeWebUrl'], (storageData) => {
-                this._useNativeApp = <boolean>(storageData.useNativeApp ?? true);
+            chrome.storage.local.get(['keeWebUrl'], (storageData) => {
                 this._keeWebUrl = <string>storageData.keeWebUrl;
                 this.resetStateByConfig();
                 resolve();
@@ -72,9 +69,7 @@ class Backend extends TypedEmitter<BackendEvents> {
     }
 
     private async storageChanged(changes: { [prop: string]: chrome.storage.StorageChange }) {
-        if (changes.useNativeApp) {
-            this._useNativeApp = <boolean>changes.useNativeApp.newValue;
-        } else if (changes.keeWebUrl) {
+        if (changes.keeWebUrl) {
             this._keeWebUrl = <string>changes.keeWebUrl.newValue;
         } else {
             return;
@@ -152,21 +147,14 @@ class Backend extends TypedEmitter<BackendEvents> {
     }
 
     private initTransport() {
-        if (this._useNativeApp) {
-            this._transport = new TransportNativeMessaging();
-        } else {
-            this._transport = new TransportBrowserTab(this._keeWebUrl || this._defaultKeeWebUrl);
-        }
+        this._transport = new TransportBrowserTab(this._keeWebUrl || this._defaultKeeWebUrl);
 
         this._transport.on('disconnected', () => {
             // eslint-disable-next-line no-console
             console.log('KeeWeb disconnected');
 
             if (this.state === BackendConnectionState.Connecting) {
-                const msgName = this._useNativeApp
-                    ? 'errorConnectionErrorApp'
-                    : 'errorConnectionErrorWeb';
-                this._connectionError = chrome.i18n.getMessage(msgName);
+                this._connectionError = chrome.i18n.getMessage('errorConnectionErrorWeb');
             } else {
                 this._connectionError = chrome.i18n.getMessage('errorKeeWebDisconnected');
             }
