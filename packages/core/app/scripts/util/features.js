@@ -1,10 +1,8 @@
 const MobileRegex = /iPhone|iPad|iPod|Android|BlackBerry|Opera Mini|IEMobile|WPDesktop|Windows Phone|webOS/i;
 const MinDesktopScreenWidth = 800;
 
-const isDesktop = !!(window.process && window.process.versions && window.process.versions.electron);
-
 const Features = {
-    isDesktop,
+    isDesktop: false,
     isMac: navigator.platform.indexOf('Mac') >= 0,
     isWindows: navigator.platform.indexOf('Win') >= 0,
     isiOS: /iPad|iPhone|iPod/i.test(navigator.userAgent),
@@ -12,19 +10,17 @@ const Features = {
     isPopup: !!(window.parent !== window.top || window.opener),
     isStandalone: !!navigator.standalone,
     isFrame: window.top !== window,
-    isSelfHosted:
-        !isDesktop &&
-        !/^http(s?):\/\/((localhost:8085)|((app|beta)\.keeweb\.info))/.test(location.href),
+    isSelfHosted: !/^http(s?):\/\/((localhost:8085)|((app|beta)\.keeweb\.info))/.test(location.href),
     isLocal: location.origin.indexOf('localhost') >= 0,
 
     get supportsTitleBarStyles() {
-        return isDesktop && (this.isMac || this.isWindows);
+        return false;
     },
     get supportsCustomTitleBarAndDraggableWindow() {
-        return isDesktop && this.isMac;
+        return false;
     },
     get renderCustomTitleBar() {
-        return isDesktop && this.isWindows;
+        return false;
     },
     get hasUnicodeFlags() {
         return this.isMac;
@@ -46,9 +42,7 @@ const Features = {
             return this._browserIcon;
         }
 
-        if (this.isDesktop) {
-            this._browserIcon = this.isMac ? 'safari' : this.isWindows ? 'edge' : 'chrome';
-        } else if (/Gecko\//.test(navigator.userAgent)) {
+        if (/Gecko\//.test(navigator.userAgent)) {
             this._browserIcon = 'firefox-browser';
         } else if (/Edg\//.test(navigator.userAgent)) {
             this._browserIcon = 'edge';
@@ -63,12 +57,10 @@ const Features = {
         return this._browserIcon;
     },
     get supportsBrowserExtensions() {
-        return !this.isMobile && (this.isDesktop || this.browserIcon !== 'safari');
+        return !this.isMobile;
     },
     get extensionBrowserFamily() {
-        if (Features.isDesktop) {
-            return undefined;
-        } else if (/Gecko\//.test(navigator.userAgent)) {
+        if (/Gecko\//.test(navigator.userAgent)) {
             return 'Firefox';
         } else if (/Edg\//.test(navigator.userAgent)) {
             return 'Edge';

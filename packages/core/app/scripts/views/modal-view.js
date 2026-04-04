@@ -1,5 +1,4 @@
 import { View } from 'framework/views/view';
-import { Launcher } from 'comp/launcher';
 import { Keys } from 'const/keys';
 import template from 'templates/modal.hbs';
 
@@ -58,10 +57,7 @@ class ModalView extends View {
     }
 
     linkClick(e) {
-        if (Launcher) {
-            e.preventDefault();
-            Launcher.openLink(e.target.href);
-        }
+        // Links open normally in the browser
     }
 
     bodyClick(e) {

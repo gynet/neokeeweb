@@ -4,7 +4,6 @@ import { AutoType } from 'auto-type';
 import { Storage } from 'storage';
 import { RuntimeInfo } from 'const/runtime-info';
 import { Updater } from 'comp/app/updater';
-import { Launcher } from 'comp/launcher';
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { Alerts } from 'comp/ui/alerts';
 import { Links } from 'const/links';
@@ -18,7 +17,6 @@ import { SettingsLogsView } from 'views/settings/settings-logs-view';
 import { SettingsPrvView } from 'views/settings/settings-prv-view';
 import { mapObject, minmax } from 'util/fn';
 import { ThemeWatcher } from 'comp/browser/theme-watcher';
-import { NativeModules } from 'comp/launcher/native-modules';
 import template from 'templates/settings/settings-general.hbs';
 
 class SettingsGeneralView extends View {
@@ -94,21 +92,21 @@ class SettingsGeneralView extends View {
             activeLocale: SettingsManager.activeLocale,
             fontSize: AppSettingsModel.fontSize,
             expandGroups: AppSettingsModel.expandGroups,
-            canClearClipboard: !!Launcher,
+            canClearClipboard: false,
             clipboardSeconds: AppSettingsModel.clipboardSeconds,
             rememberKeyFiles: AppSettingsModel.rememberKeyFiles,
-            supportFiles: !!Launcher,
+            supportFiles: false,
             autoSave: AppSettingsModel.autoSave,
             autoSaveInterval: AppSettingsModel.autoSaveInterval,
             idleMinutes: AppSettingsModel.idleMinutes,
             minimizeOnClose: AppSettingsModel.minimizeOnClose,
             minimizeOnFieldCopy: AppSettingsModel.minimizeOnFieldCopy,
-            devTools: Launcher && Launcher.devTools,
+            devTools: false,
             canAutoUpdate: Updater.enabled,
-            canAutoSaveOnClose: !!Launcher,
-            canMinimize: !!Launcher,
-            canDetectMinimize: !!Launcher,
-            canDetectOsSleep: Launcher && Launcher.canDetectOsSleep(),
+            canAutoSaveOnClose: false,
+            canMinimize: false,
+            canDetectMinimize: false,
+            canDetectOsSleep: false,
             canAutoType: AutoType.enabled,
             auditPasswords: AppSettingsModel.auditPasswords,
             auditPasswordEntropy: AppSettingsModel.auditPasswordEntropy,
@@ -117,7 +115,7 @@ class SettingsGeneralView extends View {
             auditPasswordAge: AppSettingsModel.auditPasswordAge,
             hibpLink: Links.HaveIBeenPwned,
             hibpPrivacyLink: Links.HaveIBeenPwnedPrivacy,
-            lockOnMinimize: Launcher && AppSettingsModel.lockOnMinimize,
+            lockOnMinimize: false,
             lockOnCopy: AppSettingsModel.lockOnCopy,
             lockOnAutoType: AppSettingsModel.lockOnAutoType,
             lockOnOsLock: AppSettingsModel.lockOnOsLock,
@@ -126,7 +124,7 @@ class SettingsGeneralView extends View {
             autoUpdate: Updater.getAutoUpdateType(),
             updateInProgress: Updater.updateInProgress(),
             updateInfo: this.getUpdateInfo(),
-            updateWaitingReload: updateReady && !Launcher,
+            updateWaitingReload: updateReady,
             showUpdateBlock: Updater.enabled && !updateManual,
             updateReady,
             updateFound,
@@ -144,7 +142,7 @@ class SettingsGeneralView extends View {
             titlebarStyle: AppSettingsModel.titlebarStyle,
             storageProviders,
             showReloadApp: Features.isStandalone,
-            hasDeviceOwnerAuth: Features.isDesktop && Features.isMac,
+            hasDeviceOwnerAuth: false,
             deviceOwnerAuth: AppSettingsModel.deviceOwnerAuth,
             deviceOwnerAuthTimeout: AppSettingsModel.deviceOwnerAuthTimeoutMinutes,
             disableOfflineStorage: AppSettingsModel.disableOfflineStorage,
@@ -458,9 +456,6 @@ class SettingsGeneralView extends View {
         this.render();
 
         this.appModel.checkEncryptedPasswordsStorage();
-        if (!deviceOwnerAuth) {
-            NativeModules.hardwareCryptoDeleteKey().catch(() => {});
-        }
     }
 
     changeDeviceOwnerAuthTimeout(e) {
@@ -469,15 +464,11 @@ class SettingsGeneralView extends View {
     }
 
     installUpdateAndRestart() {
-        if (Launcher) {
-            Updater.installAndRestart();
-        } else {
-            window.location.reload();
-        }
+        window.location.reload();
     }
 
     downloadUpdate() {
-        Launcher.openLink(Links.Desktop);
+        window.open(Links.Desktop);
     }
 
     installFoundUpdate() {
@@ -537,9 +528,7 @@ class SettingsGeneralView extends View {
     }
 
     openDevTools() {
-        if (Launcher) {
-            Launcher.openDevTools();
-        }
+        // Dev tools are only available through browser developer tools
     }
 
     tryBeta() {

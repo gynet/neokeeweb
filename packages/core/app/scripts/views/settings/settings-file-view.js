@@ -2,7 +2,6 @@ import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Storage } from 'storage';
 import { Shortcuts } from 'comp/app/shortcuts';
-import { Launcher } from 'comp/launcher';
 import { Alerts } from 'comp/ui/alerts';
 import { YubiKey } from 'comp/app/yubikey';
 import { UsbListener } from 'comp/app/usb-listener';
@@ -96,9 +95,7 @@ class SettingsFileView extends View {
         const selectedYubiKey = this.model.chalResp
             ? `${this.model.chalResp.serial}:${this.model.chalResp.slot}`
             : '';
-        const showYubiKeyBlock =
-            !!this.model.chalResp ||
-            (Launcher && AppSettingsModel.enableUsb && AppSettingsModel.yubiKeyShowChalResp);
+        const showYubiKeyBlock = !!this.model.chalResp;
         const yubiKeys = [];
         if (showYubiKeyBlock) {
             for (const yk of this.yubiKeys) {
@@ -127,7 +124,7 @@ class SettingsFileView extends View {
 
         super.render({
             cmd: Shortcuts.actionShortcutSymbol(true),
-            supportFiles: !!Launcher,
+            supportFiles: false,
             desktopLink: Links.Desktop,
             name: this.model.name,
             path: this.model.path,
@@ -253,37 +250,13 @@ class SettingsFileView extends View {
             return;
         }
         const fileName = this.model.name + '.kdbx';
-        if (Launcher && !this.model.storage) {
-            Launcher.getSaveFileName(fileName, (path) => {
-                if (path) {
-                    this.save({ storage: 'file', path });
-                }
-            });
-        } else {
-            this.model.getData((data) => {
-                if (!data) {
-                    return;
-                }
-                if (Launcher) {
-                    Launcher.getSaveFileName(fileName, (path) => {
-                        if (path) {
-                            Storage.file.save(path, null, data, (err) => {
-                                if (err) {
-                                    Alerts.error({
-                                        header: Locale.setFileSaveError,
-                                        body: Locale.setFileSaveErrorBody + ' ' + path + ':',
-                                        pre: err
-                                    });
-                                }
-                            });
-                        }
-                    });
-                } else {
-                    const blob = new Blob([data], { type: 'application/octet-stream' });
-                    FileSaver.saveAs(blob, fileName);
-                }
-            });
-        }
+        this.model.getData((data) => {
+            if (!data) {
+                return;
+            }
+            const blob = new Blob([data], { type: 'application/octet-stream' });
+            FileSaver.saveAs(blob, fileName);
+        });
     }
 
     saveToXml() {
@@ -542,13 +515,8 @@ class SettingsFileView extends View {
         if (!backup) {
             backup = { enabled, schedule: DefaultBackupSchedule };
             const defaultPath = DefaultBackupPath.replace('{name}', this.model.name);
-            if (Launcher) {
-                backup.storage = 'file';
-                backup.path = Launcher.getDocumentsPath(defaultPath);
-            } else {
-                backup.storage = 'dropbox';
-                backup.path = defaultPath;
-            }
+            backup.storage = 'dropbox';
+            backup.path = defaultPath;
             // } else if (this.model.storage === 'webdav') {
             //     backup.storage = 'webdav';
             //     backup.path = this.model.path + '.{date}.bak';
@@ -722,7 +690,7 @@ class SettingsFileView extends View {
     }
 
     refreshYubiKeys(userInitiated) {
-        if (!Launcher || !AppSettingsModel.enableUsb || !AppSettingsModel.yubiKeyShowChalResp) {
+        if (!AppSettingsModel.enableUsb || !AppSettingsModel.yubiKeyShowChalResp) {
             return;
         }
         if (!UsbListener.attachedYubiKeys) {

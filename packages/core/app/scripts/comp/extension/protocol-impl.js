@@ -1,6 +1,5 @@
 import * as kdbxweb from 'kdbxweb';
 import { Events } from 'framework/events';
-import { Launcher } from 'comp/launcher';
 import { box as tweetnaclBox } from 'tweetnacl';
 import { PasswordGenerator } from 'util/generators/password-generator';
 import { GeneratorPresets } from 'comp/app/generator-presets';
@@ -193,7 +192,7 @@ async function checkContentRequestPermissions(request) {
 
     const extensionConnectView = new ExtensionConnectView({
         extensionName: getHumanReadableExtensionName(client),
-        identityVerified: !Launcher,
+        identityVerified: true,
         files,
         allFiles: config?.allFiles ?? true,
         askGet: config?.askGet || 'multiple'
@@ -281,13 +280,7 @@ function getHumanReadableExtensionName(client) {
 
 function focusKeeWeb() {
     logger.debug('Focus KeeWeb');
-    if (Launcher) {
-        if (!Launcher.isAppFocused()) {
-            Launcher.showMainWindow();
-        }
-    } else {
-        sendEvent({ action: 'attention-required' });
-    }
+    sendEvent({ action: 'attention-required' });
 }
 
 async function findEntry(request, returnIfOneMatch, filterOptions) {
@@ -376,10 +369,8 @@ const ProtocolHandlers = {
             throw new Error('Changing keys is not allowed');
         }
 
-        if (!Launcher) {
-            // on web there can be only one connected client
-            connectedClients.clear();
-        }
+        // on web there can be only one connected client
+        connectedClients.clear();
 
         const keys = tweetnaclBox.keyPair();
         publicKey = kdbxweb.ByteUtils.base64ToBytes(publicKey);
@@ -894,8 +885,6 @@ const ProtocolImpl = {
     },
 
     async handleRequest(request, connectionInfo) {
-        const appWindowWasFocused = Launcher?.isAppFocused();
-
         let result;
         try {
             const handler = ProtocolHandlers[request.action];
@@ -911,10 +900,6 @@ const ProtocolImpl = {
                 logger.error(`Error in handler ${request.action}`, e);
             }
             result = this.errorToResponse(e, request);
-        }
-
-        if (!appWindowWasFocused && Launcher?.isAppFocused()) {
-            Launcher.hideApp();
         }
 
         return result;

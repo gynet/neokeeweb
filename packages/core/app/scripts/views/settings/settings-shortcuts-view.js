@@ -1,6 +1,5 @@
 import { View } from 'framework/views/view';
 import { Shortcuts } from 'comp/app/shortcuts';
-import { Launcher } from 'comp/launcher';
 import { Keys } from 'const/keys';
 import { Features } from 'util/features';
 import { Locale } from 'util/locale';
@@ -36,17 +35,8 @@ class SettingsShortcutsView extends View {
             cmd: Shortcuts.actionShortcutSymbol(true),
             alt: Shortcuts.altShortcutSymbol(true),
             globalIsLarge: !Features.isMac,
-            autoTypeSupported: !!Launcher,
-            globalShortcuts: Launcher
-                ? {
-                      autoType: Shortcuts.globalShortcutText('autoType', true),
-                      copyPassword: Shortcuts.globalShortcutText('copyPassword', true),
-                      copyUser: Shortcuts.globalShortcutText('copyUser', true),
-                      copyUrl: Shortcuts.globalShortcutText('copyUrl', true),
-                      copyOtp: Shortcuts.globalShortcutText('copyOtp', true),
-                      restoreApp: Shortcuts.globalShortcutText('restoreApp', true)
-                  }
-                : undefined
+            autoTypeSupported: false,
+            globalShortcuts: undefined
         });
     }
 

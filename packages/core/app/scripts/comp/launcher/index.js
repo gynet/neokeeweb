@@ -1,7 +1,4 @@
-let Launcher;
-
-if (window.process && window.process.versions && window.process.versions.electron) {
-    Launcher = require('./launcher-electron').Launcher;
-}
+// Launcher is not available in web-only mode
+const Launcher = undefined;
 
 export { Launcher };

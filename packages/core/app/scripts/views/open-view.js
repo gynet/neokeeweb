@@ -6,7 +6,6 @@ import { DropboxChooser } from 'comp/app/dropbox-chooser';
 import { FocusDetector } from 'comp/browser/focus-detector';
 import { KeyHandler } from 'comp/browser/key-handler';
 import { SecureInput } from 'comp/browser/secure-input';
-import { Launcher } from 'comp/launcher';
 import { Alerts } from 'comp/ui/alerts';
 import { UsbListener } from 'comp/app/usb-listener';
 import { YubiKey } from 'comp/app/yubikey';
@@ -22,7 +21,6 @@ import { StorageFileListView } from 'views/storage-file-list-view';
 import { OpenChalRespView } from 'views/open-chal-resp-view';
 import { omit } from 'util/fn';
 import { GeneratorView } from 'views/generator-view';
-import { NativeModules } from 'comp/launcher/native-modules';
 import template from 'templates/open.hbs';
 
 const logger = new Logger('open-view');
@@ -117,7 +115,7 @@ class OpenView extends View {
 
         super.render({
             lastOpenFiles: this.getLastOpenFiles(),
-            canOpenKeyFromDropbox: !Launcher && Storage.dropbox.enabled,
+            canOpenKeyFromDropbox: Storage.dropbox.enabled,
             demoOpened: this.model.settings.demoOpened,
             storageProviders,
             unlockMessageRes: this.model.unlockMessageRes,
@@ -424,17 +422,7 @@ class OpenView extends View {
             .attr('accept', ext || '')
             .val(null);
 
-        if (Launcher && Launcher.openFileChooser) {
-            Launcher.openFileChooser((err, file) => {
-                if (err) {
-                    logger.error('Error opening file chooser', err);
-                } else {
-                    this.processFile(file);
-                }
-            });
-        } else {
-            fileInput.click();
-        }
+        fileInput.click();
     }
 
     openLast(e) {
@@ -639,8 +627,7 @@ class OpenView extends View {
         this.displayOpenFile();
         this.displayOpenDeviceOwnerAuth();
         if (keyFilePath) {
-            const parsed = Launcher.parsePath(keyFilePath);
-            this.params.keyFileName = parsed.file;
+            this.params.keyFileName = keyFilePath.match(/[^/\\]*$/)?.[0] || keyFilePath;
             this.params.keyFilePath = keyFilePath;
             this.params.keyFileData = null;
             this.displayOpenKeyFile();
@@ -677,38 +664,10 @@ class OpenView extends View {
         this.inputEl.attr('disabled', 'disabled');
         this.busy = true;
         this.params.password = this.passwordInput.value;
-        if (this.encryptedPassword && !this.params.password.length) {
-            logger.debug('Encrypting password using hardware decryption');
-            const touchIdPrompt = Locale.bioOpenAuthPrompt.replace('{}', this.params.name);
-            const encryptedPassword = kdbxweb.ProtectedValue.fromBase64(
-                this.encryptedPassword.value
-            );
-            Events.emit('hardware-decrypt-started');
-            NativeModules.hardwareDecrypt(encryptedPassword, touchIdPrompt)
-                .then((password) => {
-                    Events.emit('hardware-decrypt-finished');
-
-                    this.params.password = password;
-                    this.params.encryptedPassword = this.encryptedPassword;
-                    this.model.openFile(this.params, (err) => this.openDbComplete(err));
-                })
-                .catch((err) => {
-                    Events.emit('hardware-decrypt-finished');
-
-                    if (err.message.includes('User refused')) {
-                        err.userCanceled = true;
-                    } else if (err.message.includes('SecKeyCreateDecryptedData')) {
-                        err.maybeTouchIdChanged = true;
-                    }
-                    logger.error('Error in hardware decryption', err);
-                    this.openDbComplete(err);
-                });
-        } else {
-            this.params.encryptedPassword = null;
-            this.afterPaint(() => {
-                this.model.openFile(this.params, (err) => this.openDbComplete(err));
-            });
-        }
+        this.params.encryptedPassword = null;
+        this.afterPaint(() => {
+            this.model.openFile(this.params, (err) => this.openDbComplete(err));
+        });
     }
 
     openDbComplete(err) {

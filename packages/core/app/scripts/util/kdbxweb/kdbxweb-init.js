@@ -1,7 +1,5 @@
 import * as kdbxweb from 'kdbxweb';
 import { Logger } from 'util/logger';
-import { Features } from 'util/features';
-import { NativeModules } from 'comp/launcher/native-modules';
 
 const logger = new Logger('argon2');
 
@@ -27,44 +25,6 @@ const KdbxwebInit = {
         }
         if (!global.WebAssembly) {
             return Promise.reject('WebAssembly is not supported');
-        }
-        if (Features.isDesktop) {
-            logger.debug('Using native argon2');
-            this.runtimeModule = {
-                hash(args) {
-                    const ts = logger.ts();
-
-                    const password = kdbxweb.ProtectedValue.fromBinary(args.password).dataAndSalt();
-                    const salt = kdbxweb.ProtectedValue.fromBinary(args.salt).dataAndSalt();
-
-                    return NativeModules.argon2(password, salt, {
-                        type: args.type,
-                        version: args.version,
-                        hashLength: args.length,
-                        saltLength: args.salt.length,
-                        timeCost: args.iterations,
-                        parallelism: args.parallelism,
-                        memoryCost: args.memory
-                    })
-                        .then((res) => {
-                            password.data.fill(0);
-                            salt.data.fill(0);
-
-                            logger.debug('Argon2 hash calculated', logger.ts(ts));
-
-                            res = new kdbxweb.ProtectedValue(res.data, res.salt);
-                            return res.getBinary();
-                        })
-                        .catch((err) => {
-                            password.data.fill(0);
-                            salt.data.fill(0);
-
-                            logger.error('Argon2 error', err);
-                            throw err;
-                        });
-                }
-            };
-            return Promise.resolve(this.runtimeModule);
         }
         return new Promise((resolve, reject) => {
             const loadTimeout = setTimeout(() => reject('timeout'), 5000);

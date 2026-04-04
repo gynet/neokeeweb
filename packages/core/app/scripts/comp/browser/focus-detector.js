@@ -1,12 +1,10 @@
 import { Events } from 'framework/events';
-import { Launcher } from 'comp/launcher';
 import { Features } from 'util/features';
 
 const FocusDetector = {
     init() {
         this.isFocused = true;
-        this.detectsFocusWithEvents = !Features.isDesktop && !Features.isMobile;
-        if (this.detectsFocusWithEvents) {
+        if (!Features.isMobile) {
             window.addEventListener('focus', () => {
                 if (!FocusDetector.isFocused) {
                     FocusDetector.isFocused = true;
@@ -23,13 +21,7 @@ const FocusDetector = {
     },
 
     hasFocus() {
-        if (this.detectsFocusWithEvents) {
-            return this.isFocused;
-        } else if (Launcher) {
-            return Launcher.isAppFocused();
-        } else {
-            return true;
-        }
+        return this.isFocused;
     }
 };
 

@@ -3,11 +3,8 @@ import { Links } from 'const/links';
 import { AppSettingsModel } from 'models/app-settings-model';
 import { RuntimeDataModel } from 'models/runtime-data-model';
 import { Logger } from 'util/logger';
-import { StorageOAuthListener } from 'storage/storage-oauth-listener';
 import { UrlFormat } from 'util/formatting/url-format';
-import { Launcher } from 'comp/launcher';
 import { omitEmpty } from 'util/fn';
-import { Features } from 'util/features';
 import { createOAuthSession } from 'storage/pkce';
 
 const MaxRequestRetries = 3;
@@ -101,8 +98,7 @@ class StorageBase {
     }
 
     _httpRequest(config, onLoad) {
-        const httpRequest = Features.isDesktop ? this._httpRequestLauncher : this._httpRequestWeb;
-        httpRequest.call(this, config, onLoad);
+        this._httpRequestWeb(config, onLoad);
     }
 
     _httpRequestWeb(config, onLoad) {
@@ -137,33 +133,6 @@ class StorageBase {
             data = new Blob(data, { type: config.dataType });
         }
         xhr.send(data);
-    }
-
-    _httpRequestLauncher(config, onLoad) {
-        Launcher.remoteApp().httpRequest(
-            config,
-            (level, ...args) => this.logger[level](...args),
-            ({ status, response, headers }) => {
-                response = Buffer.from(response, 'hex');
-                if (config.responseType === 'json') {
-                    try {
-                        response = JSON.parse(response.toString('utf8'));
-                    } catch (e) {
-                        return config.error && config.error('json parse error');
-                    }
-                } else {
-                    response = response.buffer.slice(
-                        response.byteOffset,
-                        response.byteOffset + response.length
-                    );
-                }
-                onLoad({
-                    status,
-                    response,
-                    getResponseHeader: (name) => headers[name.toLowerCase()]
-                });
-            }
-        );
     }
 
     _openPopup(url, title, width, height, extras) {
@@ -226,13 +195,7 @@ class StorageBase {
 
         const session = createOAuthSession();
 
-        let listener;
-        if (Features.isDesktop) {
-            listener = StorageOAuthListener.listen(this.name);
-            session.redirectUri = listener.redirectUri;
-        } else {
-            session.redirectUri = this._getOauthRedirectUrl();
-        }
+        session.redirectUri = this._getOauthRedirectUrl();
 
         const pkceParams = opts.pkce
             ? {
@@ -250,16 +213,6 @@ class StorageBase {
             ...pkceParams,
             ...opts.urlParams
         });
-
-        if (listener) {
-            listener.on('ready', () => {
-                Launcher.openLink(url);
-                callback('browser-auth-started');
-            });
-            listener.on('error', (err) => callback(err));
-            listener.on('result', (result) => this._oauthCodeReceived(result, session));
-            return;
-        }
 
         const popupWindow = this._openPopup(url, 'OAuth', opts.width, opts.height);
         if (!popupWindow) {
@@ -401,9 +354,6 @@ class StorageBase {
 
         this.logger.debug('OAuth code received');
 
-        if (Features.isDesktop) {
-            Launcher.showMainWindow();
-        }
         const config = this._getOAuthConfig();
         const pkceParams = config.pkce ? { 'code_verifier': session.codeVerifier } : undefined;
 

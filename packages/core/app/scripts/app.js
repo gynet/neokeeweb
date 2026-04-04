@@ -13,7 +13,6 @@ import { IdleTracker } from 'comp/browser/idle-tracker';
 import { ThemeWatcher } from 'comp/browser/theme-watcher';
 import { KeyHandler } from 'comp/browser/key-handler';
 import { PopupNotifier } from 'comp/browser/popup-notifier';
-import { Launcher } from 'comp/launcher';
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { Alerts } from 'comp/ui/alerts';
 import { Timeouts } from 'const/timeouts';
@@ -27,14 +26,11 @@ import { KdbxwebInit } from 'util/kdbxweb/kdbxweb-init';
 import { Locale } from 'util/locale';
 import { AppView } from 'views/app-view';
 import 'hbs-helpers';
-import { AutoType } from './auto-type';
 import { Storage } from './storage';
 
 StartProfiler.milestone('loading modules');
 
-const ready = (Launcher && Launcher.ready) || $;
-
-ready(() => {
+$(() => {
     StartProfiler.milestone('document ready');
 
     const appModel = new AppModel();
@@ -93,7 +89,6 @@ ready(() => {
         PopupNotifier.init();
         KdbxwebInit.init();
         FocusDetector.init();
-        AutoType.init();
         ThemeWatcher.init();
         SettingsManager.init();
         window.kw = ExportApi;

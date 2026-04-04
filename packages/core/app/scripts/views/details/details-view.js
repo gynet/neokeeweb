@@ -29,7 +29,6 @@ import { isEqual } from 'util/fn';
 import template from 'templates/details/details.hbs';
 import emptyTemplate from 'templates/details/details-empty.hbs';
 import groupTemplate from 'templates/details/details-group.hbs';
-import { Launcher } from 'comp/launcher';
 
 class DetailsView extends View {
     parent = '.app__details';
@@ -1031,9 +1030,6 @@ class DetailsView extends View {
 
     copyFieldValue(e) {
         this.fieldCopied(e);
-        if (AppSettingsModel.minimizeOnFieldCopy) {
-            Launcher.minimizeApp();
-        }
     }
 }
 

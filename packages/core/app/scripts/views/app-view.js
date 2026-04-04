@@ -1,8 +1,6 @@
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { IdleTracker } from 'comp/browser/idle-tracker';
-import { KeyHandler } from 'comp/browser/key-handler';
-import { Launcher } from 'comp/launcher';
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { Alerts } from 'comp/ui/alerts';
 import { Keys } from 'const/keys';
@@ -106,14 +104,6 @@ class AppView extends View {
 
         this.onKey(Keys.DOM_VK_ESCAPE, this.escPressed);
         this.onKey(Keys.DOM_VK_BACK_SPACE, this.backspacePressed);
-        if (Launcher && Launcher.devTools) {
-            this.onKey(
-                Keys.DOM_VK_I,
-                this.openDevTools,
-                KeyHandler.SHORTCUT_ACTION + KeyHandler.SHORTCUT_OPT,
-                '*'
-            );
-        }
 
         this.setWindowClass();
         this.setupAutoSave();
@@ -191,7 +181,7 @@ class AppView extends View {
     }
 
     updateApp() {
-        if (UpdateModel.updateStatus === 'ready' && !Launcher && !this.model.files.hasOpenFiles()) {
+        if (UpdateModel.updateStatus === 'ready' && !this.model.files.hasOpenFiles()) {
             window.location.reload();
         }
     }
@@ -347,17 +337,6 @@ class AppView extends View {
         }
     }
 
-    launcherBeforeQuit() {
-        // this is currently called only on macos
-        const event = {
-            preventDefault() {}
-        };
-        const result = this.beforeUnload(event);
-        if (result !== false) {
-            Launcher.exit();
-        }
-    }
-
     beforeUnload(e) {
         const exitEvent = {
             preventDefault() {
@@ -366,81 +345,11 @@ class AppView extends View {
         };
         Events.emit('main-window-will-close', exitEvent);
         if (exitEvent.prevented) {
-            return Launcher ? Launcher.preventExit(e) : false;
-        }
-
-        let minimizeInsteadOfClose = this.model.settings.minimizeOnClose;
-        if (Launcher?.quitOnRealQuitEventIfMinimizeOnQuitIsEnabled()) {
-            minimizeInsteadOfClose = false;
+            return false;
         }
 
         if (this.model.files.hasDirtyFiles()) {
-            if (Launcher) {
-                const exit = () => {
-                    if (minimizeInsteadOfClose) {
-                        Launcher.minimizeApp();
-                    } else {
-                        Launcher.exit();
-                    }
-                };
-                if (Launcher.exitRequested) {
-                    return;
-                }
-                if (!this.exitAlertShown) {
-                    if (this.model.settings.autoSave) {
-                        this.saveAndLock(
-                            (result) => {
-                                if (result) {
-                                    exit();
-                                }
-                            },
-                            { appClosing: true }
-                        );
-                        return Launcher.preventExit(e);
-                    }
-                    this.exitAlertShown = true;
-                    Alerts.yesno({
-                        header: Locale.appUnsavedWarn,
-                        body: Locale.appUnsavedWarnBody,
-                        buttons: [
-                            { result: 'save', title: Locale.saveChanges },
-                            { result: 'exit', title: Locale.discardChanges, error: true },
-                            { result: '', title: Locale.appDontExitBtn }
-                        ],
-                        success: (result) => {
-                            if (result === 'save') {
-                                this.saveAndLock(
-                                    (result) => {
-                                        if (result) {
-                                            exit();
-                                        }
-                                    },
-                                    { appClosing: true }
-                                );
-                            } else {
-                                exit();
-                            }
-                        },
-                        cancel: () => {
-                            Launcher.cancelRestart(false);
-                        },
-                        complete: () => {
-                            this.exitAlertShown = false;
-                        }
-                    });
-                }
-                return Launcher.preventExit(e);
-            }
             return Locale.appUnsavedWarnBody;
-        } else if (
-            Launcher &&
-            !Launcher.exitRequested &&
-            !Launcher.restartPending &&
-            minimizeInsteadOfClose
-        ) {
-            Launcher.minimizeApp();
-            this.appMinimized();
-            return Launcher.preventExit(e);
         }
     }
 
@@ -471,12 +380,6 @@ class AppView extends View {
     backspacePressed(e) {
         if (e.target === document.body) {
             e.preventDefault();
-        }
-    }
-
-    openDevTools() {
-        if (Launcher && Launcher.devTools) {
-            Launcher.openDevTools();
         }
     }
 
@@ -835,13 +738,7 @@ class AppView extends View {
     }
 
     extLinkClick(e) {
-        if (Launcher) {
-            e.preventDefault();
-            const link = e.target.closest('a');
-            if (link?.href) {
-                Launcher.openLink(link.href);
-            }
-        }
+        // Links with target=_blank open in new tab by default in web
     }
 
     bodyClick(e) {

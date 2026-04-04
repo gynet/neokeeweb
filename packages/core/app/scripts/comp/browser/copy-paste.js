@@ -1,28 +1,24 @@
-import { Events } from 'framework/events';
-import { Launcher } from 'comp/launcher';
 import { AppSettingsModel } from 'models/app-settings-model';
 
 const CopyPaste = {
-    simpleCopy: !!(Launcher && Launcher.clipboardSupported),
+    simpleCopy: false,
 
     copy(text) {
-        if (this.simpleCopy) {
-            Launcher.setClipboardText(text);
-            const clipboardSeconds = AppSettingsModel.clipboardSeconds;
-            if (clipboardSeconds > 0) {
-                const clearClipboard = () => {
-                    if (Launcher.getClipboardText() === text) {
-                        Launcher.clearClipboardText();
-                    }
-                };
-                Events.on('main-window-will-close', clearClipboard);
-                setTimeout(() => {
-                    clearClipboard();
-                    Events.off('main-window-will-close', clearClipboard);
-                }, clipboardSeconds * 1000);
-            }
-            return { success: true, seconds: clipboardSeconds };
-        } else {
+        try {
+            navigator.clipboard.writeText(text).then(() => {
+                const clipboardSeconds = AppSettingsModel.clipboardSeconds;
+                if (clipboardSeconds > 0) {
+                    setTimeout(() => {
+                        navigator.clipboard.readText().then((current) => {
+                            if (current === text) {
+                                navigator.clipboard.writeText('');
+                            }
+                        });
+                    }, clipboardSeconds * 1000);
+                }
+            });
+            return { success: true, seconds: AppSettingsModel.clipboardSeconds };
+        } catch (e) {
             try {
                 if (document.execCommand('copy')) {
                     return { success: true };
