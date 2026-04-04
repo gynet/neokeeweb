@@ -75,9 +75,20 @@ test.describe('Database Open Operations', () => {
             ]);
             await fileChooser.setFiles(filePath);
 
-            // A "Local file" warning modal appears. Dismiss it by clicking OK.
+            // A "Local file" warning modal appears with an entrance animation.
+            // Wait for it to be visible and stable before clicking OK.
+            const modal = page.locator('.modal');
+            await expect(modal).toBeVisible({ timeout: 5_000 });
             const okButton = page.locator('.modal__buttons button[data-result="ok"]');
             await expect(okButton).toBeVisible({ timeout: 5_000 });
+            // Wait for the modal animation to complete before clicking
+            await modal.evaluate((el) => {
+                return new Promise<void>((resolve) => {
+                    const animations = el.getAnimations({ subtree: true });
+                    if (animations.length === 0) return resolve();
+                    Promise.all(animations.map((a) => a.finished)).then(() => resolve());
+                });
+            });
             await okButton.click();
 
             // Wait for the password input to become editable
