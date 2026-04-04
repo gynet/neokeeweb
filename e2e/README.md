@@ -28,4 +28,4 @@ Create `*.spec.ts` files under `e2e/`. Group by component: `e2e/core/`, `e2e/ext
 
 Tests use `baseURL: http://localhost:8085` -- the dev server starts automatically via the `webServer` config in `playwright.config.ts`.
 
-Tests that depend on a working build are marked `test.skip` until the core webpack build is stable.
+All tests are real and pass against the dev server. No `test.skip` stubs.
