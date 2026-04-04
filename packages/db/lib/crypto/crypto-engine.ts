@@ -28,8 +28,8 @@ export function sha256(data: ArrayBuffer): Promise<ArrayBuffer> {
     if (!data.byteLength) {
         return Promise.resolve(arrayToBuffer(hexToBytes(EmptySha256)));
     }
-    if (global.crypto?.subtle) {
-        return global.crypto.subtle.digest({ name: 'SHA-256' }, data);
+    if (globalThis.crypto?.subtle) {
+        return globalThis.crypto.subtle.digest({ name: 'SHA-256' }, data);
     } else {
         return new Promise((resolve) => {
             const sha = nodeCrypto.createHash('sha256');
@@ -43,8 +43,8 @@ export function sha512(data: ArrayBuffer): Promise<ArrayBuffer> {
     if (!data.byteLength) {
         return Promise.resolve(arrayToBuffer(hexToBytes(EmptySha512)));
     }
-    if (global.crypto?.subtle) {
-        return global.crypto.subtle.digest({ name: 'SHA-512' }, data);
+    if (globalThis.crypto?.subtle) {
+        return globalThis.crypto.subtle.digest({ name: 'SHA-512' }, data);
     } else {
         return new Promise((resolve) => {
             const sha = nodeCrypto.createHash('sha512');
@@ -55,12 +55,12 @@ export function sha512(data: ArrayBuffer): Promise<ArrayBuffer> {
 }
 
 export function hmacSha256(key: ArrayBuffer, data: ArrayBuffer): Promise<ArrayBuffer> {
-    if (global.crypto?.subtle) {
+    if (globalThis.crypto?.subtle) {
         const algo = { name: 'HMAC', hash: { name: 'SHA-256' } };
-        return global.crypto.subtle
+        return globalThis.crypto.subtle
             .importKey('raw', key, algo, false, ['sign'])
             .then((subtleKey) => {
-                return global.crypto.subtle.sign(algo, subtleKey, data);
+                return globalThis.crypto.subtle.sign(algo, subtleKey, data);
             });
     } else {
         return new Promise((resolve) => {
@@ -88,7 +88,7 @@ class AesCbcSubtle extends AesCbc {
     }
 
     importKey(key: ArrayBuffer): Promise<void> {
-        return global.crypto.subtle
+        return globalThis.crypto.subtle
             .importKey('raw', key, { name: 'AES-CBC' }, false, ['encrypt', 'decrypt'])
             .then((key) => {
                 this._key = key;
@@ -96,7 +96,7 @@ class AesCbcSubtle extends AesCbc {
     }
 
     encrypt(data: ArrayBuffer, iv: ArrayBuffer): Promise<ArrayBuffer> {
-        return global.crypto.subtle.encrypt(
+        return globalThis.crypto.subtle.encrypt(
             { name: 'AES-CBC', iv },
             this.key,
             data
@@ -104,7 +104,7 @@ class AesCbcSubtle extends AesCbc {
     }
 
     decrypt(data: ArrayBuffer, iv: ArrayBuffer): Promise<ArrayBuffer> {
-        return global.crypto.subtle.decrypt({ name: 'AES-CBC', iv }, this.key, data).catch(() => {
+        return globalThis.crypto.subtle.decrypt({ name: 'AES-CBC', iv }, this.key, data).catch(() => {
             throw new KdbxError(ErrorCodes.InvalidKey, 'invalid key');
         }) as Promise<ArrayBuffer>;
     }
@@ -155,7 +155,7 @@ class AesCbcNode extends AesCbc {
 }
 
 export function createAesCbc(): AesCbc {
-    if (global.crypto?.subtle) {
+    if (globalThis.crypto?.subtle) {
         return new AesCbcSubtle();
     } else {
         return new AesCbcNode();
@@ -168,7 +168,7 @@ function safeRandomWeb(len: number): Uint8Array {
         let segmentSize = len % MaxRandomQuota;
         segmentSize = segmentSize > 0 ? segmentSize : MaxRandomQuota;
         const randomBytesSegment = new Uint8Array(segmentSize);
-        global.crypto.getRandomValues(randomBytesSegment);
+        globalThis.crypto.getRandomValues(randomBytesSegment);
         len -= segmentSize;
         randomBytes.set(randomBytesSegment, len);
     }
@@ -176,7 +176,7 @@ function safeRandomWeb(len: number): Uint8Array {
 }
 
 export function random(len: number): Uint8Array {
-    if (global.crypto?.subtle) {
+    if (globalThis.crypto?.subtle) {
         return safeRandomWeb(len);
     } else {
         return new Uint8Array(nodeCrypto.randomBytes(len));

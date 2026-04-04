@@ -51,7 +51,7 @@ export function bytesToBase64(arr: ArrayBufferOrArray): string {
         }
         return btoa(str);
     } else {
-        const buffer = Buffer.from(arr);
+        const buffer = Buffer.from(arr instanceof ArrayBuffer ? new Uint8Array(arr) : arr);
         return buffer.toString('base64');
     }
 }
@@ -81,11 +81,11 @@ export function arrayToBuffer(arr: ArrayBufferOrArray): ArrayBuffer {
     if (arr instanceof ArrayBuffer) {
         return arr;
     }
-    const ab = arr.buffer;
+    const ab = arr.buffer as ArrayBuffer;
     if (arr.byteOffset === 0 && arr.byteLength === ab.byteLength) {
         return ab;
     }
-    return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength);
+    return ab.slice(arr.byteOffset, arr.byteOffset + arr.byteLength);
 }
 
 export function zeroBuffer(arr: ArrayBufferOrArray): void {

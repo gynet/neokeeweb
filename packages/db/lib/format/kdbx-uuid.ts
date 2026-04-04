@@ -10,16 +10,19 @@ export class KdbxUuid {
     readonly id: string;
     readonly empty: boolean;
 
-    constructor(ab?: ArrayBuffer | string) {
+    constructor(ab?: ArrayBuffer | Uint8Array | string) {
+        let buf: ArrayBuffer | Uint8Array;
         if (ab === undefined) {
-            ab = new ArrayBuffer(UuidLength);
+            buf = new ArrayBuffer(UuidLength);
         } else if (typeof ab === 'string') {
-            ab = base64ToBytes(ab);
+            buf = base64ToBytes(ab);
+        } else {
+            buf = ab;
         }
-        if (ab.byteLength !== UuidLength) {
-            throw new KdbxError(ErrorCodes.FileCorrupt, `bad UUID length: ${ab.byteLength}`);
+        if (buf.byteLength !== UuidLength) {
+            throw new KdbxError(ErrorCodes.FileCorrupt, `bad UUID length: ${buf.byteLength}`);
         }
-        this.id = bytesToBase64(ab);
+        this.id = bytesToBase64(buf);
         this.empty = this.id === EmptyUuidStr;
     }
 
@@ -27,7 +30,7 @@ export class KdbxUuid {
         return (other && other.toString() === this.toString()) || false;
     }
 
-    get bytes(): ArrayBuffer {
+    get bytes(): Uint8Array {
         return this.toBytes();
     }
 
@@ -43,7 +46,7 @@ export class KdbxUuid {
         return this.id;
     }
 
-    toBytes(): ArrayBuffer {
+    toBytes(): Uint8Array {
         return base64ToBytes(this.id);
     }
 }

@@ -63,7 +63,7 @@ module.exports = (env, argv) => {
                 // Library aliases
                 jquery: `jquery/dist/jquery${devMode ? '' : '.min'}.js`,
                 morphdom: `morphdom/dist/morphdom-umd${devMode ? '' : '.min'}.js`,
-                kdbxweb: `kdbxweb/dist/kdbxweb.js`,
+                kdbxweb: path.resolve(rootDir, '../../packages/db/dist/kdbxweb.js'),
                 baron: `baron/baron${devMode ? '' : '.min'}.js`,
                 qrcode: `jsqrcode/dist/qrcode${devMode ? '' : '.min'}.js`,
                 argon2: 'argon2-browser/dist/argon2.js',

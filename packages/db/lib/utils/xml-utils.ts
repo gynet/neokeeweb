@@ -20,12 +20,15 @@ declare global {
     }
 }
 
-function createDOMParser() {
-    if (global.DOMParser) {
-        return new global.DOMParser();
+function createDOMParser(): DOMParser {
+    if (typeof globalThis.DOMParser !== 'undefined') {
+        return new globalThis.DOMParser();
     }
 
-    const parserArg = {
+    // Node.js / Bun environment: use @xmldom/xmldom
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    const xmldom = require('@xmldom/xmldom') as { DOMParser: new (opts?: unknown) => DOMParser };
+    return new xmldom.DOMParser({
         errorHandler: {
             warning: (e: Error) => {
                 throw e;
@@ -37,23 +40,18 @@ function createDOMParser() {
                 throw e;
             }
         }
-    };
-
-    /* eslint-disable @typescript-eslint/no-var-requires,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
-    const { DOMParser } = require('@xmldom/xmldom');
-    return <typeof global.DOMParser>new DOMParser(parserArg);
-    /* eslint-enable */
+    });
 }
 
-function createXMLSerializer() {
-    if (global.XMLSerializer) {
-        return new global.XMLSerializer();
+function createXMLSerializer(): XMLSerializer {
+    if (typeof globalThis.XMLSerializer !== 'undefined') {
+        return new globalThis.XMLSerializer();
     }
 
-    /* eslint-disable @typescript-eslint/no-var-requires,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
-    const { XMLSerializer } = require('@xmldom/xmldom');
-    return <typeof global.XMLSerializer>new XMLSerializer();
-    /* eslint-enable */
+    // Node.js / Bun environment: use @xmldom/xmldom
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+    const xmldom = require('@xmldom/xmldom') as { XMLSerializer: new () => XMLSerializer };
+    return new xmldom.XMLSerializer();
 }
 
 export function parse(xml: string): Document {
