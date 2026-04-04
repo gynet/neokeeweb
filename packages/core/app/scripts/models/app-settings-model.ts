@@ -66,7 +66,6 @@ class AppSettingsModel extends Model {
     declare canSaveTo: AppSettings['canSaveTo'];
     declare canOpenStorage: AppSettings['canOpenStorage'];
     declare canOpenGenerator: AppSettings['canOpenGenerator'];
-    declare canOpenOtpDevice: AppSettings['canOpenOtpDevice'];
     declare webdav: AppSettings['webdav'];
     declare webdavSaveMethod: AppSettings['webdavSaveMethod'];
     declare webdavStatReload: AppSettings['webdavStatReload'];

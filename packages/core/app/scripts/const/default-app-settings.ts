@@ -51,13 +51,6 @@ interface AppSettings {
     extensionFocusIfLocked: boolean;
     extensionFocusIfEmpty: boolean;
 
-    yubiKeyShowIcon: boolean;
-    yubiKeyAutoOpen: boolean;
-    yubiKeyMatchEntries: boolean;
-    yubiKeyShowChalResp: boolean;
-    yubiKeyRememberChalResp: boolean;
-    yubiKeyStuckWorkaround: boolean;
-
     canOpen: boolean;
     canOpenDemo: boolean;
     canOpenSettings: boolean;
@@ -70,8 +63,6 @@ interface AppSettings {
     canSaveTo: boolean;
     canOpenStorage: boolean;
     canOpenGenerator: boolean;
-    canOpenOtpDevice: boolean;
-
     webdav: boolean;
     webdavSaveMethod: string;
     webdavStatReload: boolean;
@@ -133,13 +124,6 @@ const DefaultAppSettings: AppSettings = {
     extensionFocusIfLocked: true, // focus KeeWeb if a browser extension tries to connect while KeeWeb is locked
     extensionFocusIfEmpty: true, // show the entry selection screen if there's no match found by URL
 
-    yubiKeyShowIcon: true, // show an icon to open OTP codes from YubiKey
-    yubiKeyAutoOpen: false, // auto-load one-time codes when there are open files
-    yubiKeyMatchEntries: true, // show matching one-time codes in entries
-    yubiKeyShowChalResp: true, // show YubiKey challenge-response option
-    yubiKeyRememberChalResp: false, // remember YubiKey challenge-response codes while the app is open
-    yubiKeyStuckWorkaround: false, // enable the workaround for stuck YubiKeys
-
     canOpen: true, // can select and open new files
     canOpenDemo: true, // can open a demo file
     canOpenSettings: true, // can go to settings
@@ -152,8 +136,6 @@ const DefaultAppSettings: AppSettings = {
     canSaveTo: true, // can save existing files to filesystem
     canOpenStorage: true, // can open files from cloud storage providers
     canOpenGenerator: true, // can open password generator
-    canOpenOtpDevice: true, // can open OTP codes from USB tokens
-
     webdav: true, // enable WebDAV integration
     webdavSaveMethod: 'move', // how to save files with WebDAV: "move" or "put"
     webdavStatReload: false // WebDAV: reload the file instead of relying on Last-Modified
