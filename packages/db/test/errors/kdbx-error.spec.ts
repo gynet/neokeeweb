@@ -1,20 +1,20 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { KdbxError } from '../../lib';
 
 describe('KdbxError', () => {
-    it('creates error without message', () => {
+    test('creates error without message', () => {
         const err = new KdbxError('1');
-        expect(err.name).to.be('KdbxError');
-        expect(err.code).to.be('1');
-        expect(err.message).to.be('Error 1');
-        expect(err.toString()).to.be('KdbxError: Error 1');
+        expect(err.name).toBe('KdbxError');
+        expect(err.code).toBe('1');
+        expect(err.message).toBe('Error 1');
+        expect(err.toString()).toBe('KdbxError: Error 1');
     });
 
-    it('creates error with message', () => {
+    test('creates error with message', () => {
         const err = new KdbxError('2', 'msg');
-        expect(err.name).to.be('KdbxError');
-        expect(err.code).to.be('2');
-        expect(err.message).to.be('Error 2: msg');
-        expect(err.toString()).to.be('KdbxError: Error 2: msg');
+        expect(err.name).toBe('KdbxError');
+        expect(err.code).toBe('2');
+        expect(err.message).toBe('Error 2: msg');
+        expect(err.toString()).toBe('KdbxError: Error 2: msg');
     });
 });

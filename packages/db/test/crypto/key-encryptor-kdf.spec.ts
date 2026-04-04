@@ -1,4 +1,4 @@
-import expect from 'expect.js';
+import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { ByteUtils, Consts, CryptoEngine, Int64, KeyEncryptorKdf, VarDictionary } from '../../lib';
 import { ValueType } from '../../lib/utils/var-dictionary';
 
@@ -10,7 +10,7 @@ describe('KeyEncryptorKdf', () => {
 
     const cryptoEngineArgon2 = CryptoEngine.argon2;
 
-    before(() => {
+    beforeAll(() => {
         CryptoEngine.setArgon2Impl(
             (password, salt, memory, iterations, length, parallelism, type, version) => {
                 const res = new ArrayBuffer(32);
@@ -28,11 +28,11 @@ describe('KeyEncryptorKdf', () => {
         );
     });
 
-    after(() => {
+    afterAll(() => {
         CryptoEngine.argon2 = cryptoEngineArgon2;
     });
 
-    it('calls argon2 function', () => {
+    test('calls argon2 function', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         const saltArr = new Uint8Array(32);
@@ -43,107 +43,99 @@ describe('KeyEncryptorKdf', () => {
         params.set('I', ValueType.UInt64, new Int64(1));
         params.set('M', ValueType.UInt64, new Int64(1024 * 4));
         params.set('V', ValueType.UInt32, 0x13);
-        return KeyEncryptorKdf.encrypt(data, params).then((res) => {
-            expect(ByteUtils.bytesToHex(res)).to.be(exp);
-        });
+        const res = await KeyEncryptorKdf.encrypt(data, params);
+        expect(ByteUtils.bytesToHex(res)).toBe(exp);
     });
 
-    it('throws error for no uuid', () => {
+    test('throws error for no uuid', async () => {
         const params = new VarDictionary();
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: no kdf uuid');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: no kdf uuid');
+        }
     });
 
-    it('throws error for invalid uuid', () => {
+    test('throws error for invalid uuid', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, new ArrayBuffer(32));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('Unsupported: bad kdf');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('Unsupported: bad kdf');
+        }
     });
 
-    it('throws error for bad salt', () => {
+    test('throws error for bad salt', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(10));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 salt');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 salt');
+        }
     });
 
-    it('throws error for bad parallelism', () => {
+    test('throws error for bad parallelism', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
         params.set('P', ValueType.Int32, -1);
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 parallelism');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 parallelism');
+        }
     });
 
-    it('throws error for bad parallelism type', () => {
+    test('throws error for bad parallelism type', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
         params.set('P', ValueType.String, 'xxx');
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 parallelism');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 parallelism');
+        }
     });
 
-    it('throws error for bad iterations', () => {
+    test('throws error for bad iterations', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
         params.set('P', ValueType.Int32, 1);
         params.set('I', ValueType.Int32, -1);
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 iterations');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 iterations');
+        }
     });
 
-    it('throws error for bad memory', () => {
+    test('throws error for bad memory', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
         params.set('P', ValueType.Int32, 1);
         params.set('I', ValueType.Int32, 1);
         params.set('M', ValueType.Int32, 123);
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 memory');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 memory');
+        }
     });
 
-    it('throws error for bad version', () => {
+    test('throws error for bad version', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
@@ -151,16 +143,15 @@ describe('KeyEncryptorKdf', () => {
         params.set('I', ValueType.Int32, 1);
         params.set('M', ValueType.Int32, 1024);
         params.set('V', ValueType.Int32, 5);
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad argon2 version');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('FileCorrupt: bad argon2 version');
+        }
     });
 
-    it('throws error for secret key', () => {
+    test('throws error for secret key', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
@@ -169,16 +160,15 @@ describe('KeyEncryptorKdf', () => {
         params.set('M', ValueType.Int32, 1024);
         params.set('V', ValueType.Int32, 0x10);
         params.set('K', ValueType.Bytes, new ArrayBuffer(32));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('Unsupported: argon2 secret key');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('Unsupported: argon2 secret key');
+        }
     });
 
-    it('throws error for assoc data', () => {
+    test('throws error for assoc data', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Argon2));
         params.set('S', ValueType.Bytes, new ArrayBuffer(32));
@@ -187,56 +177,22 @@ describe('KeyEncryptorKdf', () => {
         params.set('M', ValueType.Int32, 1024);
         params.set('V', ValueType.Int32, 0x13);
         params.set('A', ValueType.Bytes, new ArrayBuffer(32));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('Unsupported: argon2 assoc data');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('Unsupported: argon2 assoc data');
+        }
     });
 
-    it('calls aes function', () => {
+    test('throws error for AES KDF (removed)', async () => {
         const params = new VarDictionary();
         params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
-        const key = ByteUtils.hexToBytes(
-            'ee66af917de0b0336e659fe6bd40a337d04e3c2b3635210fa16f28fb24d563ac'
-        );
-        const salt = ByteUtils.hexToBytes(
-            '5d18f8a5ae0e7ea86f0ad817f0c0d40656ef1da6367d8a88508b3c13cec0d7af'
-        );
-        const result = 'af0be2c639224ad37bd2bc7967d6c3303a8a6d4b7813718918a66bde96dc3132';
-        params.set('S', ValueType.Bytes, salt);
-        params.set('R', ValueType.Int64, new Int64(2));
-        return KeyEncryptorKdf.encrypt(key, params).then((res) => {
-            expect(ByteUtils.bytesToHex(res)).to.be(result);
-        });
-    });
-
-    it('throws error for bad aes salt', () => {
-        const params = new VarDictionary();
-        params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
-        params.set('S', ValueType.Bytes, new ArrayBuffer(10));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad aes salt');
-            });
-    });
-
-    it('throws error for bad aes rounds', () => {
-        const params = new VarDictionary();
-        params.set('$UUID', ValueType.Bytes, ByteUtils.base64ToBytes(Consts.KdfId.Aes));
-        params.set('S', ValueType.Bytes, new ArrayBuffer(32));
-        params.set('R', ValueType.Int64, new Int64(-1));
-        return KeyEncryptorKdf.encrypt(data, params)
-            .then(() => {
-                throw 'Not expected';
-            })
-            .catch((e) => {
-                expect(e.message).to.contain('FileCorrupt: bad aes rounds');
-            });
+        try {
+            await KeyEncryptorKdf.encrypt(data, params);
+            throw new Error('Not expected');
+        } catch (e) {
+            expect((e as Error).message).toContain('Unsupported: bad kdf');
+        }
     });
 });

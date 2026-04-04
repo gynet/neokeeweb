@@ -3,6 +3,7 @@ import * as path from 'path';
 import { ByteUtils } from '../../lib';
 
 export const TestResources = {
+    demoKey: readFile('demo.key'),
     argon2: readFile('Argon2.kdbx'),
     argon2id: readFile('Argon2id.kdbx'),
     argon2ChaCha: readFile('Argon2ChaCha.kdbx'),

@@ -1,4 +1,4 @@
-import expect from 'expect.js';
+import { describe, test, expect, afterEach } from 'bun:test';
 import { ByteUtils, CryptoEngine } from '../../lib';
 
 const isNode = !!global.process?.versions?.node;
@@ -36,26 +36,23 @@ describe('CryptoEngine', () => {
         const exp = 'affa378dae878f64d10f302df67c614ebb901601dd53a51713ffe664850c833b';
         const expEmpty = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
-        it('calculates sha256', () => {
+        test('calculates sha256', async () => {
             useDefaultImpl();
-            return CryptoEngine.sha256(fromHex(src)).then((hash) => {
-                expect(toHex(hash)).to.be(exp);
-            });
+            const hash = await CryptoEngine.sha256(fromHex(src));
+            expect(toHex(hash)).toBe(exp);
         });
 
-        it('calculates sha256 of empty data', () => {
+        test('calculates sha256 of empty data', async () => {
             useDefaultImpl();
-            return CryptoEngine.sha256(new ArrayBuffer(0)).then((hash) => {
-                expect(toHex(hash)).to.be(expEmpty);
-            });
+            const hash = await CryptoEngine.sha256(new ArrayBuffer(0));
+            expect(toHex(hash)).toBe(expEmpty);
         });
 
         if (isNode) {
-            it('calculates sha256 with subtle', () => {
+            test('calculates sha256 with subtle', async () => {
                 useSubtleMock();
-                return CryptoEngine.sha256(fromHex(src)).then((hash) => {
-                    expect(toHex(hash)).to.be(exp);
-                });
+                const hash = await CryptoEngine.sha256(fromHex(src));
+                expect(toHex(hash)).toBe(exp);
             });
         }
     });
@@ -69,26 +66,23 @@ describe('CryptoEngine', () => {
             'cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce' +
             '47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e';
 
-        it('calculates sha512', () => {
+        test('calculates sha512', async () => {
             useDefaultImpl();
-            return CryptoEngine.sha512(fromHex(src)).then((hash) => {
-                expect(toHex(hash)).to.be(exp);
-            });
+            const hash = await CryptoEngine.sha512(fromHex(src));
+            expect(toHex(hash)).toBe(exp);
         });
 
-        it('calculates sha512 of empty data', () => {
+        test('calculates sha512 of empty data', async () => {
             useDefaultImpl();
-            return CryptoEngine.sha512(new ArrayBuffer(0)).then((hash) => {
-                expect(toHex(hash)).to.be(expEmpty);
-            });
+            const hash = await CryptoEngine.sha512(new ArrayBuffer(0));
+            expect(toHex(hash)).toBe(expEmpty);
         });
 
         if (isNode) {
-            it('calculates sha512 with subtle', () => {
+            test('calculates sha512 with subtle', async () => {
                 useSubtleMock();
-                return CryptoEngine.sha512(fromHex(src)).then((hash) => {
-                    expect(toHex(hash)).to.be(exp);
-                });
+                const hash = await CryptoEngine.sha512(fromHex(src));
+                expect(toHex(hash)).toBe(exp);
             });
         }
     });
@@ -98,52 +92,50 @@ describe('CryptoEngine', () => {
         const key = 'c50d2f8d0d51ba443ec46f7f843bf17491b8c0a09b58437acd589b14b73aa35c';
         const exp = 'f25a33a0424440b91d98cb4d9c0e897ff0a1f48c78820e6374257cf7fa774fb2';
 
-        it('calculates hmac-sha256', () => {
+        test('calculates hmac-sha256', async () => {
             useDefaultImpl();
-            return CryptoEngine.hmacSha256(fromHex(key), fromHex(data)).then((hash) => {
-                expect(toHex(hash)).to.be(exp);
-            });
+            const hash = await CryptoEngine.hmacSha256(fromHex(key), fromHex(data));
+            expect(toHex(hash)).toBe(exp);
         });
 
         if (isNode) {
-            it('calculates hmac-sha256 with subtle', () => {
+            test('calculates hmac-sha256 with subtle', async () => {
                 useSubtleMock();
-                return CryptoEngine.hmacSha256(fromHex(key), fromHex(data)).then((hash) => {
-                    expect(toHex(hash)).to.be(exp);
-                });
+                const hash = await CryptoEngine.hmacSha256(fromHex(key), fromHex(data));
+                expect(toHex(hash)).toBe(exp);
             });
         }
     });
 
     describe('random', () => {
-        it('fills random bytes', () => {
+        test('fills random bytes', () => {
             useDefaultImpl();
             const rand1 = CryptoEngine.random(20);
-            expect(rand1.length).to.be(20);
+            expect(rand1.length).toBe(20);
             const rand2 = CryptoEngine.random(20);
-            expect(rand2.length).to.be(20);
-            expect(ByteUtils.arrayBufferEquals(rand1, rand2)).to.be(false);
+            expect(rand2.length).toBe(20);
+            expect(ByteUtils.arrayBufferEquals(rand1, rand2)).toBe(false);
             const rand3 = CryptoEngine.random(10);
-            expect(rand3.length).to.be(10);
+            expect(rand3.length).toBe(10);
         });
 
-        it('can fill more than 65536 bytes', () => {
+        test('can fill more than 65536 bytes', () => {
             useDefaultImpl();
             const rand1 = CryptoEngine.random(77111);
-            expect(rand1.length).to.be(77111);
+            expect(rand1.length).toBe(77111);
         });
 
         if (isNode) {
-            it('generates random bytes with subtle', () => {
+            test('generates random bytes with subtle', () => {
                 useSubtleMock();
                 const rand1 = CryptoEngine.random(20);
-                expect(rand1.length).to.be(20);
+                expect(rand1.length).toBe(20);
             });
 
-            it('can fill more than 65536 bytes', () => {
+            test('can fill more than 65536 bytes with subtle', () => {
                 useSubtleMock();
                 const rand1 = CryptoEngine.random(77111);
-                expect(rand1.length).to.be(77111);
+                expect(rand1.length).toBe(77111);
             });
         }
     });
@@ -154,88 +146,72 @@ describe('CryptoEngine', () => {
         const iv = '4db46dff4add42cb813b98de98e627c4';
         const exp = '46ab4c37d9ec594e5742971f76f7c1620bc29f2e0736b27832d6bcc5c1c39dc1';
 
-        it('encrypts-decrypts with aes-cbc', () => {
+        test('encrypts-decrypts with aes-cbc', async () => {
             useDefaultImpl();
             const aes = CryptoEngine.createAesCbc();
-            return aes.importKey(fromHex(key)).then(() => {
-                return aes.encrypt(fromHex(data), fromHex(iv)).then((result) => {
-                    expect(toHex(result)).to.be(exp);
-                    return aes.decrypt(result, fromHex(iv)).then((result) => {
-                        expect(toHex(result)).to.be(data);
-                    });
-                });
-            });
+            await aes.importKey(fromHex(key));
+            const result = await aes.encrypt(fromHex(data), fromHex(iv));
+            expect(toHex(result)).toBe(exp);
+            const decrypted = await aes.decrypt(result, fromHex(iv));
+            expect(toHex(decrypted)).toBe(data);
         });
 
-        it('throws error or generates wrong data for bad key', () => {
+        test('throws error or generates wrong data for bad key', async () => {
             useDefaultImpl();
             const aes = CryptoEngine.createAesCbc();
-            return aes.importKey(fromHex(key)).then(() => {
-                return aes
-                    .decrypt(fromHex(data), fromHex(iv))
-                    .then((result) => {
-                        expect(toHex(result)).not.to.be(data);
-                    })
-                    .catch((e) => {
-                        expect(e.message).to.contain('Error InvalidKey: ');
-                    });
-            });
+            await aes.importKey(fromHex(key));
+            try {
+                const result = await aes.decrypt(fromHex(data), fromHex(iv));
+                expect(toHex(result)).not.toBe(data);
+            } catch (e) {
+                expect((e as Error).message).toContain('Error InvalidKey: ');
+            }
         });
 
-        it('throws if key is not set', async () => {
+        test('throws if key is not set', async () => {
             useDefaultImpl();
             const aes = CryptoEngine.createAesCbc();
             try {
                 await aes.encrypt(new ArrayBuffer(0), new ArrayBuffer(0));
+                throw new Error('Should have thrown');
             } catch (e) {
-                expect((e as Error).message).to.contain('no key');
-                return;
+                expect((e as Error).message).toContain('no key');
             }
-            throw new Error('Not expected');
         });
 
         if (isNode) {
-            it('encrypts-decrypts with aes-cbc with subtle', () => {
+            test('encrypts-decrypts with aes-cbc with subtle', async () => {
                 useSubtleMock();
                 const aes = CryptoEngine.createAesCbc();
-                return aes.importKey(fromHex(key)).then(() => {
-                    return aes.encrypt(fromHex(data), fromHex(iv)).then((result) => {
-                        expect(toHex(result)).to.be(exp);
-                        return aes.decrypt(result, fromHex(iv)).then((result) => {
-                            expect(toHex(result)).to.be(data);
-                        });
-                    });
-                });
+                await aes.importKey(fromHex(key));
+                const result = await aes.encrypt(fromHex(data), fromHex(iv));
+                expect(toHex(result)).toBe(exp);
+                const decrypted = await aes.decrypt(result, fromHex(iv));
+                expect(toHex(decrypted)).toBe(data);
             });
 
-            it('throws error for bad key', () => {
+            test('throws error for bad key with subtle', async () => {
                 useSubtleMock();
                 const aes = CryptoEngine.createAesCbc();
-                return aes.importKey(fromHex(key)).then(() => {
-                    return aes
-                        .decrypt(fromHex(data), fromHex(iv))
-                        .then((result) => {
-                            expect(toHex(result)).to.be(data);
-                        })
-                        .then(() => {
-                            throw 'Not expected';
-                        })
-                        .catch((e) => {
-                            expect(e.message).to.contain('Error InvalidKey: ');
-                        });
-                });
+                await aes.importKey(fromHex(key));
+                try {
+                    const result = await aes.decrypt(fromHex(data), fromHex(iv));
+                    expect(toHex(result)).toBe(data);
+                    throw new Error('Not expected');
+                } catch (e) {
+                    expect((e as Error).message).toContain('Error InvalidKey: ');
+                }
             });
 
-            it('throws if key is not set', async () => {
+            test('throws if key is not set with subtle', async () => {
                 useSubtleMock();
                 const aes = CryptoEngine.createAesCbc();
                 try {
                     await aes.encrypt(new ArrayBuffer(0), new ArrayBuffer(0));
+                    throw new Error('Should have thrown');
                 } catch (e) {
-                    expect((e as Error).message).to.contain('no key');
-                    return;
+                    expect((e as Error).message).toContain('no key');
                 }
-                throw new Error('Not expected');
             });
         }
     });
@@ -248,48 +224,45 @@ describe('CryptoEngine', () => {
         const iv8 = '4db46dff4add42cb';
         const exp8 = 'ebaee4b6790192fd6e60f6294ea12c98';
 
-        it('encrypts with chacha20', () => {
+        test('encrypts with chacha20', async () => {
             useDefaultImpl();
-            return CryptoEngine.chacha20(
+            const result = await CryptoEngine.chacha20(
                 ByteUtils.hexToBytes(data),
                 ByteUtils.hexToBytes(key),
                 ByteUtils.hexToBytes(iv12)
-            ).then((result) => {
-                expect(toHex(result)).to.be(exp12);
-            });
+            );
+            expect(toHex(result)).toBe(exp12);
         });
 
-        it('encrypts with short iv', () => {
+        test('encrypts with short iv', async () => {
             useDefaultImpl();
-            return CryptoEngine.chacha20(
+            const result = await CryptoEngine.chacha20(
                 ByteUtils.hexToBytes(data),
                 ByteUtils.hexToBytes(key),
                 ByteUtils.hexToBytes(iv8)
-            ).then((result) => {
-                expect(toHex(result)).to.be(exp8);
-            });
+            );
+            expect(toHex(result)).toBe(exp8);
         });
     });
 
     describe('argon2', () => {
-        it('throws error if argon2 is not implemented', () => {
+        test('throws error if argon2 is not implemented', async () => {
             useDefaultImpl();
-            return CryptoEngine.argon2(
-                new ArrayBuffer(0),
-                new ArrayBuffer(0),
-                0,
-                0,
-                0,
-                0,
-                CryptoEngine.Argon2TypeArgon2d,
-                0x10
-            )
-                .then(() => {
-                    throw 'No error generated';
-                })
-                .catch((e) => {
-                    expect(e.message).to.be('Error NotImplemented: argon2 not implemented');
-                });
+            try {
+                await CryptoEngine.argon2(
+                    new ArrayBuffer(0),
+                    new ArrayBuffer(0),
+                    0,
+                    0,
+                    0,
+                    0,
+                    CryptoEngine.Argon2TypeArgon2d,
+                    0x10
+                );
+                throw new Error('No error generated');
+            } catch (e) {
+                expect((e as Error).message).toBe('Error NotImplemented: argon2 not implemented');
+            }
         });
     });
 });

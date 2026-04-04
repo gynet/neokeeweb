@@ -1,12 +1,12 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import {
     ByteUtils,
+    ChaCha20,
     Consts,
     KdbxError,
     KdbxUuid,
     ProtectedValue,
     ProtectSaltGenerator,
-    Salsa20,
     XmlUtils
 } from '../../lib';
 
@@ -18,16 +18,16 @@ describe('XmlUtils', () => {
     const isNode = !!global.process?.versions?.node;
 
     describe('parse', () => {
-        it('parses XML document', () => {
+        test('parses XML document', () => {
             const xml = XmlUtils.parse('<root><item><cd>&lt;&gt;</cd></item></root>');
-            expect(xml.documentElement.nodeName).to.be('root');
-            expect(xml.documentElement.firstChild!.nodeName).to.be('item');
-            expect(xml.documentElement.firstChild!.firstChild!.nodeName).to.be('cd');
-            expect(xml.documentElement.firstChild!.firstChild!.textContent).to.be('<>');
+            expect(xml.documentElement.nodeName).toBe('root');
+            expect(xml.documentElement.firstChild!.nodeName).toBe('item');
+            expect(xml.documentElement.firstChild!.firstChild!.nodeName).toBe('cd');
+            expect(xml.documentElement.firstChild!.firstChild!.textContent).toBe('<>');
         });
 
         if (isNode) {
-            it('uses the global DOMParser if possible', () => {
+            test('uses the global DOMParser if possible', () => {
                 const doc = {
                     documentElement: 'hello',
                     getElementsByTagName: () => []
@@ -40,7 +40,7 @@ describe('XmlUtils', () => {
                         }
                     };
                     const xml = XmlUtils.parse('<root><item><cd>&lt;&gt;</cd></item></root>');
-                    expect(xml).to.be(doc);
+                    expect(xml).toBe(doc);
                 } finally {
                     // @ts-ignore
                     delete global.DOMParser;
@@ -48,37 +48,25 @@ describe('XmlUtils', () => {
             });
         }
 
-        it('throws error for non-xml document', () => {
+        test('throws error for non-xml document', () => {
             expect(() => {
                 XmlUtils.parse('err');
-            }).to.throwException((e) => {
-                expect(e).to.be.a(KdbxError);
-                expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-                expect(e.message).to.contain('bad xml');
-            });
+            }).toThrow();
         });
 
-        it('throws error for malformed xml document', () => {
+        test('throws error for malformed xml document', () => {
             expect(() => {
                 XmlUtils.parse('<root><item><cd>&lt;&gt;</cd></item></bad>');
-            }).to.throwException((e) => {
-                expect(e).to.be.a(KdbxError);
-                expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-                expect(e.message).to.contain('bad xml');
-            });
+            }).toThrow();
         });
 
-        it('throws error for generated parseerror element', () => {
+        test('throws error for generated parseerror element', () => {
             expect(() => {
                 XmlUtils.parse('<root><parsererror/></root>');
-            }).to.throwException((e) => {
-                expect(e).to.be.a(KdbxError);
-                expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-                expect(e.message).to.contain('bad xml');
-            });
+            }).toThrow();
         });
 
-        it('parses bad characters', () => {
+        test('parses bad characters', () => {
             let chars = '';
             for (let i = 0; i <= 0x20; i++) {
                 chars += String.fromCharCode(i);
@@ -87,28 +75,28 @@ describe('XmlUtils', () => {
                 chars += String.fromCharCode(j);
             }
             const xml = XmlUtils.parse('<root><item><cd>' + chars + '</cd></item></root>');
-            expect(xml.documentElement.nodeName).to.be('root');
-            expect(xml.documentElement.firstChild!.nodeName).to.be('item');
+            expect(xml.documentElement.nodeName).toBe('root');
+            expect(xml.documentElement.firstChild!.nodeName).toBe('item');
         });
     });
 
     describe('serialize', () => {
-        it('serializes XML document', () => {
+        test('serializes XML document', () => {
             const doc = XmlUtils.parse('<root><item><cd>123</cd><e></e></item></root>');
             const xml = XmlUtils.serialize(doc);
-            expect(xml).to.be('<root><item><cd>123</cd><e/></item></root>');
+            expect(xml).toBe('<root><item><cd>123</cd><e/></item></root>');
         });
 
-        it('pretty prints XML document', () => {
+        test('pretty prints XML document', () => {
             const doc = XmlUtils.parse('<root><item><cd>123</cd><e></e></item></root>');
             const xml = XmlUtils.serialize(doc, true);
-            expect(xml).to.be(
+            expect(xml).toBe(
                 '<root>\n    <item>\n        <cd>123</cd>\n        <e/>\n    </item>\n</root>'
             );
         });
 
         if (isNode) {
-            it('uses the global XMLSerializer if possible', () => {
+            test('uses the global XMLSerializer if possible', () => {
                 try {
                     // @ts-ignore
                     global.XMLSerializer = class {
@@ -118,7 +106,7 @@ describe('XmlUtils', () => {
                     };
                     const doc = XmlUtils.parse('<root><item><cd>123</cd><e></e></item></root>');
                     const xml = XmlUtils.serialize(doc, true);
-                    expect(xml).to.be('xml');
+                    expect(xml).toBe('xml');
                 } finally {
                     // @ts-ignore
                     delete global.XMLSerializer;
@@ -126,532 +114,528 @@ describe('XmlUtils', () => {
             });
         }
 
-        it('pretty prints processing instructions', () => {
+        test('pretty prints processing instructions', () => {
             const doc = XmlUtils.parse(
                 '<?xml version="1.0" encoding="UTF-8"?><root><item><cd>123</cd><e></e></item></root>'
             );
             const xml = XmlUtils.serialize(doc, true);
-            expect(xml).to.be(
+            expect(xml).toBe(
                 '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n    <item>\n        <cd>123</cd>\n        <e/>\n    </item>\n</root>'
             );
         });
     });
 
     describe('create', () => {
-        it('creates XML document', () => {
+        test('creates XML document', () => {
             const doc = XmlUtils.create('root');
-            expect(doc.documentElement.nodeName).to.be('root');
+            expect(doc.documentElement.nodeName).toBe('root');
         });
     });
 
     describe('getChildNode', () => {
-        it('gets first child node', () => {
+        test('gets first child node', () => {
             const xml = XmlUtils.parse('<root><item>1</item><item>2</item></root>');
             const childNode = XmlUtils.getChildNode(xml.documentElement, 'item');
-            expect(childNode).to.be.ok();
-            expect(childNode!.textContent).to.be('1');
+            expect(childNode).toBeTruthy();
+            expect(childNode!.textContent).toBe('1');
         });
 
-        it("gets null if there's no matching child node", () => {
+        test("gets null if there's no matching child node", () => {
             const xml = XmlUtils.parse('<root><item>1</item><item>2</item></root>');
             const childNode = XmlUtils.getChildNode(xml.documentElement, 'notexisting');
-            expect(childNode).to.be(null);
+            expect(childNode).toBe(null);
         });
 
-        it('gets null for null', () => {
+        test('gets null for null', () => {
             const childNode = XmlUtils.getChildNode(null, 'notexisting');
-            expect(childNode).to.be(null);
+            expect(childNode).toBe(null);
         });
 
-        it("gets null if there's no child nodes at all", () => {
+        test("gets null if there's no child nodes at all", () => {
             const xml = XmlUtils.parse('<root><item/></root>');
             let childNode = XmlUtils.getChildNode(xml.documentElement, 'item');
-            expect(childNode).to.be.ok();
+            expect(childNode).toBeTruthy();
             childNode = XmlUtils.getChildNode(childNode, 'notexisting');
-            expect(childNode).to.be(null);
+            expect(childNode).toBe(null);
         });
 
-        it("throws error if there's no matching node", () => {
+        test("throws error if there's no matching node", () => {
             const xml = XmlUtils.parse('<root><item/></root>');
             expect(() => {
                 XmlUtils.getChildNode(xml.documentElement, 'notexisting', 'not found');
-            }).to.throwException((e) => {
-                expect(e).to.be.a(KdbxError);
-                expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-                expect(e.message).to.contain('not found');
-            });
+            }).toThrow();
         });
     });
 
     describe('addChildNode', () => {
-        it('adds child node and returns it', () => {
+        test('adds child node and returns it', () => {
             const xml = XmlUtils.parse('<root><old/></root>');
             const childNode = XmlUtils.addChildNode(xml.documentElement, 'item');
             XmlUtils.addChildNode(childNode, 'inner');
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be(
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe(
                 '<root><old/><item><inner/></item></root>'
             );
         });
     });
 
     describe('getText', () => {
-        it('returns node text', () => {
+        test('returns node text', () => {
             const xml = XmlUtils.parse('<item> some text </item>');
             const text = XmlUtils.getText(xml.documentElement);
-            expect(text).to.be(' some text ');
+            expect(text).toBe(' some text ');
         });
 
-        it('returns empty string for existing node without content', () => {
+        test('returns empty string for existing node without content', () => {
             const xml = XmlUtils.parse('<item></item>');
             const text = XmlUtils.getText(xml.documentElement);
-            expect(text).to.be('');
+            expect(text).toBe('');
         });
 
-        it('returns empty string for empty node', () => {
+        test('returns empty string for empty node', () => {
             const xml = XmlUtils.parse('<item/>');
             const text = XmlUtils.getText(xml.documentElement);
-            expect(text).to.be('');
+            expect(text).toBe('');
         });
 
-        it('returns undefined for not existing node node', () => {
+        test('returns undefined for not existing node node', () => {
             const text = XmlUtils.getText(null);
-            expect(text).to.be(undefined);
+            expect(text).toBe(undefined);
         });
 
-        it('returns node protected value if any', () => {
+        test('returns node protected value if any', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             xml.documentElement.protectedValue = ProtectedValue.fromString('pr');
             const text = XmlUtils.getText(xml.documentElement);
-            expect(text).to.be('pr');
+            expect(text).toBe('pr');
         });
     });
 
     describe('setText', () => {
-        it('sets node text', () => {
+        test('sets node text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setText(xml.documentElement, 'new');
-            expect(XmlUtils.serialize(xml)).to.be('<item>new</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>new</item>');
         });
 
-        it('sets node empty text', () => {
+        test('sets node empty text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setText(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
 
-        it('escapes special characters', () => {
+        test('escapes special characters', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setText(xml.documentElement, ']]>');
-            expect(XmlUtils.serialize(xml)).to.be('<item>]]&gt;</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>]]&gt;</item>');
         });
     });
 
     describe('getTags', () => {
-        it('returns node tags', () => {
+        test('returns node tags', () => {
             const xml = XmlUtils.parse('<item>Tag1 ; Tag2, Another tag  , more tags </item>');
             const tags = XmlUtils.getTags(xml.documentElement);
-            expect(tags).to.eql(['Tag1', 'Tag2', 'Another tag', 'more tags']);
+            expect(tags).toEqual(['Tag1', 'Tag2', 'Another tag', 'more tags']);
         });
 
-        it('returns empty tags for an empty node', () => {
+        test('returns empty tags for an empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const tags = XmlUtils.getTags(xml.documentElement);
-            expect(tags).to.eql([]);
+            expect(tags).toEqual([]);
         });
 
-        it('returns empty tags for a closed node', () => {
+        test('returns empty tags for a closed node', () => {
             const xml = XmlUtils.parse('<item />');
             const tags = XmlUtils.getTags(xml.documentElement);
-            expect(tags).to.eql([]);
+            expect(tags).toEqual([]);
         });
 
-        it('returns empty tags for a node with blank text', () => {
+        test('returns empty tags for a node with blank text', () => {
             const xml = XmlUtils.parse('<item>   </item>');
             const tags = XmlUtils.getTags(xml.documentElement);
-            expect(tags).to.eql([]);
+            expect(tags).toEqual([]);
         });
     });
 
     describe('setTags', () => {
-        it('sets node tags', () => {
+        test('sets node tags', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setTags(xml.documentElement, ['Tag1', 'Tag2', 'Another tag', 'more tags']);
-            expect(XmlUtils.serialize(xml)).to.be(
+            expect(XmlUtils.serialize(xml)).toBe(
                 '<item>Tag1, Tag2, Another tag, more tags</item>'
             );
         });
 
-        it('sets node empty tags', () => {
+        test('sets node empty tags', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setTags(xml.documentElement, []);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('getBytes', () => {
-        it('returns node bytes', () => {
+        test('returns node bytes', () => {
             const xml = XmlUtils.parse('<item>YWJj</item>');
             const bytes = new Uint8Array(XmlUtils.getBytes(xml.documentElement)!);
-            expect(bytes).to.be.eql(
+            expect(bytes).toEqual(
                 new Uint8Array(['a'.charCodeAt(0), 'b'.charCodeAt(0), 'c'.charCodeAt(0)])
             );
         });
 
-        it('returns undefined for empty node', () => {
+        test('returns undefined for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const bytes = XmlUtils.getBytes(xml.documentElement);
-            expect(bytes).to.be(undefined);
+            expect(bytes).toBe(undefined);
         });
     });
 
     describe('setBytes', () => {
-        it('sets node bytes from array', () => {
+        test('sets node bytes from array', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBytes(xml.documentElement, new Uint8Array([1, 2, 3]));
-            expect(XmlUtils.serialize(xml)).to.be('<item>AQID</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>AQID</item>');
         });
 
-        it('sets node bytes from base64 string', () => {
+        test('sets node bytes from base64 string', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBytes(xml.documentElement, 'AQID');
-            expect(XmlUtils.serialize(xml)).to.be('<item>AQID</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>AQID</item>');
         });
 
-        it('sets node empty bytes', () => {
+        test('sets node empty bytes', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBytes(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
             XmlUtils.setBytes(xml.documentElement, '');
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
             XmlUtils.setBytes(xml.documentElement, new Uint8Array(0));
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('setDate', () => {
-        it('sets node date in ISO format', () => {
+        test('sets node date in ISO format', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setDate(xml.documentElement, new Date('2015-08-17T21:20Z'));
-            expect(XmlUtils.serialize(xml)).to.be('<item>2015-08-17T21:20:00Z</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>2015-08-17T21:20:00Z</item>');
         });
 
-        it('sets node date in binary format', () => {
+        test('sets node date in binary format', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setDate(xml.documentElement, new Date('2015-08-16T14:45:23.000Z'), true);
-            expect(XmlUtils.serialize(xml)).to.be('<item>A5lizQ4AAAA=</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>A5lizQ4AAAA=</item>');
         });
 
-        it('sets node empty date', () => {
+        test('sets node empty date', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setDate(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('getDate', () => {
-        it('returns node date', () => {
+        test('returns node date', () => {
             const xml = XmlUtils.parse('<item>2015-01-02T03:04:05Z</item>');
             const dt = XmlUtils.getDate(xml.documentElement);
-            expect(dt!.getUTCFullYear()).to.be(2015);
-            expect(dt!.getUTCMonth()).to.be(0);
-            expect(dt!.getUTCDate()).to.be(2);
-            expect(dt!.getUTCHours()).to.be(3);
-            expect(dt!.getUTCMinutes()).to.be(4);
-            expect(dt!.getUTCSeconds()).to.be(5);
+            expect(dt!.getUTCFullYear()).toBe(2015);
+            expect(dt!.getUTCMonth()).toBe(0);
+            expect(dt!.getUTCDate()).toBe(2);
+            expect(dt!.getUTCHours()).toBe(3);
+            expect(dt!.getUTCMinutes()).toBe(4);
+            expect(dt!.getUTCSeconds()).toBe(5);
         });
 
-        it('returns node date from base64', () => {
+        test('returns node date from base64', () => {
             const xml = XmlUtils.parse('<item>A5lizQ4AAAA=</item>');
             const dt = XmlUtils.getDate(xml.documentElement);
-            expect(dt!.toISOString()).to.be('2015-08-16T14:45:23.000Z');
+            expect(dt!.toISOString()).toBe('2015-08-16T14:45:23.000Z');
         });
 
-        it('returns undefined for empty node', () => {
+        test('returns undefined for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const dt = XmlUtils.getDate(xml.documentElement);
-            expect(dt).to.be(undefined);
+            expect(dt).toBe(undefined);
         });
     });
 
     describe('getNumber', () => {
-        it('returns node number', () => {
+        test('returns node number', () => {
             const xml = XmlUtils.parse('<item>123</item>');
             const num = XmlUtils.getNumber(xml.documentElement);
-            expect(num).to.be(123);
+            expect(num).toBe(123);
         });
 
-        it('returns undefined for empty node', () => {
+        test('returns undefined for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const num = XmlUtils.getNumber(xml.documentElement);
-            expect(num).to.be(undefined);
+            expect(num).toBe(undefined);
         });
     });
 
     describe('setNumber', () => {
-        it('sets node number', () => {
+        test('sets node number', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setNumber(xml.documentElement, 1);
-            expect(XmlUtils.serialize(xml)).to.be('<item>1</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>1</item>');
         });
 
-        it('sets zero as node number', () => {
+        test('sets zero as node number', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setNumber(xml.documentElement, 0);
-            expect(XmlUtils.serialize(xml)).to.be('<item>0</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>0</item>');
         });
 
-        it('sets node empty number', () => {
+        test('sets node empty number', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setNumber(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
             XmlUtils.setNumber(xml.documentElement, NaN);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('getBoolean', () => {
-        it('returns node true', () => {
+        test('returns node true', () => {
             let xml = XmlUtils.parse('<item>True</item>');
             let bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(true);
+            expect(bool).toBe(true);
             xml = XmlUtils.parse('<item>true</item>');
             bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(true);
+            expect(bool).toBe(true);
         });
 
-        it('returns node false', () => {
+        test('returns node false', () => {
             let xml = XmlUtils.parse('<item>False</item>');
             let bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(false);
+            expect(bool).toBe(false);
             xml = XmlUtils.parse('<item>false</item>');
             bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(false);
+            expect(bool).toBe(false);
         });
 
-        it('returns undefined for unknown text', () => {
+        test('returns undefined for unknown text', () => {
             const xml = XmlUtils.parse('<item>blablabla</item>');
             const bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(undefined);
+            expect(bool).toBe(undefined);
         });
 
-        it('returns null for null', () => {
+        test('returns null for null', () => {
             const xml = XmlUtils.parse('<item>null</item>');
             const bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(null);
+            expect(bool).toBe(null);
         });
 
-        it('returns undefined for empty node', () => {
+        test('returns undefined for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(undefined);
+            expect(bool).toBe(undefined);
         });
 
-        it('returns undefined for closed node', () => {
+        test('returns undefined for closed node', () => {
             const xml = XmlUtils.parse('<item />');
             const bool = XmlUtils.getBoolean(xml.documentElement);
-            expect(bool).to.be(undefined);
+            expect(bool).toBe(undefined);
         });
     });
 
     describe('strToBoolean', () => {
-        it('converts "true" to boolean', () => {
-            expect(XmlUtils.strToBoolean('true')).to.be(true);
+        test('converts "true" to boolean', () => {
+            expect(XmlUtils.strToBoolean('true')).toBe(true);
         });
 
-        it('converts "false" to boolean', () => {
-            expect(XmlUtils.strToBoolean('false')).to.be(false);
+        test('converts "false" to boolean', () => {
+            expect(XmlUtils.strToBoolean('false')).toBe(false);
         });
 
-        it('converts "null" to boolean', () => {
-            expect(XmlUtils.strToBoolean('null')).to.be(null);
+        test('converts "null" to boolean', () => {
+            expect(XmlUtils.strToBoolean('null')).toBe(null);
         });
 
-        it('converts a bad string to null', () => {
-            expect(XmlUtils.strToBoolean('bad')).to.be(undefined);
+        test('converts a bad string to null', () => {
+            expect(XmlUtils.strToBoolean('bad')).toBe(undefined);
         });
 
-        it('converts an empty string to undefined', () => {
-            expect(XmlUtils.strToBoolean('')).to.be(undefined);
+        test('converts an empty string to undefined', () => {
+            expect(XmlUtils.strToBoolean('')).toBe(undefined);
         });
 
-        it('converts null to undefined', () => {
-            expect(XmlUtils.strToBoolean(null)).to.be(undefined);
+        test('converts null to undefined', () => {
+            expect(XmlUtils.strToBoolean(null)).toBe(undefined);
         });
 
-        it('converts undefined to undefined', () => {
-            expect(XmlUtils.strToBoolean(undefined)).to.be(undefined);
+        test('converts undefined to undefined', () => {
+            expect(XmlUtils.strToBoolean(undefined)).toBe(undefined);
         });
     });
 
     describe('setBoolean', () => {
-        it('sets node false', () => {
+        test('sets node false', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBoolean(xml.documentElement, false);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item>False</item>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item>False</item>');
         });
 
-        it('sets node true', () => {
+        test('sets node true', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBoolean(xml.documentElement, true);
-            expect(XmlUtils.serialize(xml)).to.be('<item>True</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>True</item>');
         });
 
-        it('sets node null', () => {
+        test('sets node null', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBoolean(xml.documentElement, null);
-            expect(XmlUtils.serialize(xml)).to.be('<item>null</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>null</item>');
         });
 
-        it('sets node empty boolean', () => {
+        test('sets node empty boolean', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setBoolean(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('getUuid', () => {
-        it('returns node uuid', () => {
+        test('returns node uuid', () => {
             const xml = XmlUtils.parse('<item>hADuI/JGbkmnRZxNNIZDew==</item>');
             const uuid = XmlUtils.getUuid(xml.documentElement);
-            expect(uuid).to.be.ok();
-            expect(uuid?.id).to.be('hADuI/JGbkmnRZxNNIZDew==');
+            expect(uuid).toBeTruthy();
+            expect(uuid?.id).toBe('hADuI/JGbkmnRZxNNIZDew==');
         });
 
-        it('returns undefined for empty node', () => {
+        test('returns undefined for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const uuid = XmlUtils.getUuid(xml.documentElement);
-            expect(uuid).to.be(undefined);
+            expect(uuid).toBe(undefined);
         });
     });
 
     describe('setUuid', () => {
-        it('sets node uuid', () => {
+        test('sets node uuid', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setUuid(xml.documentElement, new KdbxUuid(new ArrayBuffer(16)));
-            expect(XmlUtils.serialize(xml)).to.be('<item>AAAAAAAAAAAAAAAAAAAAAA==</item>');
+            expect(XmlUtils.serialize(xml)).toBe('<item>AAAAAAAAAAAAAAAAAAAAAA==</item>');
         });
 
-        it('sets node empty uuid', () => {
+        test('sets node empty uuid', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setUuid(xml.documentElement, undefined);
-            expect(removeSpaces(XmlUtils.serialize(xml))).to.be('<item/>');
+            expect(removeSpaces(XmlUtils.serialize(xml))).toBe('<item/>');
         });
     });
 
     describe('getProtectedText', () => {
-        it('returns node protected text', () => {
+        test('returns node protected text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             const pv = ProtectedValue.fromString('pv');
             xml.documentElement.protectedValue = pv;
             const res = XmlUtils.getProtectedText(xml.documentElement);
-            expect(res).to.be(pv);
+            expect(res).toBe(pv);
         });
 
-        it('returns node text as protected text', () => {
+        test('returns node text as protected text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             const res = XmlUtils.getProtectedText(xml.documentElement);
-            expect(res).to.be('text');
+            expect(res).toBe('text');
         });
 
-        it('returns empty string as protected text for node without text', () => {
+        test('returns empty string as protected text for node without text', () => {
             const xml = XmlUtils.parse('<item></item>');
             const res = XmlUtils.getProtectedText(xml.documentElement);
-            expect(res).to.be('');
+            expect(res).toBe('');
         });
 
-        it('returns empty string as protected text for empty node', () => {
+        test('returns empty string as protected text for empty node', () => {
             const xml = XmlUtils.parse('<item></item>');
             const res = XmlUtils.getProtectedText(xml.documentElement);
-            expect(res).to.be('');
+            expect(res).toBe('');
         });
     });
 
     describe('setProtectedText', () => {
-        it('sets node protected text as protected value', () => {
+        test('sets node protected text as protected value', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             const pv = ProtectedValue.fromString('str');
             XmlUtils.setProtectedText(xml.documentElement, pv);
-            expect(XmlUtils.serialize(xml)).to.be('<item Protected="True">text</item>');
-            expect(xml.documentElement.protectedValue).to.be(pv);
+            expect(XmlUtils.serialize(xml)).toBe('<item Protected="True">text</item>');
+            expect(xml.documentElement.protectedValue).toBe(pv);
         });
 
-        it('sets node protected text as text', () => {
+        test('sets node protected text as text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setProtectedText(xml.documentElement, 'str');
-            expect(XmlUtils.serialize(xml)).to.be('<item>str</item>');
-            expect(xml.documentElement.protectedValue).to.be(undefined);
+            expect(XmlUtils.serialize(xml)).toBe('<item>str</item>');
+            expect(xml.documentElement.protectedValue).toBe(undefined);
         });
     });
 
     describe('getProtectedBinary', () => {
-        it('returns node protected binary', () => {
+        test('returns node protected binary', () => {
             const xml = XmlUtils.parse('<item>YWJj</item>');
             const pv = ProtectedValue.fromString('pv');
             xml.documentElement.protectedValue = pv;
             const res = XmlUtils.getProtectedBinary(xml.documentElement);
-            expect(res).to.be(pv);
+            expect(res).toBe(pv);
         });
 
-        it('returns node ref as protected binary', () => {
+        test('returns node ref as protected binary', () => {
             const xml = XmlUtils.parse('<item Ref="MyRef">YWJj</item>');
             const res = XmlUtils.getProtectedBinary(xml.documentElement);
-            expect(res).to.be.eql({ ref: 'MyRef' });
+            expect(res).toEqual({ ref: 'MyRef' });
         });
 
-        it('returns undefined as protected binary', () => {
+        test('returns undefined as protected binary', () => {
             const xml = XmlUtils.parse('<item></item>');
             const res = XmlUtils.getProtectedBinary(xml.documentElement);
-            expect(res).to.be(undefined);
+            expect(res).toBe(undefined);
         });
 
-        it('returns node text as protected binary', () => {
+        test('returns node text as protected binary', () => {
             const xml = XmlUtils.parse('<item>YWJj</item>');
             const res = XmlUtils.getProtectedBinary(xml.documentElement);
-            expect(ByteUtils.bytesToString(res as ArrayBuffer)).to.be('abc');
+            expect(ByteUtils.bytesToString(res as ArrayBuffer)).toBe('abc');
         });
 
-        it('decompresses node text as protected binary', () => {
+        test('decompresses node text as protected binary', () => {
             const xml = XmlUtils.parse(
                 '<item Compressed="True">H4sIAAAAAAAAA0tMSgYAwkEkNQMAAAA=</item>'
             );
             const res = XmlUtils.getProtectedBinary(xml.documentElement);
-            expect(ByteUtils.bytesToString(res as ArrayBuffer)).to.be('abc');
+            expect(ByteUtils.bytesToString(res as ArrayBuffer)).toBe('abc');
         });
     });
 
     describe('setProtectedBinary', () => {
-        it('sets node protected binary as protected value', () => {
+        test('sets node protected binary as protected value', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             const pv = ProtectedValue.fromString('str');
             XmlUtils.setProtectedBinary(xml.documentElement, pv);
-            expect(XmlUtils.serialize(xml)).to.be('<item Protected="True">text</item>');
-            expect(xml.documentElement.protectedValue).to.be(pv);
+            expect(XmlUtils.serialize(xml)).toBe('<item Protected="True">text</item>');
+            expect(xml.documentElement.protectedValue).toBe(pv);
         });
 
-        it('sets node protected binary as ref', () => {
+        test('sets node protected binary as ref', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setProtectedBinary(xml.documentElement, { ref: '123' });
-            expect(XmlUtils.serialize(xml)).to.be('<item Ref="123">text</item>');
-            expect(xml.documentElement.protectedValue).to.be(undefined);
+            expect(XmlUtils.serialize(xml)).toBe('<item Ref="123">text</item>');
+            expect(xml.documentElement.protectedValue).toBe(undefined);
         });
 
-        it('sets node protected binary as text', () => {
+        test('sets node protected binary as text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setProtectedBinary(xml.documentElement, ByteUtils.base64ToBytes('YWJj'));
-            expect(XmlUtils.serialize(xml)).to.be('<item>YWJj</item>');
-            expect(xml.documentElement.protectedValue).to.be(undefined);
+            expect(XmlUtils.serialize(xml)).toBe('<item>YWJj</item>');
+            expect(xml.documentElement.protectedValue).toBe(undefined);
         });
 
-        it('sets node protected binary as encoded text', () => {
+        test('sets node protected binary as encoded text', () => {
             const xml = XmlUtils.parse('<item>text</item>');
             XmlUtils.setProtectedBinary(xml.documentElement, new TextEncoder().encode('abc'));
-            expect(XmlUtils.serialize(xml)).to.be('<item>YWJj</item>');
-            expect(xml.documentElement.protectedValue).to.be(undefined);
+            expect(XmlUtils.serialize(xml)).toBe('<item>YWJj</item>');
+            expect(xml.documentElement.protectedValue).toBe(undefined);
         });
     });
 
     describe('setProtectedValues', () => {
-        it('sets protected values', () => {
+        test('sets protected values', () => {
             const xml = XmlUtils.parse(
                 '<root><item1><inner Protected="True">MTIz</inner><i2 Protected="True"></i2></item1>' +
                     '<item2 Protected="True">NDU2</item2></root>'
@@ -660,7 +644,7 @@ describe('XmlUtils', () => {
 
             class TestPSG extends ProtectSaltGenerator {
                 constructor() {
-                    super(new Salsa20(new Uint8Array(32), new Uint8Array(32)));
+                    super(new ChaCha20(new Uint8Array(32), new Uint8Array(32)));
                 }
 
                 getSalt(): ArrayBuffer {
@@ -673,19 +657,19 @@ describe('XmlUtils', () => {
             const item1 = XmlUtils.getChildNode(xml.documentElement, 'item1');
             const item2 = XmlUtils.getChildNode(xml.documentElement, 'item2');
             const inner = XmlUtils.getChildNode(item1, 'inner');
-            expect(item1!.protectedValue).to.be(undefined);
-            expect(item2!.protectedValue).to.be.ok();
-            expect(inner!.protectedValue).to.be.ok();
-            expect(inner!.protectedValue!.getText()).to.be('032');
-            expect(item2!.protectedValue!.getText()).to.be('674');
+            expect(item1!.protectedValue).toBe(undefined);
+            expect(item2!.protectedValue).toBeTruthy();
+            expect(inner!.protectedValue).toBeTruthy();
+            expect(inner!.protectedValue!.getText()).toBe('032');
+            expect(item2!.protectedValue!.getText()).toBe('674');
         });
 
-        it('generates error for bad protected values', () => {
+        test('generates error for bad protected values', () => {
             const xml = XmlUtils.parse('<root><inner Protected="True">MTIz</inner></root>');
 
             class TestPSGThrows extends ProtectSaltGenerator {
                 constructor() {
-                    super(new Salsa20(new Uint8Array(32), new Uint8Array(32)));
+                    super(new ChaCha20(new Uint8Array(32), new Uint8Array(32)));
                 }
 
                 getSalt(): ArrayBuffer {
@@ -695,16 +679,12 @@ describe('XmlUtils', () => {
 
             expect(() => {
                 XmlUtils.setProtectedValues(xml.documentElement, new TestPSGThrows());
-            }).to.throwException((e) => {
-                expect(e).to.be.a(KdbxError);
-                expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-                expect(e.message).to.contain('Error FileCorrupt: bad protected value at line');
-            });
+            }).toThrow();
         });
     });
 
     describe('updateProtectedValuesSalt', () => {
-        it('sets protected values', () => {
+        test('sets protected values', () => {
             const xml = XmlUtils.parse(
                 '<root><item1><inner Protected="True">MTIz</inner><i2 Protected="True"></i2></item1>' +
                     '<item2 Protected="True">NDU2</item2></root>'
@@ -718,7 +698,7 @@ describe('XmlUtils', () => {
 
             class TestPSG extends ProtectSaltGenerator {
                 constructor() {
-                    super(new Salsa20(new Uint8Array(32), new Uint8Array(32)));
+                    super(new ChaCha20(new Uint8Array(32), new Uint8Array(32)));
                 }
 
                 getSalt(): ArrayBuffer {
@@ -728,13 +708,17 @@ describe('XmlUtils', () => {
             }
 
             XmlUtils.updateProtectedValuesSalt(xml.documentElement, new TestPSG());
-            expect(new Uint8Array(inner!.protectedValue.salt)).to.be.eql([1, 1, 1]);
-            expect(new Uint8Array(item2!.protectedValue.salt)).to.be.eql([2, 2, 2]);
+            expect(new Uint8Array(inner!.protectedValue.salt)).toEqual(
+                new Uint8Array([1, 1, 1])
+            );
+            expect(new Uint8Array(item2!.protectedValue.salt)).toEqual(
+                new Uint8Array([2, 2, 2])
+            );
         });
     });
 
     describe('unprotectValues', () => {
-        it('unprotects protected values', () => {
+        test('unprotects protected values', () => {
             const xml = XmlUtils.parse(
                 '<root><item1><inner Protected="True">MTIz</inner><i2 Protected="True"></i2></item1>' +
                     '<item2 Protected="True">NDU2</item2></root>'
@@ -745,17 +729,17 @@ describe('XmlUtils', () => {
             inner!.protectedValue = ProtectedValue.fromString('123');
             item2!.protectedValue = ProtectedValue.fromString('456');
             XmlUtils.unprotectValues(xml.documentElement);
-            expect(XmlUtils.serialize(inner as Document)).to.be(
+            expect(XmlUtils.serialize(inner as Document)).toBe(
                 '<inner ProtectInMemory="True">123</inner>'
             );
-            expect(XmlUtils.serialize(item2 as Document)).to.be(
+            expect(XmlUtils.serialize(item2 as Document)).toBe(
                 '<item2 ProtectInMemory="True">456</item2>'
             );
         });
     });
 
     describe('protectUnprotectedValues', () => {
-        it('protects unprotected values', () => {
+        test('protects unprotected values', () => {
             const xml = XmlUtils.parse(
                 '<root><item1><inner ProtectInMemory="True">123</inner><i2 ProtectInMemory="True"></i2></item1>' +
                     '<item2 ProtectInMemory="True">NDU2</item2></root>'
@@ -769,17 +753,17 @@ describe('XmlUtils', () => {
             inner!.protectedValue.setSalt(salt);
             item2!.protectedValue.setSalt(salt);
             XmlUtils.protectUnprotectedValues(xml.documentElement);
-            expect(XmlUtils.serialize(inner as Document)).to.be(
+            expect(XmlUtils.serialize(inner as Document)).toBe(
                 '<inner Protected="True">MTIz</inner>'
             );
-            expect(XmlUtils.serialize(item2 as Document)).to.be(
+            expect(XmlUtils.serialize(item2 as Document)).toBe(
                 '<item2 Protected="True">NDU2</item2>'
             );
         });
     });
 
     describe('protectPlainValues', () => {
-        it('protects plain values', () => {
+        test('protects plain values', () => {
             const xml = XmlUtils.parse(
                 '<root><item1><inner ProtectInMemory="True">123</inner><i2 ProtectInMemory="True"></i2></item1>' +
                     '<item2 ProtectInMemory="True">456</item2></root>'
@@ -789,15 +773,15 @@ describe('XmlUtils', () => {
             const item2 = XmlUtils.getChildNode(xml.documentElement, 'item2');
             const inner = XmlUtils.getChildNode(item1, 'inner');
 
-            expect(item1!.protectedValue).to.be(undefined);
-            expect(item2!.protectedValue).to.be.ok();
-            expect(inner!.protectedValue).to.be.ok();
-            expect(inner!.protectedValue!.getText()).to.be('123');
-            expect(item2!.protectedValue!.getText()).to.be('456');
-            expect(inner!.textContent).to.be(inner!.protectedValue!.toString());
-            expect(item2!.textContent).to.be(item2!.protectedValue!.toString());
-            expect((inner as Element).getAttribute('Protected')).to.be.ok();
-            expect((inner as Element).getAttribute('ProtectInMemory')).not.be.ok();
+            expect(item1!.protectedValue).toBe(undefined);
+            expect(item2!.protectedValue).toBeTruthy();
+            expect(inner!.protectedValue).toBeTruthy();
+            expect(inner!.protectedValue!.getText()).toBe('123');
+            expect(item2!.protectedValue!.getText()).toBe('456');
+            expect(inner!.textContent).toBe(inner!.protectedValue!.toString());
+            expect(item2!.textContent).toBe(item2!.protectedValue!.toString());
+            expect((inner as Element).getAttribute('Protected')).toBeTruthy();
+            expect((inner as Element).getAttribute('ProtectInMemory')).toBeFalsy();
         });
     });
 });

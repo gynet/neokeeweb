@@ -1,11 +1,11 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { Kdbx, KdbxContext, KdbxCustomData, KdbxCustomDataItem, XmlUtils } from '../../lib';
 
 describe('KdbxCustomData', () => {
     const kdbx = new Kdbx();
     const ctx = new KdbxContext({ kdbx });
 
-    it('reads custom data from xml', () => {
+    test('reads custom data from xml', () => {
         const xml = XmlUtils.parse(
             '<CustomData>' +
                 '<Item><Key>k1</Key><Value>v1</Value></Item>' +
@@ -13,35 +13,35 @@ describe('KdbxCustomData', () => {
                 '</CustomData>'
         );
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect([...cd.entries()]).to.eql([
+        expect([...cd.entries()]).toEqual([
             ['k1', { value: 'v1' }],
             ['k2', { value: 'v2' }]
         ]);
     });
 
-    it('reads empty custom data from empty xml', () => {
+    test('reads empty custom data from empty xml', () => {
         const xml = XmlUtils.parse('<CustomData></CustomData>');
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect(cd).to.eql({});
+        expect(cd).toEqual({});
     });
 
-    it('skips unknown tags', () => {
+    test('skips unknown tags', () => {
         const xml = XmlUtils.parse(
             '<CustomData><Item><Key>k</Key><Value>v</Value><x></x></Item><Something></Something></CustomData>'
         );
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect([...cd.entries()]).to.eql([['k', { value: 'v' }]]);
+        expect([...cd.entries()]).toEqual([['k', { value: 'v' }]]);
     });
 
-    it('skips empty keys', () => {
+    test('skips empty keys', () => {
         const xml = XmlUtils.parse(
             '<CustomData><Item><Key></Key><Value>v</Value></Item></CustomData>'
         );
         const cd = KdbxCustomData.read(xml.documentElement);
-        expect(cd).to.eql({});
+        expect(cd).toEqual({});
     });
 
-    it('writes custom data to xml', () => {
+    test('writes custom data to xml', () => {
         const xml = XmlUtils.create('root');
         KdbxCustomData.write(
             xml.documentElement,
@@ -51,7 +51,7 @@ describe('KdbxCustomData', () => {
                 ['k2', { value: 'v2' }]
             ])
         );
-        expect(XmlUtils.serialize(<Document>(<unknown>xml.documentElement))).to.eql(
+        expect(XmlUtils.serialize(<Document>(<unknown>xml.documentElement))).toEqual(
             '<root><CustomData>' +
                 '<Item><Key>k1</Key><Value>v1</Value></Item>' +
                 '<Item><Key>k2</Key><Value>v2</Value></Item>' +
@@ -59,23 +59,23 @@ describe('KdbxCustomData', () => {
         );
     });
 
-    it('writes empty custom data to xml', () => {
+    test('writes empty custom data to xml', () => {
         const xml = XmlUtils.create('root');
         KdbxCustomData.write(xml.documentElement, ctx, new Map());
         expect(
             XmlUtils.serialize(<Document>(<unknown>xml.documentElement)).replace(/\s/g, '')
-        ).to.eql('<root><CustomData/></root>');
+        ).toEqual('<root><CustomData/></root>');
     });
 
-    it('does not create tag for empty custom data', () => {
+    test('does not create tag for empty custom data', () => {
         const xml = XmlUtils.create('root');
         KdbxCustomData.write(xml.documentElement, ctx, undefined);
         expect(
             XmlUtils.serialize(<Document>(<unknown>xml.documentElement)).replace(/\s/g, '')
-        ).to.eql('<root/>');
+        ).toEqual('<root/>');
     });
 
-    it('skips keys without values', () => {
+    test('skips keys without values', () => {
         const xml = XmlUtils.create('root');
         KdbxCustomData.write(
             xml.documentElement,
@@ -86,7 +86,7 @@ describe('KdbxCustomData', () => {
                 ['k3', { value: undefined }]
             ])
         );
-        expect(XmlUtils.serialize(<Document>(<unknown>xml.documentElement))).to.eql(
+        expect(XmlUtils.serialize(<Document>(<unknown>xml.documentElement))).toEqual(
             '<root><CustomData>' +
                 '<Item><Key>k1</Key><Value>v1</Value></Item>' +
                 '</CustomData></root>'

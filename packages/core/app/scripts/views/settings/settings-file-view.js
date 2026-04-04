@@ -515,7 +515,7 @@ class SettingsFileView extends View {
         if (!backup) {
             backup = { enabled, schedule: DefaultBackupSchedule };
             const defaultPath = DefaultBackupPath.replace('{name}', this.model.name);
-            backup.storage = 'dropbox';
+            backup.storage = 'webdav';
             backup.path = defaultPath;
             // } else if (this.model.storage === 'webdav') {
             //     backup.storage = 'webdav';

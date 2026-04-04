@@ -1,4 +1,4 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { ByteUtils, ProtectedValue } from '../../lib';
 
 describe('ProtectedValue', () => {
@@ -10,74 +10,73 @@ describe('ProtectedValue', () => {
         encValueBytes[i] ^= i;
     }
 
-    it('decrypts salted value in string', () => {
+    test('decrypts salted value in string', () => {
         const value = new ProtectedValue(encValueBytes, saltBytes);
-        expect(value.getText()).to.be('strvalue');
+        expect(value.getText()).toBe('strvalue');
     });
 
-    it('returns string in binary', () => {
+    test('returns string in binary', () => {
         const value = new ProtectedValue(encValueBytes, saltBytes);
-        expect(value.getBinary()).to.be.eql(valueBytes);
+        expect(value.getBinary()).toEqual(valueBytes);
     });
 
-    it('checks substring', () => {
+    test('checks substring', () => {
         const value = new ProtectedValue(encValueBytes, saltBytes);
-        expect(value.includes('test')).to.be(false);
-        expect(value.includes('str')).to.be(true);
-        expect(value.includes('val')).to.be(true);
-        expect(value.includes('value')).to.be(true);
-        expect(value.includes('')).to.be(false);
+        expect(value.includes('test')).toBe(false);
+        expect(value.includes('str')).toBe(true);
+        expect(value.includes('val')).toBe(true);
+        expect(value.includes('value')).toBe(true);
+        expect(value.includes('')).toBe(false);
     });
 
-    it('calculates SHA512 hash', () => {
+    test('calculates SHA512 hash', async () => {
         const value = new ProtectedValue(encValueBytes, saltBytes);
-        return value.getHash().then((hash) => {
-            expect(ByteUtils.bytesToHex(hash)).to.be(
-                '1f5c3ef76d43e72ee2c5216c36187c799b153cab3d0cb63a6f3ecccc2627f535'
-            );
-        });
+        const hash = await value.getHash();
+        expect(ByteUtils.bytesToHex(hash)).toBe(
+            '1f5c3ef76d43e72ee2c5216c36187c799b153cab3d0cb63a6f3ecccc2627f535'
+        );
     });
 
-    it('creates value from string', () => {
+    test('creates value from string', () => {
         const value = ProtectedValue.fromString('test');
-        expect(value.getText()).to.be('test');
+        expect(value.getText()).toBe('test');
     });
 
-    it('creates value from binary', () => {
+    test('creates value from binary', () => {
         const value = ProtectedValue.fromBinary(ByteUtils.stringToBytes('test'));
-        expect(value.getText()).to.be('test');
+        expect(value.getText()).toBe('test');
     });
 
-    it('returns byte length', () => {
+    test('returns byte length', () => {
         const value = ProtectedValue.fromBinary(ByteUtils.stringToBytes('test'));
-        expect(value.byteLength).to.be(4);
+        expect(value.byteLength).toBe(4);
     });
 
-    it('can change salt', () => {
+    test('can change salt', () => {
         const value = ProtectedValue.fromString('test');
-        expect(value.getText()).to.be('test');
+        expect(value.getText()).toBe('test');
         value.setSalt(new Uint8Array([1, 2, 3, 4]).buffer);
-        expect(value.getText()).to.be('test');
+        expect(value.getText()).toBe('test');
     });
 
-    it('returns protected value as base64 string', () => {
+    test('returns protected value as base64 string', () => {
         const value = ProtectedValue.fromBinary(ByteUtils.stringToBytes('test'));
         value.setSalt(new Uint8Array([1, 2, 3, 4]).buffer);
-        expect(value.toString()).to.be('dWdwcA==');
+        expect(value.toString()).toBe('dWdwcA==');
     });
 
-    it('clones itself', () => {
+    test('clones itself', () => {
         const value = ProtectedValue.fromString('test').clone();
-        expect(value.getText()).to.be('test');
+        expect(value.getText()).toBe('test');
     });
 
-    it('creates a value from base64', () => {
+    test('creates a value from base64', () => {
         const value = ProtectedValue.fromBase64('aGVsbG8=');
-        expect(value.getText()).to.be('hello');
+        expect(value.getText()).toBe('hello');
     });
 
-    it('returns base64 of the value', () => {
+    test('returns base64 of the value', () => {
         const value = ProtectedValue.fromString('hello');
-        expect(value.toBase64()).to.be('aGVsbG8=');
+        expect(value.toBase64()).toBe('aGVsbG8=');
     });
 });

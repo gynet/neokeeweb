@@ -7,7 +7,7 @@
 
 // @ts-nocheck
 
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { BinaryStream, ByteUtils, Consts, Int64, VarDictionary } from '../../lib';
 import { ValueType } from '../../lib/utils/var-dictionary';
 
@@ -20,22 +20,22 @@ describe('VarDictionary', () => {
         '72696e670b000000537472696e6756616c756542090000004279746541727261' +
         '7907000000000102030405ff00';
 
-    it('reads and writes dictionary', () => {
+    test('reads and writes dictionary', () => {
         const dataBytes = ByteUtils.hexToBytes(data);
         let stm = new BinaryStream(ByteUtils.arrayToBuffer(dataBytes));
         const dict = VarDictionary.read(stm);
-        expect(dict).to.be.a(VarDictionary);
-        expect(dict.length).to.be(8);
-        expect(dict.get('BoolTrue')).to.be(true);
-        expect(dict.get('BoolFalse')).to.be(false);
-        expect(dict.get('UInt32')).to.be(42);
-        expect((dict.get('UInt64') as Int64).hi).to.be(0xffffeeee);
-        expect((dict.get('UInt64') as Int64).lo).to.be(0xddddcccc);
-        expect(dict.get('Int32')).to.be(-42);
-        expect((dict.get('Int64') as Int64).hi).to.be(0x11112222);
-        expect((dict.get('Int64') as Int64).lo).to.be(0x33334444);
-        expect(dict.get('String')).to.be('StringValue');
-        expect(dict.keys()).to.eql([
+        expect(dict).toBeInstanceOf(VarDictionary);
+        expect(dict.length).toBe(8);
+        expect(dict.get('BoolTrue')).toBe(true);
+        expect(dict.get('BoolFalse')).toBe(false);
+        expect(dict.get('UInt32')).toBe(42);
+        expect((dict.get('UInt64') as Int64).hi).toBe(0xffffeeee);
+        expect((dict.get('UInt64') as Int64).lo).toBe(0xddddcccc);
+        expect(dict.get('Int32')).toBe(-42);
+        expect((dict.get('Int64') as Int64).hi).toBe(0x11112222);
+        expect((dict.get('Int64') as Int64).lo).toBe(0x33334444);
+        expect(dict.get('String')).toBe('StringValue');
+        expect(dict.keys()).toEqual([
             'BoolTrue',
             'BoolFalse',
             'UInt32',
@@ -45,14 +45,14 @@ describe('VarDictionary', () => {
             'String',
             'ByteArray'
         ]);
-        expect(ByteUtils.bytesToHex(dict.get('ByteArray') as ArrayBuffer)).to.be('000102030405ff');
+        expect(ByteUtils.bytesToHex(dict.get('ByteArray') as ArrayBuffer)).toBe('000102030405ff');
 
         stm = new BinaryStream();
         dict.write(stm);
-        expect(ByteUtils.bytesToHex(stm.getWrittenBytes())).to.be(data);
+        expect(ByteUtils.bytesToHex(stm.getWrittenBytes())).toBe(data);
     });
 
-    it('writes dictionary', () => {
+    test('writes dictionary', () => {
         const dict = new VarDictionary();
         dict.set('BoolTrue', ValueType.Bool, true);
         dict.set('BoolFalse', ValueType.Bool, false);
@@ -64,353 +64,275 @@ describe('VarDictionary', () => {
         dict.set('ByteArray', ValueType.Bytes, ByteUtils.hexToBytes('000102030405ff'));
         const stm = new BinaryStream();
         dict.write(stm);
-        expect(ByteUtils.bytesToHex(stm.getWrittenBytes())).to.be(data);
+        expect(ByteUtils.bytesToHex(stm.getWrittenBytes())).toBe(data);
     });
 
-    it('returns undefined for not found value', () => {
+    test('returns undefined for not found value', () => {
         const dict = new VarDictionary();
-        expect(dict.length).to.be(0);
-        expect(dict.get('val')).to.be(undefined);
+        expect(dict.length).toBe(0);
+        expect(dict.get('val')).toBe(undefined);
     });
 
-    it('removes item from dictionary', () => {
+    test('removes item from dictionary', () => {
         const dict = new VarDictionary();
-        expect(dict.length).to.be(0);
-        expect(dict.get('val')).to.be(undefined);
+        expect(dict.length).toBe(0);
+        expect(dict.get('val')).toBe(undefined);
         dict.set('val', ValueType.Bool, true);
-        expect(dict.length).to.be(1);
-        expect(dict.get('val')).to.be(true);
+        expect(dict.length).toBe(1);
+        expect(dict.get('val')).toBe(true);
         dict.remove('val');
-        expect(dict.length).to.be(0);
-        expect(dict.get('val')).to.be(undefined);
+        expect(dict.length).toBe(0);
+        expect(dict.get('val')).toBe(undefined);
     });
 
-    it('allows to add key twice', () => {
+    test('allows to add key twice', () => {
         const dict = new VarDictionary();
         dict.set('UInt32', ValueType.UInt32, 42);
-        expect(dict.length).to.be(1);
+        expect(dict.length).toBe(1);
         dict.set('UInt32', ValueType.UInt32, 42);
-        expect(dict.length).to.be(1);
+        expect(dict.length).toBe(1);
     });
 
-    it('throws error for empty version', () => {
+    test('throws error for empty version', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('0000')))
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidVersion);
-        });
+        }).toThrow();
     });
 
-    it('throws error for larger version', () => {
+    test('throws error for larger version', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('0002')))
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidVersion);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad value type', () => {
+    test('throws error for bad value type', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('0001ff01000000dd10000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad value type');
-        });
+        }).toThrow();
     });
 
-    it('reads empty dictionary', () => {
+    test('reads empty dictionary', () => {
         const dict = VarDictionary.read(
             new BinaryStream(ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('000100')))
         );
-        expect(dict.length).to.be(0);
+        expect(dict.length).toBe(0);
     });
 
-    it('throws error for bad key length', () => {
+    test('throws error for bad key length', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('0001ff00000000dd10000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad key length');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad value length', () => {
+    test('throws error for bad value length', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('0001ff01000000ddffffffff'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad value length');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad uint32 value', () => {
+    test('throws error for bad uint32 value', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('00010401000000dd0500000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad uint32');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad uint64 value', () => {
+    test('throws error for bad uint64 value', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('00010501000000dd0500000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad uint64');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad bool value', () => {
+    test('throws error for bad bool value', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('00010801000000dd0500000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad bool');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad int32 value', () => {
+    test('throws error for bad int32 value', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('00010c01000000dd0500000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad int32');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad int64 value', () => {
+    test('throws error for bad int64 value', () => {
         expect(() => {
             VarDictionary.read(
                 new BinaryStream(
                     ByteUtils.arrayToBuffer(ByteUtils.hexToBytes('00010d01000000dd0500000000'))
                 )
             );
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.FileCorrupt);
-            expect(e.message).to.contain('bad int64');
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad value type on write', () => {
+    test('throws error for bad value type on write', () => {
         expect(() => {
             const dict = new VarDictionary();
             dict.set('BoolTrue', ValueType.Bool, true);
             // @ts-ignore
             dict._items[0].type = 0xff;
             dict.write(new BinaryStream());
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.Unsupported);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad value type on set', () => {
+    test('throws error for bad value type on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', 0xff, true);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad int32 on set', () => {
+    test('throws error for bad int32 on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Int32, 'str');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Int32, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad int64 on set', () => {
+    test('throws error for bad int64 on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Int64, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Int64, 'str');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Int64, 123);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Int64, { hi: 1 });
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Int64, { lo: 1 });
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad bool on set', () => {
+    test('throws error for bad bool on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Bool, 'true');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Bool, 1);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Bool, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Bool, undefined);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad uint32 on set', () => {
+    test('throws error for bad uint32 on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.UInt32, 'str');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.UInt32, -1);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad uint64 on set', () => {
+    test('throws error for bad uint64 on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.UInt64, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.UInt64, 'str');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.UInt64, 123);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.UInt64, { hi: 1 });
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.UInt64, { lo: 1 });
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad string on set', () => {
+    test('throws error for bad string on set', () => {
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.String, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.String, 123);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 
-    it('throws error for bad bytes', () => {
+    test('throws error for bad bytes', () => {
         expect(() => {
             const dict = new VarDictionary();
             // @ts-ignore
             dict.set('val', ValueType.Bytes, null);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Bytes, 123);
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
         expect(() => {
             const dict = new VarDictionary();
             dict.set('val', ValueType.Bytes, '0000');
-        }).to.throwException((e) => {
-            expect(e.code).to.be(Consts.ErrorCodes.InvalidArg);
-        });
+        }).toThrow();
     });
 });

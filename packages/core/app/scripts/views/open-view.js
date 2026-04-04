@@ -2,7 +2,6 @@ import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { Storage } from 'storage';
-import { DropboxChooser } from 'comp/app/dropbox-chooser';
 import { FocusDetector } from 'comp/browser/focus-detector';
 import { KeyHandler } from 'comp/browser/key-handler';
 import { SecureInput } from 'comp/browser/secure-input';
@@ -115,7 +114,7 @@ class OpenView extends View {
 
         super.render({
             lastOpenFiles: this.getLastOpenFiles(),
-            canOpenKeyFromDropbox: Storage.dropbox.enabled,
+            canOpenKeyFromDropbox: false,
             demoOpened: this.model.settings.demoOpened,
             storageProviders,
             unlockMessageRes: this.model.unlockMessageRes,
@@ -385,9 +384,7 @@ class OpenView extends View {
     }
 
     openKeyFile(e) {
-        if ($(e.target).hasClass('open__settings-key-file-dropbox')) {
-            this.openKeyFileFromDropbox();
-        } else if (!this.busy && this.params.name) {
+        if (!this.busy && this.params.name) {
             if (this.params.keyFileName) {
                 this.params.keyFileData = null;
                 this.params.keyFilePath = null;
@@ -397,19 +394,6 @@ class OpenView extends View {
             } else {
                 this.openAny('keyFileData');
             }
-        }
-    }
-
-    openKeyFileFromDropbox() {
-        if (!this.busy) {
-            new DropboxChooser((err, res) => {
-                if (err) {
-                    return;
-                }
-                this.params.keyFileData = res.data;
-                this.params.keyFileName = res.name;
-                this.displayOpenKeyFile();
-            }).choose();
         }
     }
 

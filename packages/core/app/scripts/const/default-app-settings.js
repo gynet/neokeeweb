@@ -72,28 +72,9 @@ const DefaultAppSettings = {
     canOpenGenerator: true, // can open password generator
     canOpenOtpDevice: true, // can open OTP codes from USB tokens
 
-    dropbox: true, // enable Dropbox integration
-    dropboxFolder: null, // default folder path
-    dropboxAppKey: null, // custom Dropbox app key
-    dropboxSecret: null, // custom Dropbox app secret
-
     webdav: true, // enable WebDAV integration
     webdavSaveMethod: 'move', // how to save files with WebDAV: "move" or "put"
-    webdavStatReload: false, // WebDAV: reload the file instead of relying on Last-Modified
-
-    gdrive: true, // enable Google Drive integration
-    gdriveClientId: null, // custom Google Drive client id
-    gdriveClientSecret: null, // custom Google Drive client secret
-
-    onedrive: true, // enable OneDrive integration
-    onedriveClientId: null, // custom OneDrive client id
-    onedriveClientSecret: null, // custom OneDrive client secret
-    onedriveTenantId: null, // custom OneDrive tenant id
-
-    msteams: false, // enable Microsoft Teams integration
-    msteamsClientId: null, // custom Microsoft Teams client id
-    msteamsClientSecret: null, // custom Microsoft Teams client secret
-    msteamsTenantId: null // custom Microsoft Teams tenant id
+    webdavStatReload: false // WebDAV: reload the file instead of relying on Last-Modified
 };
 
 export { DefaultAppSettings };

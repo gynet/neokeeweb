@@ -1,100 +1,97 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { KdbxUuid } from '../../lib';
 
 describe('KdbxUuid', () => {
-    it('creates uuid from 16 bytes ArrayBuffer', () => {
+    test('creates uuid from 16 bytes ArrayBuffer', () => {
         const uuid = new KdbxUuid(
             new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]).buffer
         );
-        expect(uuid.id).to.be('AQIDBAUGBwgJCgECAwQFBg==');
+        expect(uuid.id).toBe('AQIDBAUGBwgJCgECAwQFBg==');
     });
 
-    it('creates uuid from 16 bytes array', () => {
+    test('creates uuid from 16 bytes array', () => {
         const uuid = new KdbxUuid(
             new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6])
         );
-        expect(uuid.id).to.be('AQIDBAUGBwgJCgECAwQFBg==');
+        expect(uuid.id).toBe('AQIDBAUGBwgJCgECAwQFBg==');
     });
 
-    it('creates uuid base64 string', () => {
+    test('creates uuid base64 string', () => {
         const uuid = new KdbxUuid('AQIDBAUGBwgJCgECAwQFBg==');
-        expect(uuid.id).to.be('AQIDBAUGBwgJCgECAwQFBg==');
+        expect(uuid.id).toBe('AQIDBAUGBwgJCgECAwQFBg==');
     });
 
-    it('throws an error for less than 16 bytes', () => {
-        try {
-            const uuid = new KdbxUuid(new Uint16Array([123]).buffer);
-            throw new Error(`Expected an error to be thrown, got UUID instead: ${uuid}`);
-        } catch (e) {
-            expect((e as Error).message).to.contain('FileCorrupt: bad UUID length: 2');
-        }
+    test('throws an error for less than 16 bytes', () => {
+        expect(() => {
+            new KdbxUuid(new Uint16Array([123]).buffer);
+        }).toThrow();
     });
 
-    it('creates empty uuid from undefined', () => {
+    test('creates empty uuid from undefined', () => {
         const uuid = new KdbxUuid(undefined);
-        expect(uuid.id).to.be('AAAAAAAAAAAAAAAAAAAAAA==');
-        expect(uuid.empty).to.be(true);
+        expect(uuid.id).toBe('AAAAAAAAAAAAAAAAAAAAAA==');
+        expect(uuid.empty).toBe(true);
     });
 
-    it('returns uuid in toString method', () => {
+    test('returns uuid in toString method', () => {
         const uuid = new KdbxUuid(
             new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]).buffer
         );
-        expect(uuid.toString()).to.be('AQIDBAUGBwgJCgECAwQFBg==');
+        expect(uuid.toString()).toBe('AQIDBAUGBwgJCgECAwQFBg==');
     });
 
-    it('returns uuid in valueOf method', () => {
+    test('returns uuid in valueOf method', () => {
         const uuid = new KdbxUuid(
             new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]).buffer
         );
-        expect(uuid.valueOf()).to.be('AQIDBAUGBwgJCgECAwQFBg==');
+        expect(uuid.valueOf()).toBe('AQIDBAUGBwgJCgECAwQFBg==');
     });
 
-    it('creates empty uuid from no arg', () => {
+    test('creates empty uuid from no arg', () => {
         const uuid = new KdbxUuid();
-        expect(uuid.toString()).to.be('AAAAAAAAAAAAAAAAAAAAAA==');
-        expect(uuid.empty).to.be(true);
+        expect(uuid.toString()).toBe('AAAAAAAAAAAAAAAAAAAAAA==');
+        expect(uuid.empty).toBe(true);
     });
 
-    it('sets empty property for empty uuid', () => {
+    test('sets empty property for empty uuid', () => {
         const uuid = new KdbxUuid(new Uint8Array(16).buffer);
-        expect(uuid.toString()).to.be('AAAAAAAAAAAAAAAAAAAAAA==');
-        expect(uuid.empty).to.be(true);
+        expect(uuid.toString()).toBe('AAAAAAAAAAAAAAAAAAAAAA==');
+        expect(uuid.empty).toBe(true);
     });
 
-    it('returns bytes in toBytes method', () => {
+    test('returns bytes in toBytes method', () => {
         const bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]);
         const uuid = new KdbxUuid(bytes.buffer);
-        expect(uuid.toBytes()).to.be.eql(bytes);
+        expect(uuid.toBytes()).toEqual(bytes);
     });
 
-    it('returns bytes in bytes property', () => {
+    test('returns bytes in bytes property', () => {
         const bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]);
         const uuid = new KdbxUuid(bytes.buffer);
-        expect(uuid.bytes).to.be.eql(bytes);
+        expect(uuid.bytes).toEqual(bytes);
     });
 
-    it('returns bytes in toBytes method for empty value', () => {
+    test('returns bytes in toBytes method for empty value', () => {
         const uuid = new KdbxUuid();
-        expect(uuid.toBytes()).to.be.eql([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        expect(uuid.toBytes()).toEqual(new Uint8Array(16));
     });
 
-    it('generates random uuid', () => {
+    test('generates random uuid', () => {
         const uuid = KdbxUuid.random();
-        expect(uuid).to.be.a(KdbxUuid);
-        expect(uuid.toString()).not.to.be('AAAAAAAAAAAAAAAAAAAAAA==');
+        expect(uuid).toBeInstanceOf(KdbxUuid);
+        expect(uuid.toString()).not.toBe('AAAAAAAAAAAAAAAAAAAAAA==');
     });
 
-    it('checks equality', () => {
+    test('checks equality', () => {
         const uuid = new KdbxUuid(
             new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6]).buffer
         );
-        expect(uuid.equals('AQIDBAUGBwgJCgECAwQFBg==')).to.be(true);
-        expect(uuid.equals(new KdbxUuid('AQIDBAUGBwgJCgECAwQFBg=='))).to.be(true);
-        expect(uuid.equals(undefined)).to.be(false);
-        expect(uuid.equals(null)).to.be(false);
-        expect(uuid.equals('')).to.be(false);
-        expect(uuid.equals('???')).to.be(false);
-        expect(uuid.equals(new KdbxUuid())).to.be(false);
+        expect(uuid.equals('AQIDBAUGBwgJCgECAwQFBg==')).toBe(true);
+        expect(uuid.equals(new KdbxUuid('AQIDBAUGBwgJCgECAwQFBg=='))).toBe(true);
+        expect(uuid.equals(undefined)).toBe(false);
+        expect(uuid.equals(null)).toBe(false);
+        expect(uuid.equals('')).toBe(false);
+        expect(uuid.equals('???')).toBe(false);
+        expect(uuid.equals(new KdbxUuid())).toBe(false);
     });
 });

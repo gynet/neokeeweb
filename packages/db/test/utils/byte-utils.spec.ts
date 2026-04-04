@@ -1,24 +1,24 @@
-import expect from 'expect.js';
+import { describe, test, expect } from 'bun:test';
 import { ByteUtils } from '../../lib';
 
 describe('ByteUtils', () => {
     describe('arrayBufferEquals', () => {
-        it('returns true for equal ArrayBuffers', () => {
+        test('returns true for equal ArrayBuffers', () => {
             const ab1 = new Int8Array([1, 2, 3]).buffer;
             const ab2 = new Int8Array([1, 2, 3]).buffer;
-            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).to.be(true);
+            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).toBe(true);
         });
 
-        it('returns false for ArrayBuffers of different length', () => {
+        test('returns false for ArrayBuffers of different length', () => {
             const ab1 = new Int8Array([1, 2, 3]).buffer;
             const ab2 = new Int8Array([1, 2, 3, 4]).buffer;
-            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).to.be(false);
+            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).toBe(false);
         });
 
-        it('returns false for different ArrayBuffers', () => {
+        test('returns false for different ArrayBuffers', () => {
             const ab1 = new Int8Array([1, 2, 3]).buffer;
             const ab2 = new Int8Array([3, 2, 1]).buffer;
-            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).to.be(false);
+            expect(ByteUtils.arrayBufferEquals(ab1, ab2)).toBe(false);
         });
     });
 
@@ -30,18 +30,18 @@ describe('ByteUtils', () => {
     ]);
 
     describe('bytesToString', () => {
-        it('converts Array to string', () => {
-            expect(ByteUtils.bytesToString(strBytes)).to.be(str);
+        test('converts Array to string', () => {
+            expect(ByteUtils.bytesToString(strBytes)).toBe(str);
         });
 
-        it('converts ArrayBuffer to string', () => {
-            expect(ByteUtils.bytesToString(strBytes.buffer)).to.be(str);
+        test('converts ArrayBuffer to string', () => {
+            expect(ByteUtils.bytesToString(strBytes.buffer)).toBe(str);
         });
     });
 
     describe('stringToBytes', () => {
-        it('converts string to Array', () => {
-            expect(ByteUtils.stringToBytes(str)).to.be.eql(strBytes);
+        test('converts string to Array', () => {
+            expect(ByteUtils.stringToBytes(str)).toEqual(strBytes);
         });
     });
 
@@ -51,16 +51,16 @@ describe('ByteUtils', () => {
     ]);
 
     describe('base64ToBytes', () => {
-        it('converts base64-string to byte array', () => {
-            expect(ByteUtils.base64ToBytes(base64)).to.be.eql(bytes);
+        test('converts base64-string to byte array', () => {
+            expect(ByteUtils.base64ToBytes(base64)).toEqual(bytes);
         });
 
-        it('converts base64-string to byte array using Buffer', () => {
+        test('converts base64-string to byte array using Buffer', () => {
             const atob = global.atob;
             // @ts-ignore
             global.atob = undefined;
             try {
-                expect(ByteUtils.base64ToBytes(base64)).to.be.eql(bytes);
+                expect(ByteUtils.base64ToBytes(base64)).toEqual(bytes);
             } finally {
                 global.atob = atob;
             }
@@ -68,20 +68,20 @@ describe('ByteUtils', () => {
     });
 
     describe('bytesToBase64', () => {
-        it('converts byte array to base64-string', () => {
-            expect(ByteUtils.bytesToBase64(bytes)).to.be.eql(base64);
+        test('converts byte array to base64-string', () => {
+            expect(ByteUtils.bytesToBase64(bytes)).toBe(base64);
         });
 
-        it('converts ArrayBuffer base64-string', () => {
-            expect(ByteUtils.bytesToBase64(bytes.buffer)).to.be.eql(base64);
+        test('converts ArrayBuffer base64-string', () => {
+            expect(ByteUtils.bytesToBase64(bytes.buffer)).toBe(base64);
         });
 
-        it('converts byte array to base64-string using Buffer', () => {
+        test('converts byte array to base64-string using Buffer', () => {
             const btoa = global.btoa;
             // @ts-ignore
             global.btoa = undefined;
             try {
-                expect(ByteUtils.bytesToBase64(bytes)).to.be.eql(base64);
+                expect(ByteUtils.bytesToBase64(bytes)).toBe(base64);
             } finally {
                 global.btoa = btoa;
             }
@@ -94,61 +94,61 @@ describe('ByteUtils', () => {
     ]);
 
     describe('hexToBytes', () => {
-        it('converts hex string to byte array', () => {
-            expect(ByteUtils.hexToBytes(hexString)).to.be.eql(hexBytes);
+        test('converts hex string to byte array', () => {
+            expect(ByteUtils.hexToBytes(hexString)).toEqual(hexBytes);
         });
 
-        it('converts hex string in uppercase to byte array', () => {
-            expect(ByteUtils.hexToBytes(hexString.toUpperCase())).to.be.eql(hexBytes);
+        test('converts hex string in uppercase to byte array', () => {
+            expect(ByteUtils.hexToBytes(hexString.toUpperCase())).toEqual(hexBytes);
         });
     });
 
     describe('bytesToHex', () => {
-        it('converts byte array to hex string', () => {
-            expect(ByteUtils.bytesToHex(hexBytes)).to.be.eql(hexString);
+        test('converts byte array to hex string', () => {
+            expect(ByteUtils.bytesToHex(hexBytes)).toBe(hexString);
         });
 
-        it('converts ArrayBuffer to hex string', () => {
-            expect(ByteUtils.bytesToHex(hexBytes.buffer)).to.be.eql(hexString);
+        test('converts ArrayBuffer to hex string', () => {
+            expect(ByteUtils.bytesToHex(hexBytes.buffer)).toBe(hexString);
         });
     });
 
     describe('zeroBuffer', () => {
-        it('fills array with zeroes', () => {
+        test('fills array with zeroes', () => {
             const arr = new Uint8Array([1, 2, 3]);
             ByteUtils.zeroBuffer(arr);
-            expect(arr).to.be.eql([0, 0, 0]);
+            expect(arr).toEqual(new Uint8Array([0, 0, 0]));
         });
 
-        it('fills array buffer with zeroes', () => {
+        test('fills array buffer with zeroes', () => {
             const arr = new Uint8Array([1, 2, 3]);
             ByteUtils.zeroBuffer(arr.buffer);
-            expect(arr).to.be.eql([0, 0, 0]);
+            expect(arr).toEqual(new Uint8Array([0, 0, 0]));
         });
     });
 
     describe('arrayToBuffer', () => {
-        it('converts array to buffer', () => {
+        test('converts array to buffer', () => {
             const ab = ByteUtils.arrayToBuffer(new Uint8Array(4));
-            expect(ab).to.be.an(ArrayBuffer);
-            expect(ab.byteLength).to.be(4);
+            expect(ab).toBeInstanceOf(ArrayBuffer);
+            expect(ab.byteLength).toBe(4);
         });
 
-        it('converts buffer to buffer', () => {
+        test('converts buffer to buffer', () => {
             const ab = ByteUtils.arrayToBuffer(new Uint8Array(4).buffer);
-            expect(ab).to.be.an(ArrayBuffer);
-            expect(ab.byteLength).to.be(4);
+            expect(ab).toBeInstanceOf(ArrayBuffer);
+            expect(ab.byteLength).toBe(4);
         });
 
-        it('makes sliced buffer from sliced array', () => {
+        test('makes sliced buffer from sliced array', () => {
             const srcAb = new ArrayBuffer(10);
             const arr = new Uint8Array(srcAb, 1, 4);
             arr[0] = 1;
-            expect(arr.buffer.byteLength).to.be(10);
+            expect(arr.buffer.byteLength).toBe(10);
             const ab = ByteUtils.arrayToBuffer(arr);
-            expect(ab).to.be.an(ArrayBuffer);
-            expect(ab.byteLength).to.be(4);
-            expect(new Uint8Array(ab)[0]).to.be(1);
+            expect(ab).toBeInstanceOf(ArrayBuffer);
+            expect(ab.byteLength).toBe(4);
+            expect(new Uint8Array(ab)[0]).toBe(1);
         });
     });
 });
