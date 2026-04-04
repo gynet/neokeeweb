@@ -72,28 +72,12 @@ interface AppSettings {
     canOpenGenerator: boolean;
     canOpenOtpDevice: boolean;
 
-    dropbox: boolean;
-    dropboxFolder: string | null;
-    dropboxAppKey: string | null;
-    dropboxSecret: string | null;
-
     webdav: boolean;
     webdavSaveMethod: string;
     webdavStatReload: boolean;
 
-    gdrive: boolean;
-    gdriveClientId: string | null;
-    gdriveClientSecret: string | null;
-
-    onedrive: boolean;
-    onedriveClientId: string | null;
-    onedriveClientSecret: string | null;
-    onedriveTenantId: string | null;
-
-    msteams: boolean;
-    msteamsClientId: string | null;
-    msteamsClientSecret: string | null;
-    msteamsTenantId: string | null;
+    /** Allow indexing by string for dynamic property access in Model base class */
+    [key: string]: unknown;
 }
 
 const DefaultAppSettings: AppSettings = {

@@ -1,13 +1,37 @@
 import { Model } from 'framework/model';
 
+interface AttachmentData {
+    title: string;
+    data: unknown;
+}
+
+interface AttachmentProperties {
+    title: string | undefined;
+    data: unknown;
+    ext: string | undefined;
+    icon: string | undefined;
+    mimeType: string | undefined;
+}
+
 class AttachmentModel extends Model {
-    getBinary() {
-        let data = this.data;
-        if (data?.value) {
-            data = data.value;
+    declare title: string | undefined;
+    declare data: unknown;
+    declare ext: string | undefined;
+    declare icon: string | undefined;
+    declare mimeType: string | undefined;
+
+    getBinary(): Uint8Array | undefined {
+        let data = this.data as
+            | Uint8Array
+            | ArrayBuffer
+            | { value?: unknown; getBinary?: () => unknown }
+            | null;
+
+        if (data && typeof data === 'object' && 'value' in data) {
+            data = data.value as typeof data;
         }
-        if (data?.getBinary) {
-            data = data.getBinary();
+        if (data && typeof data === 'object' && 'getBinary' in data && typeof data.getBinary === 'function') {
+            data = data.getBinary() as typeof data;
         }
         if (data instanceof ArrayBuffer && data.byteLength) {
             data = new Uint8Array(data);
@@ -15,9 +39,10 @@ class AttachmentModel extends Model {
         if (data instanceof Uint8Array) {
             return data;
         }
+        return undefined;
     }
 
-    static fromAttachment(att) {
+    static fromAttachment(att: AttachmentData): AttachmentModel {
         const ext = getExtension(att.title);
         return new AttachmentModel({
             title: att.title,
@@ -37,12 +62,12 @@ AttachmentModel.defineModelProperties({
     mimeType: undefined
 });
 
-function getExtension(fileName) {
+function getExtension(fileName: string | undefined): string | undefined {
     const ext = fileName ? fileName.split('.').pop() : undefined;
     return ext ? ext.toLowerCase() : undefined;
 }
 
-function getIcon(ext) {
+function getIcon(ext: string | undefined): string {
     switch (ext) {
         case 'txt':
         case 'log':
@@ -122,11 +147,12 @@ function getIcon(ext) {
         case 'wav':
         case 'flac':
             return 'file-audio';
+        default:
+            return 'file';
     }
-    return 'file';
 }
 
-function getMimeType(ext) {
+function getMimeType(ext: string | undefined): string | undefined {
     switch (ext) {
         case 'txt':
         case 'log':
@@ -166,7 +192,10 @@ function getMimeType(ext) {
         case 'tiff':
         case 'svg':
             return 'image/' + ext;
+        default:
+            return undefined;
     }
 }
 
 export { AttachmentModel };
+export type { AttachmentProperties };

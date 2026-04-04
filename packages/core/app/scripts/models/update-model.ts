@@ -1,26 +1,50 @@
 import { Model } from 'framework/model';
 import { SettingsStore } from 'comp/settings/settings-store';
 
+interface UpdateModelProperties {
+    lastSuccessCheckDate: Date | null;
+    lastCheckDate: Date | null;
+    lastVersion: string | null;
+    lastVersionReleaseDate: Date | null;
+    lastCheckError: string | null;
+    lastCheckUpdMin: number | null;
+    status: string | null;
+    updateStatus: string | null;
+    updateError: string | null;
+    updateManual: boolean;
+}
+
 class UpdateModel extends Model {
-    load() {
+    declare lastSuccessCheckDate: Date | null;
+    declare lastCheckDate: Date | null;
+    declare lastVersion: string | null;
+    declare lastVersionReleaseDate: Date | null;
+    declare lastCheckError: string | null;
+    declare lastCheckUpdMin: number | null;
+    declare status: string | null;
+    declare updateStatus: string | null;
+    declare updateError: string | null;
+    declare updateManual: boolean;
+
+    load(): Promise<void> {
         return SettingsStore.load('update-info').then((data) => {
             if (data) {
                 try {
                     for (const [key, val] of Object.entries(data)) {
                         if (/Date$/.test(key)) {
-                            data[key] = val ? new Date(val) : null;
+                            data[key] = val ? new Date(val as string | number) : null;
                         }
                     }
                     this.set(data, { silent: true });
-                } catch (e) {
+                } catch {
                     /* failed to load model */
                 }
             }
         });
     }
 
-    save() {
-        const attr = { ...this };
+    save(): void {
+        const attr: Record<string, unknown> = { ...(this as unknown as Record<string, unknown>) };
         for (const key of Object.keys(attr)) {
             if (key.lastIndexOf('update', 0) === 0) {
                 delete attr[key];
@@ -46,3 +70,4 @@ UpdateModel.defineModelProperties({
 const instance = new UpdateModel();
 
 export { instance as UpdateModel };
+export type { UpdateModelProperties };

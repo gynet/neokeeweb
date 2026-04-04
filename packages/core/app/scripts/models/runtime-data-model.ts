@@ -7,7 +7,7 @@ class RuntimeDataModel extends Model {
         this.on('change', () => this.save());
     }
 
-    load() {
+    load(): Promise<void> {
         return SettingsStore.load('runtime-data').then((data) => {
             if (data) {
                 this.set(data, { silent: true });
@@ -15,7 +15,7 @@ class RuntimeDataModel extends Model {
         });
     }
 
-    save() {
+    save(): void {
         SettingsStore.save('runtime-data', this);
     }
 }
@@ -23,6 +23,6 @@ class RuntimeDataModel extends Model {
 RuntimeDataModel.defineModelProperties({}, { extensions: true });
 
 const instance = new RuntimeDataModel();
-window.RuntimeDataModel = instance;
+(window as unknown as Record<string, unknown>).RuntimeDataModel = instance;
 
 export { instance as RuntimeDataModel };
