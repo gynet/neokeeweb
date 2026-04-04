@@ -1,3 +1,4 @@
+import '../styles/main.scss';
 import { Events } from 'framework/events';
 import { StartProfiler } from 'comp/app/start-profiler';
 import { FileInfoCollection } from 'collections/file-info-collection';

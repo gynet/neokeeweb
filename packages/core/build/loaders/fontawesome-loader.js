@@ -5,7 +5,8 @@ const SVGIcons2SVGFontStream = require('svgicons2svgfont');
 const svg2ttf = require('svg2ttf');
 const wawoff2 = require('wawoff2');
 
-const svgBaseDir = path.resolve('node_modules/@fortawesome/fontawesome-free/svgs/');
+const faDir = path.dirname(require.resolve('@fortawesome/fontawesome-free/package.json'));
+const svgBaseDir = path.join(faDir, 'svgs');
 const svgDirs = ['brands', 'regular', 'solid']
     .map((dir) => path.join(svgBaseDir, dir))
     .concat('graphics/svg');
