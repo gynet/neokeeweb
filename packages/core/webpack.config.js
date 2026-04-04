@@ -213,7 +213,7 @@ module.exports = (env, argv) => {
                     ', (c) ' +
                     year +
                     ' ' +
-                    pkg.author.name +
+                    (typeof pkg.author === 'string' ? pkg.author : pkg.author.name) +
                     ', opensource.org/licenses/' +
                     pkg.license
             ),
@@ -231,6 +231,7 @@ module.exports = (env, argv) => {
         ],
         externals: {
             xmldom: 'null',
+            '@xmldom/xmldom': 'null',
             crypto: 'null',
             fs: 'null',
             path: 'null'

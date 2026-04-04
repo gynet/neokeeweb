@@ -25,7 +25,9 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "ajv": "^8.12.0",
     "autoprefixer": "^10.2.5",
+    "events": "^3.3.0",
     "base64-loader": "^1.0.0",
     "css-loader": "^5.2.4",
     "exports-loader": "^5.0.0",
