@@ -23,7 +23,8 @@ jobs:
       - run: bun install
       - run: cd packages/extension && bun run build-chrome
       - run: cd packages/extension && bunx playwright install chromium --with-deps
-      - run: cd packages/extension && bunx playwright test --config playwright.config.ts || true
+      - run: sudo apt-get install -y xvfb
+      - run: cd packages/extension && xvfb-run bunx playwright test --config playwright.config.ts || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
