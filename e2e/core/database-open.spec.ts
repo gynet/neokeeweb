@@ -98,7 +98,7 @@ test.describe('Database Open Operations', () => {
         }
 
         test('opens KDBX4.1 file with correct password', async ({ page }) => {
-            test.setTimeout(120_000);
+            test.setTimeout(30_000);
             await page.goto('/');
             await page.waitForLoadState('networkidle');
             await expect(page.locator('#open__icon-open')).toBeVisible({ timeout: 15_000 });
@@ -121,10 +121,10 @@ test.describe('Database Open Operations', () => {
             // Click the enter/submit button to open the database
             await page.locator('.open__pass-enter-btn').click();
 
-            // Argon2 key derivation can be slow (several seconds in browser).
+            // KDBX4.1.kdbx uses AES-KDF with 60,000 rounds (fast via WebCrypto).
             // Wait for the database to fully load — list items should appear.
             const listItems = page.locator('.list__item');
-            await expect(listItems.first()).toBeVisible({ timeout: 90_000 });
+            await expect(listItems.first()).toBeVisible({ timeout: 15_000 });
 
             const count = await listItems.count();
             expect(count).toBeGreaterThan(0);
@@ -136,7 +136,7 @@ test.describe('Database Open Operations', () => {
         });
 
         test('rejects KDBX4 file with wrong password', async ({ page }) => {
-            test.setTimeout(120_000);
+            test.setTimeout(30_000);
             await page.goto('/');
             await page.waitForLoadState('networkidle');
             await expect(page.locator('#open__icon-open')).toBeVisible({ timeout: 15_000 });
@@ -148,8 +148,8 @@ test.describe('Database Open Operations', () => {
 
             // With wrong password, the input should shake (get input--error class)
             // and the open view should remain visible (no list items appear).
-            // The password input gets the error class after the key derivation fails.
-            await expect(passwordInput).toHaveClass(/input--error/, { timeout: 90_000 });
+            // AES-KDF with 60K rounds completes quickly; error shows within seconds.
+            await expect(passwordInput).toHaveClass(/input--error/, { timeout: 15_000 });
 
             await page.screenshot({
                 path: `${SCREENSHOT_DIR}/07-wrong-password-error.png`,
