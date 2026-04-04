@@ -1,25 +1,51 @@
 import { test, expect } from './fixtures';
+import { createServer, type Server } from 'http';
+
+let server: Server;
+let serverPort: number;
+
+test.beforeAll(async () => {
+    server = createServer((_req, res) => {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`<!DOCTYPE html>
+<html>
+<head><title>Test Login</title></head>
+<body>
+    <form>
+        <input type="text" name="username" />
+        <input type="password" name="password" />
+        <button type="submit">Login</button>
+    </form>
+</body>
+</html>`);
+    });
+    await new Promise<void>((resolve) => {
+        server.listen(0, '127.0.0.1', () => resolve());
+    });
+    const addr = server.address();
+    serverPort = typeof addr === 'object' && addr ? addr.port : 0;
+});
+
+test.afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+    });
+});
 
 test('content script injects on login page', async ({ context }) => {
     const page = await context.newPage();
 
-    // Create a simple login form page
-    await page.setContent(`
-        <form>
-            <input type="text" name="username" />
-            <input type="password" name="password" />
-            <button type="submit">Login</button>
-        </form>
-    `);
+    // Navigate to a real HTTP URL so the extension context is active
+    await page.goto(`http://127.0.0.1:${serverPort}/`);
 
     // Verify the form elements exist
     await expect(page.locator('input[name="username"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toBeVisible();
 
-    // Content script should be active — the extension is loaded in this context.
-    // Full autofill verification requires a running KeeWeb app connection,
-    // but we can verify the page is accessible and form elements are present.
+    // Content script injection requires a running KeeWeb app connection,
+    // but we verify the page is reachable and form elements are present
+    // inside a real browser context with the extension loaded.
     await page.close();
 });
 
