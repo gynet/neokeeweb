@@ -16,6 +16,7 @@ Forked from [KeeWeb](https://github.com/keeweb/keeweb) (12.9k stars, stalled sin
 | Extension | Chrome/Firefox/Edge/Safari | **Chrome/Firefox/Edge** |
 | Dependencies | ~80 packages | **~20 packages** |
 | Desktop | Electron v13, native modules | **Removed** |
+| Storage | Dropbox, GDrive, OneDrive, WebDAV | **WebDAV + IndexedDB** (OAuth providers removed) |
 
 ## Quick Start
 
@@ -64,7 +65,7 @@ Web-based password manager UI. PWA-ready.
 
 - Custom MV* framework with Handlebars templates
 - SCSS styling with FontAwesome icons
-- Cloud storage: WebDAV, Dropbox, Google Drive, OneDrive
+- Storage: WebDAV + browser IndexedDB (see [Storage](#storage) below)
 - Browser extension integration via encrypted protocol
 
 ### `@neokeeweb/extension`
@@ -93,6 +94,26 @@ bun run watch-chrome     # Watch mode for Chrome
 bun run watch-firefox    # Watch mode for Firefox
 ```
 
+## Storage
+
+NeoKeeWeb supports two storage backends:
+
+| Backend | Protocol | Auth | Use Case |
+|---------|----------|------|----------|
+| **WebDAV** | HTTPS | Basic Auth | Self-hosted (Nextcloud, Synology, any WebDAV server) |
+| **IndexedDB** | Browser API | None | Local browser storage, offline access |
+
+**Why no Google Drive / Dropbox / OneDrive?**
+
+The upstream KeeWeb OAuth apps are broken:
+- **Google Drive**: Blocked by Google — requires Tier 3 CASA security audit for `drive` scope. The app was never re-verified.
+- **OneDrive**: Uses deprecated OAuth v1 endpoint. Fails for personal Microsoft accounts.
+- **Dropbox**: Works upstream but requires maintaining a registered Dropbox app with their review process.
+
+Maintaining OAuth apps for 3 cloud providers is a significant ongoing burden (security audits, scope reviews, API changes). WebDAV is a universal protocol that works with all major cloud storage providers that support it — including Nextcloud, ownCloud, Synology, and many others.
+
+Cloud provider support may return in Phase 2 with user-provided OAuth credentials.
+
 ## Security
 
 - **KDBX4 only** — no legacy crypto (Salsa20, AES-KDF removed)
@@ -109,13 +130,15 @@ bun run watch-firefox    # Watch mode for Firefox
 - [x] Merge 3 repos into monorepo
 - [x] Strip Electron/desktop code
 - [x] Set up Bun workspace + modern build
+- [x] Strip OAuth storage providers (keep WebDAV + IndexedDB)
 - [ ] Complete TypeScript migration (core)
 - [ ] Drop KDBX3 support
 - [ ] E2E testing: create → read → write → verify
 - [ ] CI/CD with GitHub Actions
 
 ### Phase 2: New Features (planned)
-- TBD — see [GitHub Issues](https://github.com/gynet/neokeeweb/issues)
+- Cloud storage with user-provided OAuth credentials
+- More TBD — see [GitHub Issues](https://github.com/gynet/neokeeweb/issues)
 
 ## License
 
