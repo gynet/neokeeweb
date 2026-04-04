@@ -1,44 +1,28 @@
 {
-    "compilerOptions": {
-        "target": "ES2020",
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "strict": true,
-        "allowJs": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true,
-        "declaration": false,
-        "sourceMap": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "comp/*": ["app/scripts/comp/*"],
-            "models/*": ["app/scripts/models/*"],
-            "views/*": ["app/scripts/views/*"],
-            "util/*": ["app/scripts/util/*"],
-            "storage/*": ["app/scripts/storage/*"],
-            "framework/*": ["app/scripts/framework/*"],
-            "const/*": ["app/scripts/const/*"],
-            "collections/*": ["app/scripts/collections/*"],
-            "presenters/*": ["app/scripts/presenters/*"],
-            "plugins/*": ["app/scripts/plugins/*"],
-            "locales/*": ["app/scripts/locales/*"],
-            "auto-type/*": ["app/scripts/auto-type/*"],
-            "hbs-helpers": ["app/scripts/hbs-helpers/index.js"],
-            "hbs-helpers/*": ["app/scripts/hbs-helpers/*"],
-            "templates/*": ["app/templates/*"]
-        }
-    },
-    "include": [
-        "app/scripts/**/*.ts",
-        "app/scripts/**/*.js",
-        "tests/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "build"
-    ]
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "ignoreDeprecations": "6.0",
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": "app/scripts",
+    "paths": {
+      "const/*": ["const/*"],
+      "util/*": ["util/*"],
+      "hbs": ["../../node_modules/handlebars/types/index.d.ts"],
+      "locales/*": ["../resources/locales/*"]
+    }
+  },
+  "include": [
+    "app/scripts/const/**/*.ts",
+    "app/scripts/util/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

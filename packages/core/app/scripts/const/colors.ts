@@ -1,4 +1,12 @@
-const Colors = {
+type ColorName = 'yellow' | 'green' | 'red' | 'orange' | 'blue' | 'violet';
+
+interface ColorsType {
+    readonly AllColors: readonly ColorName[];
+    readonly ColorsValues: Readonly<Record<ColorName, string>>;
+    readonly BgColors: Readonly<Record<ColorName, string>>;
+}
+
+const Colors: ColorsType = {
     AllColors: ['yellow', 'green', 'red', 'orange', 'blue', 'violet'],
 
     ColorsValues: {
@@ -21,3 +29,4 @@ const Colors = {
 };
 
 export { Colors };
+export type { ColorName };

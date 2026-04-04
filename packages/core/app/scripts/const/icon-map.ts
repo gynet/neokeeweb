@@ -1,4 +1,4 @@
-const IconMap = [
+const IconMap: readonly string[] = [
     'key',
     'globe',
     'exclamation-triangle',

@@ -1,6 +1,13 @@
+<<<<<<< HEAD:packages/core/app/scripts/const/links.js
 const Links = {
     Homepage: 'https://github.com/gynet/neokeeweb',
     Repo: 'https://github.com/gynet/neokeeweb',
+=======
+const Links: Readonly<Record<string, string>> = {
+    Homepage: 'https://keeweb.info',
+    Repo: 'https://github.com/keeweb/keeweb',
+    Desktop: 'https://github.com/keeweb/keeweb/releases/latest',
+>>>>>>> worktree-agent-a2662ce0:packages/core/app/scripts/const/links.ts
     WebApp: 'https://app.keeweb.info',
     License: 'https://github.com/gynet/neokeeweb/blob/master/LICENSE',
     LicenseApache: 'https://opensource.org/licenses/Apache-2.0',

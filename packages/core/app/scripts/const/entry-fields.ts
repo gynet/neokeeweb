@@ -1,4 +1,4 @@
-const BuiltInFields = [
+const BuiltInFields: readonly string[] = [
     'Title',
     'Password',
     'UserName',

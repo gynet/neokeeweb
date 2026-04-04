@@ -1,4 +1,4 @@
-const Timeouts = {
+const Timeouts: Readonly<Record<string, number>> = {
     CopyTip: 1500,
     AutoHideHint: 3000,
     FileChangeSync: 3000,
