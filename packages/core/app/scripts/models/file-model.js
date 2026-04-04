@@ -10,7 +10,6 @@ import { IconUrlFormat } from 'util/formatting/icon-url-format';
 import { Logger } from 'util/logger';
 import { Locale } from 'util/locale';
 import { StringFormat } from 'util/formatting/string-format';
-import { ChalRespCalculator } from 'comp/app/chal-resp-calculator';
 
 const logger = new Logger('file');
 
@@ -25,8 +24,7 @@ class FileModel extends Model {
 
     open(password, fileData, keyFileData, callback) {
         try {
-            const challengeResponse = ChalRespCalculator.build(this.chalResp);
-            const credentials = new kdbxweb.Credentials(password, keyFileData, challengeResponse);
+            const credentials = new kdbxweb.Credentials(password, keyFileData);
             const ts = logger.ts();
 
             kdbxweb.Kdbx.load(fileData, credentials)
@@ -347,9 +345,6 @@ class FileModel extends Model {
             keyFileChanged: false,
             syncing: false
         });
-        if (this.chalResp && !AppSettingsModel.yubiKeyRememberChalResp) {
-            ChalRespCalculator.clearCache(this.chalResp);
-        }
     }
 
     getEntry(id) {
@@ -558,14 +553,8 @@ class FileModel extends Model {
         return daysDiff > expiryDays;
     }
 
-    setChallengeResponse(chalResp) {
-        if (this.chalResp && !AppSettingsModel.yubiKeyRememberChalResp) {
-            ChalRespCalculator.clearCache(this.chalResp);
-        }
-        this.db.credentials.setChallengeResponse(ChalRespCalculator.build(chalResp));
-        this.db.meta.keyChanged = new Date();
-        this.chalResp = chalResp;
-        this.setModified();
+    setChallengeResponse() {
+        // No-op: challenge-response (YubiKey) removed in web-only fork
     }
 
     setKeyChange(force, days) {
