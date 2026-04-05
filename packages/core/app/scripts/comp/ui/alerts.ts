@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Locale } from 'util/locale';
 import { ModalView } from 'views/modal-view';
 

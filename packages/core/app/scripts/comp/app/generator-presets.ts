@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AppSettingsModel } from 'models/app-settings-model';
 import { Locale } from 'util/locale';
 

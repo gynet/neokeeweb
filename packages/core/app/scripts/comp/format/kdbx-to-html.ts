@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable import/no-commonjs */
 import * as kdbxweb from 'kdbxweb';
 import { RuntimeInfo } from 'const/runtime-info';

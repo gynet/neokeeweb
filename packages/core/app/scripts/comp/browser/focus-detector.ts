@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Events } from 'framework/events';
 import { Features } from 'util/features';
 

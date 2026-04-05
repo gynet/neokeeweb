@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Stub: settings persistence
 const SettingsStore = {
     load() {

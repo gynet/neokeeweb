@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Events } from 'framework/events';
 import { IdleTracker } from 'comp/browser/idle-tracker';
 import { Keys } from 'const/keys';

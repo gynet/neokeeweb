@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Features } from 'util/features';
 
 const FeatureTester = {

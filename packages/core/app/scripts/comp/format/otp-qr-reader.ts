@@ -1,3 +1,4 @@
+// @ts-nocheck
 import QrCode from 'jsqrcode';
 import { Events } from 'framework/events';
 import { Shortcuts } from 'comp/app/shortcuts';

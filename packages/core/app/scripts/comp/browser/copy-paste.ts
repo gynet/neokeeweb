@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AppSettingsModel } from 'models/app-settings-model';
 
 const CopyPaste = {

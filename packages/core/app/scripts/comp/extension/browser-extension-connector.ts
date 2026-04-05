@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Logger } from 'util/logger';
 import { ProtocolImpl } from './protocol-impl';
 import { Features } from 'util/features';

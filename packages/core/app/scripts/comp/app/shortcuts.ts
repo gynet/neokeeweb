@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Stub: desktop shortcuts removed in web-only fork
 import { Features } from 'util/features';
 

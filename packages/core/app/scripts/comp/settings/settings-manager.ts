@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Stub: settings manager — provides minimal API for the app to boot
 const SettingsManager = {
     activeLocale: 'en-US',

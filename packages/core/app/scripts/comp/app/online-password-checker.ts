@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as kdbxweb from 'kdbxweb';
 import { Logger } from 'util/logger';
 

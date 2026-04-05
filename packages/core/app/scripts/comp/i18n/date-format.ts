@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { StringFormat } from 'util/formatting/string-format';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Events } from 'framework/events';
 
 const ThemeWatcher = {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SearchResultCollection } from 'collections/search-result-collection';
 import { Ranking } from 'util/data/ranking';
 

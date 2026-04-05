@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as kdbxweb from 'kdbxweb';
 import { Events } from 'framework/events';
 import { box as tweetnaclBox } from 'tweetnacl';

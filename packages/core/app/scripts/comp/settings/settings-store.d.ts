@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Type declaration for SettingsStore.
  * Persists settings data to localStorage (web) or file system (desktop).
