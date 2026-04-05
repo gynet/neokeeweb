@@ -3,7 +3,7 @@ import { MenuSectionModel } from 'models/menu/menu-section-model';
 
 class GroupsMenuModel extends MenuSectionModel {
     constructor() {
-        super(new GroupCollection());
+        super(new GroupCollection() as unknown as []);
     }
 }
 

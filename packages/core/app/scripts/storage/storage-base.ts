@@ -3,22 +3,22 @@ import { RuntimeDataModel } from 'models/runtime-data-model';
 import { Logger } from 'util/logger';
 
 class StorageBase {
-    name = null;
-    icon = null;
-    enabled = false;
-    system = false;
-    uipos = null;
+    name: string | null = null;
+    icon: string | null = null;
+    enabled: boolean = false;
+    system: boolean = false;
+    uipos: number | null = null;
 
-    logger = null;
-    appSettings = AppSettingsModel;
-    runtimeData = RuntimeDataModel;
+    logger: Logger | null = null;
+    appSettings: typeof AppSettingsModel = AppSettingsModel;
+    runtimeData: typeof RuntimeDataModel = RuntimeDataModel;
 
-    init() {
+    init(): this {
         if (!this.name) {
             throw 'Failed to init provider: no name';
         }
         if (!this.system) {
-            const enabled = this.appSettings[this.name];
+            const enabled = (this.appSettings as unknown as Record<string, unknown>)[this.name];
             if (typeof enabled === 'boolean') {
                 this.enabled = enabled;
             }
@@ -27,17 +27,17 @@ class StorageBase {
         return this;
     }
 
-    get loggedIn() {
+    get loggedIn(): boolean {
         return false;
     }
 
-    setEnabled(enabled) {
+    setEnabled(enabled: boolean): void {
         this.enabled = enabled;
     }
 
-    logout() {}
+    logout(): void {}
 
-    deleteStoredToken() {}
+    deleteStoredToken(): void {}
 }
 
 export { StorageBase };

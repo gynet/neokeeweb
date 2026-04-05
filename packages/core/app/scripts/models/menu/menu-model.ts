@@ -5,11 +5,41 @@ import { Colors } from 'const/colors';
 import { Keys } from 'const/keys';
 import { GroupsMenuModel } from 'models/menu/groups-menu-model';
 import { MenuSectionModel } from 'models/menu/menu-section-model';
+import { MenuItemModel } from 'models/menu/menu-item-model';
 import { StringFormat } from 'util/formatting/string-format';
 import { Locale } from 'util/locale';
 import { Features } from 'util/features';
 
+interface DefaultTagItem {
+    title: string;
+    icon: string;
+    defaultItem: boolean;
+    disabled: {
+        header: string;
+        body: string;
+        icon: string;
+    };
+}
+
 class MenuModel extends Model {
+    declare sections: MenuSectionCollection | null;
+    declare menu: unknown | null;
+
+    menus!: Record<string, MenuSectionCollection>;
+    allItemsSection!: MenuSectionModel;
+    allItemsItem!: MenuItemModel;
+    groupsSection!: GroupsMenuModel;
+    colorsSection!: MenuSectionModel;
+    colorsItem!: MenuItemModel;
+    tagsSection!: MenuSectionModel & { defaultItems: Record<string, unknown>[] | null };
+    trashSection!: MenuSectionModel;
+    generalSection!: MenuSectionModel;
+    shortcutsSection!: MenuSectionModel;
+    browserSection!: MenuSectionModel | undefined;
+    aboutSection!: MenuSectionModel;
+    helpSection!: MenuSectionModel;
+    filesSection!: MenuSectionModel;
+
     constructor() {
         super();
         this.menus = {};
@@ -22,7 +52,7 @@ class MenuModel extends Model {
                 filterKey: '*'
             }
         ]);
-        this.allItemsItem = this.allItemsSection.items[0];
+        this.allItemsItem = this.allItemsSection.items[0] as MenuItemModel;
         this.groupsSection = new GroupsMenuModel();
         this.colorsSection = new MenuSectionModel([
             {
@@ -34,9 +64,11 @@ class MenuModel extends Model {
                 filterValue: true
             }
         ]);
-        this.colorsItem = this.colorsSection.items[0];
+        this.colorsItem = this.colorsSection.items[0] as MenuItemModel;
         const defTags = [this._getDefaultTagItem()];
-        this.tagsSection = new MenuSectionModel(defTags);
+        this.tagsSection = new MenuSectionModel(defTags) as MenuSectionModel & {
+            defaultItems: Record<string, unknown>[] | null;
+        };
         this.tagsSection.set({ scrollable: true, drag: true });
         this.tagsSection.defaultItems = defTags;
         this.trashSection = new MenuSectionModel([
@@ -49,13 +81,13 @@ class MenuModel extends Model {
                 drop: true
             }
         ]);
-        Colors.AllColors.forEach((color) => {
+        (Colors as { AllColors: string[] }).AllColors.forEach((color: string) => {
             const option = {
                 cls: `fa ${color}-color`,
                 value: color,
                 filterValue: color
             };
-            this.colorsSection.items[0].addOption(option);
+            (this.colorsSection.items[0] as MenuItemModel).addOption(option);
         });
         this.menus.app = new MenuSectionCollection([
             this.allItemsSection,
@@ -113,9 +145,13 @@ class MenuModel extends Model {
         this.shortcutsSection = new MenuSectionModel([
             { locTitle: 'shortcuts', icon: 'keyboard', page: 'shortcuts' }
         ]);
-        if (Features.supportsBrowserExtensions) {
+        if ((Features as { supportsBrowserExtensions: boolean }).supportsBrowserExtensions) {
             this.browserSection = new MenuSectionModel([
-                { locTitle: 'menuSetBrowser', icon: Features.browserIcon, page: 'browser' }
+                {
+                    locTitle: 'menuSetBrowser',
+                    icon: (Features as { browserIcon: string }).browserIcon,
+                    page: 'browser'
+                }
             ]);
         }
         this.aboutSection = new MenuSectionModel([
@@ -134,7 +170,7 @@ class MenuModel extends Model {
                 this.aboutSection,
                 this.helpSection,
                 this.filesSection
-            ].filter((s) => s)
+            ].filter((s): s is MenuSectionModel => !!s)
         );
         this.sections = this.menus.app;
 
@@ -145,20 +181,20 @@ class MenuModel extends Model {
         this._setLocale();
     }
 
-    select(sel) {
-        const sections = this.sections;
+    select(sel: { item: MenuItemModel; option?: { value: string; filterValue: string; active: boolean } }): void {
+        const sections = this.sections as MenuSectionCollection;
         for (const section of sections) {
             this._select(section, sel.item);
         }
         if (sections === this.menus.app) {
-            this.colorsItem.options.forEach((opt) => {
+            this.colorsItem.options?.forEach((opt: { active: boolean }) => {
                 opt.active = opt === sel.option;
             });
             this.colorsItem.iconCls =
                 sel.item === this.colorsItem && sel.option ? sel.option.value + '-color' : null;
-            const filterKey = sel.item.filterKey;
+            const filterKey = sel.item.filterKey as string;
             const filterValue = (sel.option || sel.item).filterValue;
-            const filter = {};
+            const filter: Record<string, unknown> = {};
             filter[filterKey] = filterValue;
             Events.emit('set-filter', filter);
         } else if (sections === this.menus.settings && sel.item.page) {
@@ -170,19 +206,19 @@ class MenuModel extends Model {
         }
     }
 
-    _selectPrevious() {
-        let previousItem = null;
+    _selectPrevious(): void {
+        let previousItem: MenuItemModel | null = null;
 
-        const processSection = (section) => {
-            if (section.visible === false) {
+        const processSection = (section: MenuSectionModel | MenuItemModel): boolean => {
+            if ((section as MenuItemModel).visible === false) {
                 return true;
             }
-            if (section.active) {
-                previousItem = section;
+            if ((section as MenuItemModel).active) {
+                previousItem = section as MenuItemModel;
             }
-            const items = section.items;
+            const items = (section as MenuSectionModel).items;
             if (items) {
-                items.forEach((it) => {
+                items.forEach((it: MenuItemModel) => {
                     if (it.active && previousItem) {
                         this.select({ item: previousItem });
                         return false;
@@ -190,76 +226,80 @@ class MenuModel extends Model {
                     return processSection(it);
                 });
             }
+            return true;
         };
 
-        const sections = this.sections;
-        sections.forEach((section) => processSection(section));
+        const sections = this.sections as MenuSectionCollection;
+        sections.forEach((section: MenuSectionModel) => processSection(section));
     }
 
-    _selectNext() {
-        let activeItem = null;
+    _selectNext(): void {
+        let activeItem: MenuItemModel | null = null;
 
-        const processSection = (section) => {
-            if (section.visible === false) {
+        const processSection = (section: MenuSectionModel | MenuItemModel): boolean => {
+            if ((section as MenuItemModel).visible === false) {
                 return true;
             }
-            if (section.active && activeItem && section !== activeItem) {
-                this.select({ item: section });
+            if ((section as MenuItemModel).active && activeItem && section !== activeItem) {
+                this.select({ item: section as MenuItemModel });
                 activeItem = null;
                 return false;
             }
-            const items = section.items;
+            const items = (section as MenuSectionModel).items;
             if (items) {
-                items.forEach((it) => {
+                items.forEach((it: MenuItemModel) => {
                     if (it.active) {
                         activeItem = it;
                     }
                     return processSection(it);
                 });
             }
+            return true;
         };
 
-        const sections = this.sections;
-        sections.forEach((section) => processSection(section));
+        const sections = this.sections as MenuSectionCollection;
+        sections.forEach((section: MenuSectionModel) => processSection(section));
     }
 
-    _select(item, selectedItem) {
-        const items = item.items;
+    _select(item: MenuSectionModel | MenuItemModel, selectedItem: MenuItemModel): void {
+        const items = (item as MenuSectionModel).items;
         if (items) {
             for (const it of items) {
-                it.active = it === selectedItem;
-                this._select(it, selectedItem);
+                (it as MenuItemModel).active = it === selectedItem;
+                this._select(it as MenuItemModel, selectedItem);
             }
         }
     }
 
-    _setLocale() {
+    _setLocale(): void {
         for (const menu of [this.menus.app, this.menus.settings]) {
             for (const section of menu) {
-                for (const item of section.items) {
-                    if (item.locTitle) {
-                        item.title = StringFormat.capFirst(Locale[item.locTitle]);
+                for (const item of (section as MenuSectionModel).items) {
+                    if ((item as MenuItemModel).locTitle) {
+                        (item as MenuItemModel).title = StringFormat.capFirst(
+                            (Locale as Record<string, string>)[(item as MenuItemModel).locTitle]
+                        );
                     }
                 }
             }
         }
-        this.tagsSection.defaultItems[0] = this._getDefaultTagItem();
+        this.tagsSection.defaultItems![0] = this._getDefaultTagItem();
     }
 
-    _getDefaultTagItem() {
+    _getDefaultTagItem(): DefaultTagItem {
         return {
-            title: StringFormat.capFirst(Locale.tags),
+            title: StringFormat.capFirst((Locale as Record<string, string>).tags),
             icon: 'tags',
             defaultItem: true,
             disabled: {
-                header: Locale.menuAlertNoTags,
-                body: Locale.menuAlertNoTagsBody,
+                header: (Locale as Record<string, string>).menuAlertNoTags,
+                body: (Locale as Record<string, string>).menuAlertNoTagsBody,
                 icon: 'tags'
             }
         };
     }
 
-    setMenu(type) {
+    setMenu(type: string): void {
         this.sections = this.menus[type];
     }
 }

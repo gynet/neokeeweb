@@ -6,7 +6,7 @@ import { FileInfoCollection } from 'collections/file-info-collection';
 import { RuntimeInfo } from 'const/runtime-info';
 import { Timeouts } from 'const/timeouts';
 import { AppSettingsModel } from 'models/app-settings-model';
-import { EntryModel } from 'models/entry-model';
+import { EntryModel, type EntryFilter } from 'models/entry-model';
 import { FileInfoModel } from 'models/file-info-model';
 import { FileModel } from 'models/file-model';
 import { GroupModel } from 'models/group-model';
@@ -21,21 +21,61 @@ import { noop } from 'util/fn';
 import debounce from 'lodash/debounce';
 import 'util/kdbxweb/protected-value-ex';
 
+interface FileUnlockPromise {
+    resolve: (file: FileModel) => void;
+    reject: (err: Error) => void;
+    unlockRes: unknown;
+}
+
+interface AdvancedSearch {
+    exact?: boolean;
+    protect?: boolean;
+    user?: boolean;
+}
+
+interface OpenFileParams {
+    id?: string;
+    name: string;
+    storage?: string;
+    path?: string;
+    opts?: Record<string, unknown>;
+    password?: unknown;
+    keyFileData?: ArrayBuffer;
+    keyFileName?: string;
+    keyFilePath?: string;
+    fileData?: ArrayBuffer;
+    rev?: string;
+    chalResp?: Record<string, unknown>;
+    encryptedPassword?: string;
+    fileXml?: string;
+    template?: { file: FileModel; entry: EntryModel };
+}
+
+interface SyncOptions {
+    storage?: string;
+    path?: string;
+    opts?: Record<string, unknown>;
+    remoteKey?: unknown;
+}
+
 class AppModel {
-    tags = [];
-    files = new FileCollection();
-    fileInfos = FileInfoCollection;
-    menu = new MenuModel();
-    filter = {};
-    sort = 'title';
-    settings = AppSettingsModel;
-    activeEntryId = null;
-    isBeta = RuntimeInfo.beta;
-    advancedSearch = null;
-    memoryPasswordStorage = {};
-    fileUnlockPromise = null;
-    hardwareDecryptInProgress = false;
-    mainWindowBlurTimer = null;
+    static instance: AppModel;
+
+    tags: string[] = [];
+    files: FileCollection = new FileCollection();
+    fileInfos: typeof FileInfoCollection = FileInfoCollection;
+    menu: MenuModel = new MenuModel();
+    filter: EntryFilter & { trash?: boolean; group?: string; subGroups?: boolean; tag?: string; tagLower?: string; text?: string } = {};
+    sort: string = 'title';
+    settings: typeof AppSettingsModel = AppSettingsModel;
+    activeEntryId: string | null = null;
+    isBeta: boolean = (RuntimeInfo as { beta: boolean }).beta;
+    advancedSearch: AdvancedSearch | null = null;
+    memoryPasswordStorage: Record<string, { value: string; date: Date }> = {};
+    fileUnlockPromise: FileUnlockPromise | null = null;
+    hardwareDecryptInProgress: boolean = false;
+    mainWindowBlurTimer: ReturnType<typeof setTimeout> | null = null;
+    appLogger!: Logger;
 
     constructor() {
         Events.on('refresh', this.refresh.bind(this));
@@ -56,7 +96,7 @@ class AppModel {
         AppModel.instance = this;
     }
 
-    loadConfig(configLocation) {
+    loadConfig(configLocation: string): Promise<void> {
         return new Promise((resolve, reject) => {
             this.ensureCanLoadConfig(configLocation);
             this.appLogger.debug('Loading config from', configLocation);
@@ -100,7 +140,7 @@ class AppModel {
         });
     }
 
-    ensureCanLoadConfig(url) {
+    ensureCanLoadConfig(url: string): void {
         if (!Features.isSelfHosted) {
             throw 'Configs are supported only in self-hosted installations';
         }
@@ -112,7 +152,7 @@ class AppModel {
         }
     }
 
-    applyUserConfig(config) {
+    applyUserConfig(config: Record<string, unknown>): void {
         this.settings.set(config.settings);
         if (config.files) {
             if (config.showOnlyFilesFromConfig) {
@@ -146,7 +186,7 @@ class AppModel {
         }
     }
 
-    addFile(file) {
+    addFile(file: FileModel): boolean {
         if (this.files.get(file.id)) {
             return false;
         }
@@ -188,12 +228,12 @@ class AppModel {
         return true;
     }
 
-    reloadFile(file) {
+    reloadFile(file: FileModel): void {
         this.menu.groupsSection.replaceByFile(file, file.groups[0]);
         this.updateTags();
     }
 
-    _addTags(file) {
+    _addTags(file: FileModel): void {
         const tagsHash = {};
         this.tags.forEach((tag) => {
             tagsHash[tag.toLowerCase()] = true;
@@ -209,7 +249,7 @@ class AppModel {
         this.tags.sort();
     }
 
-    _tagsChanged() {
+    _tagsChanged(): void {
         if (this.tags.length) {
             this.menu.tagsSection.scrollable = true;
             this.menu.tagsSection.setItems(
@@ -229,7 +269,7 @@ class AppModel {
         }
     }
 
-    updateTags() {
+    updateTags(): void {
         const oldTags = this.tags.slice();
         this.tags.splice(0, this.tags.length);
         for (const file of this.files) {
@@ -240,12 +280,12 @@ class AppModel {
         }
     }
 
-    renameTag(from, to) {
+    renameTag(from: string, to: string): void {
         this.files.forEach((file) => file.renameTag && file.renameTag(from, to));
         this.updateTags();
     }
 
-    closeAllFiles() {
+    closeAllFiles(): void {
         if (!this.files.hasOpenFiles()) {
             return;
         }
@@ -264,7 +304,7 @@ class AppModel {
         Events.emit('all-files-closed');
     }
 
-    closeFile(file) {
+    closeFile(file: FileModel): void {
         file.close();
         this.fileClosed(file);
         this.files.remove(file);
@@ -275,12 +315,12 @@ class AppModel {
         Events.emit('one-file-closed');
     }
 
-    emptyTrash() {
+    emptyTrash(): void {
         this.files.forEach((file) => file.emptyTrash && file.emptyTrash());
         this.refresh();
     }
 
-    setFilter(filter) {
+    setFilter(filter: Record<string, unknown>): void {
         this.filter = this.prepareFilter(filter);
         this.filter.subGroups = this.settings.expandGroups;
         if (!this.filter.advanced && this.advancedSearch) {
@@ -295,25 +335,25 @@ class AppModel {
         Events.emit('entry-selected', entries.get(this.activeEntryId));
     }
 
-    refresh() {
+    refresh(): void {
         this.setFilter(this.filter);
     }
 
-    selectEntry(entry) {
+    selectEntry(entry: { id: string }): void {
         this.activeEntryId = entry.id;
         this.refresh();
     }
 
-    addFilter(filter) {
+    addFilter(filter: Record<string, unknown>): void {
         this.setFilter(Object.assign(this.filter, filter));
     }
 
-    setSort(sort) {
+    setSort(sort: string): void {
         this.sort = sort;
         this.setFilter(this.filter);
     }
 
-    getEntries() {
+    getEntries(): SearchResultCollection {
         const entries = this.getEntriesByFilter(this.filter, this.files);
         entries.sortEntries(this.sort, this.filter);
         if (this.filter.trash) {
@@ -322,7 +362,7 @@ class AppModel {
         return entries;
     }
 
-    getEntriesByFilter(filter, files) {
+    getEntriesByFilter(filter: Record<string, unknown>, files: FileCollection): SearchResultCollection {
         const preparedFilter = this.prepareFilter(filter);
         const entries = new SearchResultCollection();
 
@@ -335,7 +375,7 @@ class AppModel {
         return entries;
     }
 
-    addTrashGroups(collection) {
+    addTrashGroups(collection: SearchResultCollection): void {
         this.files.forEach((file) => {
             const trashGroup = file.getTrashGroup && file.getTrashGroup();
             if (trashGroup) {
@@ -346,7 +386,7 @@ class AppModel {
         });
     }
 
-    prepareFilter(filter) {
+    prepareFilter(filter: Record<string, unknown>): Record<string, unknown> {
         filter = { ...filter };
 
         filter.textLower = filter.text ? filter.text.toLowerCase() : '';
@@ -367,7 +407,7 @@ class AppModel {
         return filter;
     }
 
-    getFirstSelectedGroupForCreation() {
+    getFirstSelectedGroupForCreation(): { group: GroupModel; file: FileModel } {
         const selGroupId = this.filter.group;
         let file, group;
         if (selGroupId) {
@@ -384,7 +424,7 @@ class AppModel {
         return { group, file };
     }
 
-    completeUserNames(part) {
+    completeUserNames(part: string): string[] {
         const userNames = {};
         this.files.forEach((file) => {
             file.forEachEntry(
@@ -406,7 +446,7 @@ class AppModel {
         return matches.map((m) => m[0]);
     }
 
-    getEntryTemplates() {
+    getEntryTemplates(): Array<{ file: FileModel; entry: EntryModel }> {
         const entryTemplates = [];
         this.files.forEach((file) => {
             file.forEachEntryTemplate?.((entry) => {
@@ -416,11 +456,11 @@ class AppModel {
         return entryTemplates;
     }
 
-    canCreateEntries() {
+    canCreateEntries(): boolean {
         return this.files.some((f) => f.active && !f.readOnly);
     }
 
-    createNewEntry(args) {
+    createNewEntry(args?: { template?: { file: FileModel; entry: EntryModel } }): EntryModel {
         const sel = this.getFirstSelectedGroupForCreation();
         if (args?.template) {
             if (sel.file !== args.template.file) {
@@ -438,28 +478,28 @@ class AppModel {
         }
     }
 
-    createNewEntryWithFields(group, fields) {
+    createNewEntryWithFields(group: GroupModel, fields: Record<string, unknown>): EntryModel {
         return EntryModel.newEntryWithFields(group, fields);
     }
 
-    createNewGroup() {
+    createNewGroup(): GroupModel {
         const sel = this.getFirstSelectedGroupForCreation();
         return GroupModel.newGroup(sel.group, sel.file);
     }
 
-    createNewGroupWithName(group, file, name) {
+    createNewGroupWithName(group: GroupModel, file: FileModel, name: string): GroupModel {
         const newGroup = GroupModel.newGroup(group, file);
         newGroup.setName(name);
         return newGroup;
     }
 
-    createNewTemplateEntry() {
+    createNewTemplateEntry(): EntryModel {
         const file = this.getFirstSelectedGroupForCreation().file;
         const group = file.getEntryTemplatesGroup() || file.createEntryTemplatesGroup();
         return EntryModel.newEntry(group, file);
     }
 
-    createDemoFile() {
+    createDemoFile(): boolean {
         if (!this.files.getByName('Demo')) {
             const demoFile = new FileModel({ id: IdGenerator.uuid() });
             demoFile.openDemo(() => {
@@ -471,7 +511,7 @@ class AppModel {
         }
     }
 
-    createNewFile(name, callback) {
+    createNewFile(name: string | null, callback?: (file: FileModel) => void): void {
         if (!name) {
             for (let i = 0; ; i++) {
                 name = Locale.openNewFile + (i || '');
@@ -487,7 +527,7 @@ class AppModel {
         });
     }
 
-    openFile(params, callback) {
+    openFile(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void): void {
         const logger = new Logger('open', params.name);
         logger.info('File open request');
 
@@ -586,7 +626,7 @@ class AppModel {
         }
     }
 
-    openFileFromCache(params, callback, fileInfo) {
+    openFileFromCache(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void, fileInfo: FileInfoModel): void {
         Storage.cache.load(fileInfo.id, null, (err, data) => {
             if (!data) {
                 err = Locale.openFileNoCacheError;
@@ -600,7 +640,7 @@ class AppModel {
         });
     }
 
-    openFileFromStorage(params, callback, fileInfo, logger, noCache) {
+    openFileFromStorage(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void, fileInfo: FileInfoModel | null, logger: Logger, noCache?: boolean): void {
         logger.info('Open file from storage', params.storage);
         const storage = Storage[params.storage];
         const storageLoad = () => {
@@ -654,7 +694,7 @@ class AppModel {
         }
     }
 
-    openFileWithData(params, callback, fileInfo, data, updateCacheOnSuccess) {
+    openFileWithData(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void, fileInfo: FileInfoModel | null, data: ArrayBuffer, updateCacheOnSuccess?: boolean): void {
         const logger = new Logger('open', params.name);
         let needLoadKeyFile = false;
         if (!params.keyFileData && fileInfo && fileInfo.keyFileName) {
@@ -731,7 +771,7 @@ class AppModel {
         }
     }
 
-    importFileWithXml(params, callback) {
+    importFileWithXml(params: OpenFileParams, callback: (err?: unknown) => void): void {
         const logger = new Logger('import', params.name);
         logger.info('File import request with supplied xml');
         const file = new FileModel({
@@ -750,7 +790,7 @@ class AppModel {
         });
     }
 
-    addToLastOpenFiles(file, rev) {
+    addToLastOpenFiles(file: FileModel, rev: string | null): void {
         this.appLogger.debug(
             'Add last open file',
             file.id,
@@ -800,7 +840,7 @@ class AppModel {
         this.fileInfos.save();
     }
 
-    getStoreOpts(file) {
+    getStoreOpts(file: FileModel): Record<string, unknown> | null {
         const opts = file.opts;
         const storage = file.storage;
         if (Storage[storage] && Storage[storage].fileOptsToStoreOpts && opts) {
@@ -809,14 +849,14 @@ class AppModel {
         return null;
     }
 
-    setFileOpts(file, opts) {
+    setFileOpts(file: FileModel, opts: Record<string, unknown> | undefined): void {
         const storage = file.storage;
         if (Storage[storage] && Storage[storage].storeOptsToFileOpts && opts) {
             file.opts = Storage[storage].storeOptsToFileOpts(opts, file);
         }
     }
 
-    fileOpened(file, data, params) {
+    fileOpened(file: FileModel, data?: ArrayBuffer, params?: OpenFileParams): void {
         if (file.storage === 'file') {
             Storage.file.watch(
                 file.path,
@@ -837,26 +877,26 @@ class AppModel {
         }
     }
 
-    fileClosed(file) {
+    fileClosed(file: FileModel): void {
         if (file.storage === 'file') {
             Storage.file.unwatch(file.path);
         }
     }
 
-    removeFileInfo(id) {
+    removeFileInfo(id: string): void {
         Storage.cache.remove(id);
         this.fileInfos.remove(id);
         this.fileInfos.save();
     }
 
-    getFileInfo(file) {
+    getFileInfo(file: FileModel): FileInfoModel | undefined {
         return (
             this.fileInfos.get(file.id) ||
             this.fileInfos.getMatch(file.storage, file.name, file.path)
         );
     }
 
-    syncFile(file, options, callback) {
+    syncFile(file: FileModel, options?: SyncOptions, callback?: (err?: unknown) => void): void {
         if (file.demo) {
             return callback && callback();
         }
@@ -1117,7 +1157,7 @@ class AppModel {
         }
     }
 
-    deleteAllCachedFiles() {
+    deleteAllCachedFiles(): void {
         for (const fileInfo of this.fileInfos) {
             if (fileInfo.storage && !fileInfo.modified) {
                 Storage.cache.remove(fileInfo.id);
@@ -1125,7 +1165,7 @@ class AppModel {
         }
     }
 
-    clearStoredKeyFiles() {
+    clearStoredKeyFiles(): void {
         for (const fileInfo of this.fileInfos) {
             fileInfo.set({
                 keyFileName: null,
@@ -1136,7 +1176,7 @@ class AppModel {
         this.fileInfos.save();
     }
 
-    unsetKeyFile(fileId) {
+    unsetKeyFile(fileId: string): void {
         const fileInfo = this.fileInfos.get(fileId);
         fileInfo.set({
             keyFileName: null,
@@ -1146,7 +1186,7 @@ class AppModel {
         this.fileInfos.save();
     }
 
-    setFileBackup(fileId, backup) {
+    setFileBackup(fileId: string, backup: Record<string, unknown>): void {
         const fileInfo = this.fileInfos.get(fileId);
         if (fileInfo) {
             fileInfo.backup = backup;
@@ -1154,7 +1194,7 @@ class AppModel {
         this.fileInfos.save();
     }
 
-    backupFile(file, data, callback) {
+    backupFile(file: FileModel, data: ArrayBuffer, callback: (err?: unknown) => void): void {
         const opts = file.opts;
         let backup = file.backup;
         const logger = new Logger('backup', file.name);
@@ -1212,7 +1252,7 @@ class AppModel {
         });
     }
 
-    scheduleBackupFile(file, data) {
+    scheduleBackupFile(file: FileModel, data: ArrayBuffer): void {
         const backup = file.backup;
         if (!backup || !backup.enabled) {
             return;
@@ -1262,19 +1302,19 @@ class AppModel {
         }
     }
 
-    usbDevicesChanged() {
+    usbDevicesChanged(): void {
         // No-op: YubiKey/USB device support removed in web-only fork
     }
 
-    saveEncryptedPassword(file, params) {
+    saveEncryptedPassword(file: FileModel, params?: OpenFileParams): void {
         // Hardware encryption is not available in web-only mode
     }
 
-    getMemoryPassword(fileId) {
+    getMemoryPassword(fileId: string): { value: string; date: Date } | undefined {
         return this.memoryPasswordStorage[fileId];
     }
 
-    checkEncryptedPasswordsStorage() {
+    checkEncryptedPasswordsStorage(): void {
         if (this.settings.deviceOwnerAuth === 'file') {
             let changed = false;
             for (const fileInfo of this.fileInfos) {
@@ -1331,7 +1371,7 @@ class AppModel {
         }
     }
 
-    unlockAnyFile(unlockRes, timeout) {
+    unlockAnyFile(unlockRes: unknown, timeout?: number): Promise<FileModel> {
         this.rejectPendingFileUnlockPromise('Replaced with a new operation');
         Events.emit('show-open-view');
         return new Promise((resolve, reject) => {
@@ -1359,7 +1399,7 @@ class AppModel {
         return this.fileUnlockPromise?.unlockRes;
     }
 
-    rejectPendingFileUnlockPromise(reason) {
+    rejectPendingFileUnlockPromise(reason: string): void {
         if (this.fileUnlockPromise) {
             this.appLogger.info('Cancel pending file unlock operation', reason);
             this.fileUnlockPromise.reject(new Error(reason));
@@ -1368,7 +1408,7 @@ class AppModel {
         }
     }
 
-    mainWindowBlur() {
+    mainWindowBlur(): void {
         if (!this.hardwareDecryptInProgress) {
             this.mainWindowBlurTimer = setTimeout(() => {
                 // macOS emits focus-blur-focus event in a row when triggering auto-type from minimized state
@@ -1378,22 +1418,22 @@ class AppModel {
         }
     }
 
-    mainWindowFocus() {
+    mainWindowFocus(): void {
         if (this.mainWindowBlurTimer) {
             clearTimeout(this.mainWindowBlurTimer);
             this.mainWindowBlurTimer = null;
         }
     }
 
-    mainWindowWillClose() {
+    mainWindowWillClose(): void {
         this.rejectPendingFileUnlockPromise('Main window will close');
     }
 
-    hardwareDecryptStarted() {
+    hardwareDecryptStarted(): void {
         this.hardwareDecryptInProgress = true;
     }
 
-    hardwareDecryptFinished() {
+    hardwareDecryptFinished(): void {
         this.hardwareDecryptInProgress = false;
     }
 }
