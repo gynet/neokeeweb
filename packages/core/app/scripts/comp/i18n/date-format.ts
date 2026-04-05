@@ -1,36 +1,35 @@
-// @ts-nocheck
 import { SettingsManager } from 'comp/settings/settings-manager';
 import { StringFormat } from 'util/formatting/string-format';
 
 const DateFormat = {
-    months() {
+    months(): string[] {
         const format = new Intl.DateTimeFormat(SettingsManager.activeLocale, { month: 'long' });
-        const months = [];
+        const months: string[] = [];
         for (let month = 0; month < 12; month++) {
             months.push(format.format(new Date(2008, month)));
         }
         return months;
     },
 
-    weekDays() {
+    weekDays(): string[] {
         const format = new Intl.DateTimeFormat(SettingsManager.activeLocale, { weekday: 'long' });
-        const weekdays = [];
+        const weekdays: string[] = [];
         for (let day = 1; day < 8; day++) {
             weekdays.push(format.format(new Date(2007, 9, 6 + day)));
         }
         return weekdays;
     },
 
-    shortWeekDays() {
+    shortWeekDays(): string[] {
         const format = new Intl.DateTimeFormat(SettingsManager.activeLocale, { weekday: 'short' });
-        const weekdays = [];
+        const weekdays: string[] = [];
         for (let day = 1; day < 8; day++) {
             weekdays.push(format.format(new Date(2007, 9, 6 + day)));
         }
         return weekdays;
     },
 
-    dtStr(dt) {
+    dtStr(dt: Date | number | null | undefined): string {
         if (typeof dt === 'number') {
             dt = new Date(dt);
         }
@@ -42,7 +41,7 @@ const DateFormat = {
             : '';
     },
 
-    dStr(dt) {
+    dStr(dt: Date | number | null | undefined): string {
         if (typeof dt === 'number') {
             dt = new Date(dt);
         }
@@ -55,7 +54,7 @@ const DateFormat = {
             : '';
     },
 
-    dtStrFs(dt) {
+    dtStrFs(dt: Date | number | null | undefined): string {
         if (typeof dt === 'number') {
             dt = new Date(dt);
         }

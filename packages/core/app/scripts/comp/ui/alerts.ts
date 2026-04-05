@@ -1,6 +1,25 @@
-// @ts-nocheck
 import { Locale } from 'util/locale';
 import { ModalView } from 'views/modal-view';
+
+interface AlertButton {
+    result: string;
+    title: string;
+}
+
+interface AlertConfig {
+    header?: string;
+    body?: string;
+    icon?: string;
+    buttons?: AlertButton[];
+    esc?: string;
+    click?: string;
+    enter?: string;
+    success?: (res: string, check?: boolean) => void;
+    cancel?: () => void;
+    complete?: (res: string, check?: boolean) => void;
+    skipIfAlertDisplayed?: boolean;
+    [key: string]: unknown;
+}
 
 const Alerts = {
     alertDisplayed: false,
@@ -8,50 +27,50 @@ const Alerts = {
     buttons: {
         ok: {
             result: 'yes',
-            get title() {
+            get title(): string {
                 return Locale.alertOk;
             }
         },
         yes: {
             result: 'yes',
-            get title() {
+            get title(): string {
                 return Locale.alertYes;
             }
         },
         allow: {
             result: 'yes',
-            get title() {
+            get title(): string {
                 return Locale.alertAllow;
             }
         },
         no: {
             result: '',
-            get title() {
+            get title(): string {
                 return Locale.alertNo;
             }
         },
         cancel: {
             result: '',
-            get title() {
+            get title(): string {
                 return Locale.alertCancel;
             }
         },
         deny: {
             result: '',
-            get title() {
+            get title(): string {
                 return Locale.alertDeny;
             }
         }
     },
 
-    alert(config) {
+    alert(config: AlertConfig): ModalView | null {
         if (config.skipIfAlertDisplayed && Alerts.alertDisplayed) {
             return null;
         }
         Alerts.alertDisplayed = true;
         const view = new ModalView(config);
         view.render();
-        view.once('result', (res, check) => {
+        view.once('result', (res: string, check: boolean) => {
             if (res && config.success) {
                 config.success(res, check);
             }
@@ -68,7 +87,7 @@ const Alerts = {
         return view;
     },
 
-    notImplemented() {
+    notImplemented(): void {
         this.alert({
             header: Locale.notImplemented,
             body: '',
@@ -80,7 +99,7 @@ const Alerts = {
         });
     },
 
-    info(config) {
+    info(config: AlertConfig): void {
         this.alert({
             header: '',
             body: '',
@@ -93,7 +112,7 @@ const Alerts = {
         });
     },
 
-    error(config) {
+    error(config: AlertConfig): void {
         this.alert({
             header: '',
             body: '',
@@ -106,7 +125,7 @@ const Alerts = {
         });
     },
 
-    yesno(config) {
+    yesno(config: AlertConfig): void {
         this.alert({
             header: '',
             body: '',
@@ -121,3 +140,4 @@ const Alerts = {
 };
 
 export { Alerts };
+export type { AlertConfig, AlertButton };

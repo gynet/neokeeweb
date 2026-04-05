@@ -1,19 +1,27 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { IdleTracker } from 'comp/browser/idle-tracker';
 import { Keys } from 'const/keys';
 import { FocusManager } from 'comp/app/focus-manager';
 
-const shortcutKeyProp = navigator.platform.indexOf('Mac') >= 0 ? 'metaKey' : 'ctrlKey';
+const shortcutKeyProp: 'metaKey' | 'ctrlKey' =
+    navigator.platform.indexOf('Mac') >= 0 ? 'metaKey' : 'ctrlKey';
+
+interface KeyShortcut {
+    handler: (e: JQuery.KeyDownEvent | JQuery.KeyPressEvent, code?: number) => void;
+    thisArg: unknown;
+    shortcut: number;
+    modal: unknown;
+    noPrevent?: boolean;
+}
 
 class KeyHandler {
     SHORTCUT_ACTION = 1;
     SHORTCUT_OPT = 2;
     SHORTCUT_SHIFT = 4;
 
-    shortcuts = {};
+    shortcuts: Record<number, KeyShortcut[]> = {};
 
-    init() {
+    init(): void {
         $(document).bind('keypress', this.keypress.bind(this));
         $(document).bind('keydown', this.keydown.bind(this));
 
@@ -28,7 +36,14 @@ class KeyHandler {
         ];
     }
 
-    onKey(key, handler, thisArg, shortcut, modal, noPrevent) {
+    onKey(
+        key: number,
+        handler: (e: JQuery.KeyDownEvent, code?: number) => void,
+        thisArg: unknown,
+        shortcut: number,
+        modal?: unknown,
+        noPrevent?: boolean
+    ): void {
         let keyShortcuts = this.shortcuts[key];
         if (!keyShortcuts) {
             this.shortcuts[key] = keyShortcuts = [];
@@ -42,7 +57,11 @@ class KeyHandler {
         });
     }
 
-    offKey(key, handler, thisArg) {
+    offKey(
+        key: number,
+        handler: (e: JQuery.KeyDownEvent, code?: number) => void,
+        thisArg: unknown
+    ): void {
         if (this.shortcuts[key]) {
             this.shortcuts[key] = this.shortcuts[key].filter(
                 (sh) => sh.handler !== handler || sh.thisArg !== thisArg
@@ -50,11 +69,11 @@ class KeyHandler {
         }
     }
 
-    isActionKey(e) {
-        return e[shortcutKeyProp];
+    isActionKey(e: JQuery.KeyDownEvent): boolean {
+        return !!(e as unknown as Record<string, boolean>)[shortcutKeyProp];
     }
 
-    keydown(e) {
+    keydown(e: JQuery.KeyDownEvent): void {
         IdleTracker.regUserAction();
         const code = e.keyCode || e.which;
         const keyShortcuts = this.shortcuts[code];
@@ -103,7 +122,7 @@ class KeyHandler {
         }
     }
 
-    keypress(e) {
+    keypress(e: JQuery.KeyPressEvent): void {
         if (
             !FocusManager.modal &&
             e.which !== Keys.DOM_VK_RETURN &&
@@ -119,14 +138,15 @@ class KeyHandler {
         }
     }
 
-    reg() {
+    reg(): void {
         IdleTracker.regUserAction();
     }
 
-    handleAKey(e) {
+    handleAKey(e: JQuery.KeyDownEvent): void {
+        const target = e.target as HTMLInputElement;
         if (
-            e.target.tagName.toLowerCase() === 'input' &&
-            ['password', 'text'].indexOf(e.target.type) >= 0
+            target.tagName.toLowerCase() === 'input' &&
+            ['password', 'text'].indexOf(target.type) >= 0
         ) {
             e.stopImmediatePropagation();
         } else {

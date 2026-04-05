@@ -1,28 +1,31 @@
-// @ts-nocheck
 import { AppSettingsModel } from 'models/app-settings-model';
 import { RuntimeDataModel } from 'models/runtime-data-model';
 
 const ExportApi = {
     settings: {
-        get(key) {
-            return key ? AppSettingsModel[key] : { ...AppSettingsModel };
+        get(key?: string): unknown {
+            return key
+                ? (AppSettingsModel as Record<string, unknown>)[key]
+                : { ...(AppSettingsModel as Record<string, unknown>) };
         },
-        set(key, value) {
-            AppSettingsModel[key] = value;
+        set(key: string, value: unknown): void {
+            (AppSettingsModel as Record<string, unknown>)[key] = value;
         },
-        del(key) {
-            delete AppSettingsModel[key];
+        del(key: string): void {
+            delete (AppSettingsModel as Record<string, unknown>)[key];
         }
     },
     runtimeData: {
-        get(key) {
-            return key ? RuntimeDataModel[key] : { ...RuntimeDataModel };
+        get(key?: string): unknown {
+            return key
+                ? (RuntimeDataModel as Record<string, unknown>)[key]
+                : { ...(RuntimeDataModel as Record<string, unknown>) };
         },
-        set(key, value) {
-            RuntimeDataModel[key] = value;
+        set(key: string, value: unknown): void {
+            (RuntimeDataModel as Record<string, unknown>)[key] = value;
         },
-        del(key) {
-            delete RuntimeDataModel[key];
+        del(key: string): void {
+            delete (RuntimeDataModel as Record<string, unknown>)[key];
         }
     }
 };
