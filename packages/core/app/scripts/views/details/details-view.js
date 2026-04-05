@@ -463,12 +463,6 @@ class DetailsView extends View {
         }
 
         this.model.initOtpGenerator?.();
-        if (this.model.backend === 'otp-device') {
-            return;
-        }
-
-        this.matchingOtpEntry = this.appModel.getMatchingOtpEntry(this.model);
-        this.matchingOtpEntry?.initOtpGenerator();
     }
 
     copyKeyPress(editView) {

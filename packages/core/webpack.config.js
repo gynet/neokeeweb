@@ -115,7 +115,7 @@ module.exports = (env, argv) => {
                                     .readdirSync(
                                         path.join(rootDir, 'app/scripts/hbs-helpers')
                                     )
-                                    .map((f) => f.replace('.js', ''))
+                                    .map((f) => f.replace(/\.(js|ts)$/, ''))
                                     .filter((f) => f !== 'index'),
                                 partialResolver(partial, callback) {
                                     const location = path.join(

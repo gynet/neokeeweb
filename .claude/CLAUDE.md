@@ -49,13 +49,19 @@ e2e/                                Playwright E2E tests
 
 ### TL AGENT — Tech Lead (on demand)
 **Trigger**: milestone review, CI/CD failure, architecture decision
+**Domain expertise**: Password manager architecture, KDBX format, TOTP/HOTP, WebAuthn, browser extension protocols, key derivation (Argon2/AES-KDF), WebCrypto API.
 **Responsibilities**:
-- GitHub milestone health check (`gh issue list --milestone`)
-- Fix CI/CD failures (`gh run view --log-failed`)
-- Close completed issues with summary comments
-- Update CLAUDE.md and README.md
-- Code quality review of recent commits
+- GitHub milestone health check
+- Fix CI/CD failures
+- Code quality review — understand WHAT code does before touching it
 - Priority: correctness > security > UX > performance > features
+**NEVER delete**:
+- OTP/TOTP/HOTP (core 2FA feature)
+- Autofill logic
+- Key derivation / crypto
+- KDBX format handling
+- Browser extension protocol
+**OK to delete**: Electron IPC, native modules, desktop file system, hardware key drivers
 
 ### SDET AGENT — Test Engineer (on demand)
 **Trigger**: after significant code changes, before milestone review
