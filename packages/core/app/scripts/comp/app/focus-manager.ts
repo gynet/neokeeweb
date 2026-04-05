@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Logger } from 'util/logger';
 
 const logger = new Logger(
@@ -8,9 +7,9 @@ const logger = new Logger(
 );
 
 const FocusManager = {
-    modal: null,
+    modal: null as unknown,
 
-    setModal(modal) {
+    setModal(modal: unknown): void {
         this.modal = modal;
         logger.debug('Set modal', modal);
     }

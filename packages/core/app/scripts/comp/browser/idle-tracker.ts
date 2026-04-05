@@ -1,13 +1,12 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { AppSettingsModel } from 'models/app-settings-model';
 
 const IdleTracker = {
     actionTime: Date.now(),
-    init() {
+    init(): void {
         setInterval(this.checkIdle.bind(this), 1000 * 60);
     },
-    checkIdle() {
+    checkIdle(): void {
         const idleMinutes = (Date.now() - this.actionTime) / 1000 / 60;
         const maxIdleMinutes = AppSettingsModel.idleMinutes;
         if (maxIdleMinutes && idleMinutes > maxIdleMinutes) {
@@ -15,7 +14,7 @@ const IdleTracker = {
             Events.emit('user-idle');
         }
     },
-    regUserAction() {
+    regUserAction(): void {
         this.actionTime = Date.now();
     }
 };

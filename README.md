@@ -136,23 +136,32 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [x] Bun + Webpack (strip Grunt/Babel)
 - [x] WebDAV + IndexedDB only (strip OAuth providers)
 - [x] CI/CD (GitHub Actions + Pages demo)
-- [x] 100% TypeScript (163 .ts files, 80 need @ts-nocheck cleanup)
-- [x] 860+ tests (unit + interop: KeePassXC, pykeepass, keepass-rs)
-- [x] Playwright E2E framework
-- [ ] Remove @ts-nocheck from comp/ (25 files, #23) and views/ (55 files, #24)
+- [x] 100% TypeScript (163 .ts files, 75 need @ts-nocheck cleanup)
+- [x] 860 tests (509 db + 223 core + 128 extension)
+- [x] 21 Playwright E2E tests (smoke, database open/create, search, details, generator, edit, delete, keyboard)
+- [ ] Remove @ts-nocheck from comp/ (20 files, #23) and views/ (55 files, #24)
 - [ ] Remove legacy deps: jquery, lodash, baron (#6)
-- [ ] Core feature E2E: OTP, search, password generator, autofill (#4)
+- [ ] Core feature E2E: OTP, autofill (#4)
 
-### Phase 2: Quick Unlock — convenience, catch up with industry
-**Goal**: Passkey replaces typing master password. Same security, better UX.
-- Quick unlock: tap YubiKey / Face ID / fingerprint instead of typing password (#9)
-- How it works: passkey encrypts your master password via PRF, retrieves it on tap
+### Phase 2: Quick Unlock + Device Sync
+**Goal**: Convenience features. Catch up with industry, then go beyond.
+
+**Quick Unlock** — passkey replaces typing master password (#9)
+- Tap YubiKey / Face ID / fingerprint instead of typing password
+- Passkey encrypts master password via PRF, retrieves it on tap
 - KDBX format unchanged — fully compatible with KeePass/KeePassXC
 - Store website passkeys in KDBX entries (act as passkey authenticator)
-- Cloud storage with user-provided OAuth (BYOK model)
-- Works on Android PWA + Chrome/Edge desktop
 
-### Phase 3: Per-Entry Hardware Encryption — the real security upgrade
+**P2P Device Sync** — your devices are your cloud
+- Your devices (phone, laptop, NAS, iPad) form a private P2P network
+- First pairing: scan QR code (like Bluetooth pairing, zero server)
+- Same WiFi: auto-sync via WebRTC
+- Remote: WebRTC NAT traversal or Nostr relay for signaling (decentralized)
+- NAS as always-on node — other devices sync through it when offline
+- No cloud account, no subscription, no third party sees your data
+- KDBX merge for conflict resolution
+
+### Phase 3: Per-Entry Hardware Encryption
 **Goal**: True hardware-backed per-entry crypto. No competitor has this.
 - Unlike Phase 2 (convenience), this is a **real security upgrade**
 - Mark sensitive entries for YubiKey-required decryption (#25)
@@ -161,7 +170,6 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - Multi-passkey per entry (YubiKey office + YubiKey backup + phone)
 - Printed recovery key for YubiKey loss
 - Target: crypto holders, DevOps/SRE, security professionals
-- Target users: crypto holders, DevOps/SRE, security professionals
 
 See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
 

@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { Features } from 'util/features';
 
 const FocusDetector = {
-    init() {
+    isFocused: true,
+
+    init(): void {
         this.isFocused = true;
         if (!Features.isMobile) {
             window.addEventListener('focus', () => {
@@ -21,7 +22,7 @@ const FocusDetector = {
         }
     },
 
-    hasFocus() {
+    hasFocus(): boolean {
         return this.isFocused;
     }
 };

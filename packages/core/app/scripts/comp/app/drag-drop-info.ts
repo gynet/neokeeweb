@@ -1,6 +1,5 @@
-// @ts-nocheck
 const DragDropInfo = {
-    dragObject: null
+    dragObject: null as unknown
 };
 
 export { DragDropInfo };

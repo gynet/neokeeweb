@@ -1,11 +1,39 @@
-// @ts-nocheck
 import { SearchResultCollection } from 'collections/search-result-collection';
 import { Ranking } from 'util/data/ranking';
 
 const urlPartsRegex = /^(\w+:\/\/)?(?:(?:www|wwws|secure)\.)?([^\/]+)\/?(.*)/;
 
+interface WindowInfo {
+    title?: string;
+    url?: string;
+}
+
+interface FilterOptions {
+    [key: string]: unknown;
+}
+
+interface EntryLike {
+    title: string;
+    searchText: string;
+    getAllUrls(): string[];
+}
+
+interface AppModelLike {
+    getEntriesByFilter(filter: Record<string, unknown>, files: unknown): EntryLike[];
+}
+
 class SelectEntryFilter {
-    constructor(windowInfo, appModel, files, filterOptions) {
+    title: string | undefined;
+    useTitle: boolean;
+    url: string | undefined;
+    useUrl: boolean;
+    subdomains: boolean;
+    text: string;
+    appModel: AppModelLike;
+    files: unknown;
+    filterOptions: FilterOptions;
+
+    constructor(windowInfo: WindowInfo, appModel: AppModelLike, files: unknown, filterOptions: FilterOptions) {
         this.title = windowInfo.title;
         this.useTitle = !!windowInfo.title && !windowInfo.url;
         this.url = windowInfo.url;
@@ -17,25 +45,25 @@ class SelectEntryFilter {
         this.filterOptions = filterOptions;
     }
 
-    getEntries() {
-        const filter = {
+    getEntries(): SearchResultCollection {
+        const filter: Record<string, unknown> = {
             text: this.text,
             ...this.filterOptions
         };
-        let entries = this.appModel
+        let entries: [EntryLike, number][] = this.appModel
             .getEntriesByFilter(filter, this.files)
-            .map((e) => [e, this._getEntryRank(e)]);
+            .map((e): [EntryLike, number] => [e, this._getEntryRank(e)]);
         if (this.useUrl || this.useTitle) {
             entries = entries.filter((e) => e[1]);
         }
         entries = entries.sort((x, y) =>
             x[1] === y[1] ? x[0].title.localeCompare(y[0].title) : y[1] - x[1]
         );
-        entries = entries.map((p) => p[0]);
-        return new SearchResultCollection(entries, { comparator: 'none' });
+        const sorted = entries.map((p) => p[0]);
+        return new SearchResultCollection(sorted, { comparator: 'none' });
     }
 
-    _getEntryRank(entry) {
+    _getEntryRank(entry: EntryLike): number {
         let titleRank = 0;
         let urlRank = 0;
 
@@ -52,7 +80,7 @@ class SelectEntryFilter {
 
             for (const url of entry.getAllUrls()) {
                 const entryUrlParts = urlPartsRegex.exec(url.toLowerCase());
-                if (entryUrlParts) {
+                if (entryUrlParts && searchUrlParts) {
                     const [, scheme, domain, path] = entryUrlParts;
                     const [, searchScheme, searchDomain, searchPath] = searchUrlParts;
                     if (
