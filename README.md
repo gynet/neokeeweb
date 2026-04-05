@@ -143,33 +143,27 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [ ] Remove legacy deps: jquery, lodash, baron (#6)
 - [ ] Core feature E2E: OTP, autofill (#4)
 
-### Phase 2: Quick Unlock + Device Sync
-**Goal**: Convenience features. Catch up with industry, then go beyond.
-
-**Quick Unlock** — passkey replaces typing master password (#9)
-- Tap YubiKey / Face ID / fingerprint instead of typing password
-- Passkey encrypts master password via PRF, retrieves it on tap
-- KDBX format unchanged — fully compatible with KeePass/KeePassXC
+### Phase 2: Quick Unlock + Passkey
+**Goal**: Convenience. Catch up with 1Password/Bitwarden.
+- Quick unlock: tap YubiKey / Face ID / fingerprint instead of typing password (#9)
+- How it works: passkey encrypts master password via PRF, retrieves it on tap
 - Store website passkeys in KDBX entries (act as passkey authenticator)
+- KDBX format unchanged — fully compatible with KeePass/KeePassXC
 
-**P2P Device Sync** — your devices are your cloud
-- Your devices (phone, laptop, NAS, iPad) form a private P2P network
-- First pairing: scan QR code (like Bluetooth pairing, zero server)
-- Same WiFi: auto-sync via WebRTC
-- Remote: WebRTC NAT traversal or Nostr relay for signaling (decentralized)
-- NAS as always-on node — other devices sync through it when offline
-- No cloud account, no subscription, no third party sees your data
-- KDBX merge for conflict resolution
+**Storage**: file-based. Use your existing sync (iCloud Drive, Syncthing, WebDAV, etc.) — KDBX is already encrypted, safe to store anywhere. NeoKeeWeb opens the file, edits, saves. Sync is not our job.
 
 ### Phase 3: Per-Entry Hardware Encryption
 **Goal**: True hardware-backed per-entry crypto. No competitor has this.
-- Unlike Phase 2 (convenience), this is a **real security upgrade**
 - Mark sensitive entries for YubiKey-required decryption (#25)
 - Entry key derived directly from YubiKey PRF — no master password involved
 - Even master password compromise can't read hardware-encrypted entries
 - Multi-passkey per entry (YubiKey office + YubiKey backup + phone)
 - Printed recovery key for YubiKey loss
 - Target: crypto holders, DevOps/SRE, security professionals
+
+### Future: P2P Device Sync (exploring)
+- QR-code pairing + WebRTC direct sync between devices (#26)
+- Nice-to-have, not priority — encrypted KDBX on any cloud is already safe
 
 See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
 
