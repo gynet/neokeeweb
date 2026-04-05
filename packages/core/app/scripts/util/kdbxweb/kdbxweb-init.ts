@@ -1,17 +1,76 @@
+// @ts-ignore -- kdbxweb has no type declarations
 import * as kdbxweb from 'kdbxweb';
 import { Logger } from 'util/logger';
 
+// webpack require (resolved at build time)
+declare function require(module: string): any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
 const logger = new Logger('argon2');
 
-const KdbxwebInit = {
-    init() {
-        kdbxweb.CryptoEngine.setArgon2Impl((...args) => this.argon2(...args));
+interface Argon2Args {
+    password: ArrayBuffer;
+    salt: ArrayBuffer;
+    memory: number;
+    iterations: number;
+    length: number;
+    parallelism: number;
+    type: number;
+    version: number;
+}
+
+interface RuntimeModule {
+    hash(args: Argon2Args): Promise<Uint8Array>;
+}
+
+const KdbxwebInit: {
+    runtimeModule: RuntimeModule | null;
+    init(): void;
+    argon2(
+        password: ArrayBuffer,
+        salt: ArrayBuffer,
+        memory: number,
+        iterations: number,
+        length: number,
+        parallelism: number,
+        type: number,
+        version: number
+    ): Promise<Uint8Array>;
+    loadRuntime(requiredMemory: number): Promise<RuntimeModule>;
+    workerPostRun(): void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    calcHash(Module: any, args: Argon2Args): Uint8Array;
+} = {
+    runtimeModule: null,
+
+    init(): void {
+        (kdbxweb as any).CryptoEngine.setArgon2Impl(
+            (...args: [ArrayBuffer, ArrayBuffer, number, number, number, number, number, number]) =>
+                this.argon2(...args)
+        );
     },
 
-    argon2(password, salt, memory, iterations, length, parallelism, type, version) {
-        const args = { password, salt, memory, iterations, length, parallelism, type, version };
+    argon2(
+        password: ArrayBuffer,
+        salt: ArrayBuffer,
+        memory: number,
+        iterations: number,
+        length: number,
+        parallelism: number,
+        type: number,
+        version: number
+    ): Promise<Uint8Array> {
+        const args: Argon2Args = {
+            password,
+            salt,
+            memory,
+            iterations,
+            length,
+            parallelism,
+            type,
+            version
+        };
         return this.loadRuntime(memory).then((runtime) => {
-            const ts = logger.ts();
+            const ts = logger.ts() as number;
             return runtime.hash(args).then((hash) => {
                 logger.debug('Hash computed', logger.ts(ts));
                 return hash;
@@ -19,19 +78,21 @@ const KdbxwebInit = {
         });
     },
 
-    loadRuntime(requiredMemory) {
+    loadRuntime(requiredMemory: number): Promise<RuntimeModule> {
         if (this.runtimeModule) {
             return Promise.resolve(this.runtimeModule);
         }
-        if (!global.WebAssembly) {
+        if (!(globalThis as any).WebAssembly) {
             return Promise.reject('WebAssembly is not supported');
         }
-        return new Promise((resolve, reject) => {
+        return new Promise<RuntimeModule>((resolve, reject) => {
             const loadTimeout = setTimeout(() => reject('timeout'), 5000);
             try {
-                const ts = logger.ts();
-                const argon2LoaderCode = require('argon2').default;
-                const wasmBinaryBase64 = require('argon2-wasm');
+                const ts = logger.ts() as number;
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const argon2LoaderCode: string = require('argon2').default;
+                // eslint-disable-next-line @typescript-eslint/no-var-requires
+                const wasmBinaryBase64: string = require('argon2-wasm');
 
                 const KB = 1024 * 1024;
                 const MB = 1024 * KB;
@@ -63,31 +124,47 @@ const KdbxwebInit = {
                     'TOTAL_MEMORY:' +
                     initialMemory * WASM_PAGE_SIZE +
                     '}';
-                const script = argon2LoaderCode.replace(/^var Module.*?}/, memoryDecl + moduleDecl);
+                const script = argon2LoaderCode.replace(
+                    /^var Module.*?}/,
+                    memoryDecl + moduleDecl
+                );
                 const blob = new Blob([script], { type: 'application/javascript' });
                 const objectUrl = URL.createObjectURL(blob);
                 const worker = new Worker(objectUrl);
-                const onMessage = (e) => {
+                const onMessage = (e: MessageEvent): void => {
                     switch (e.data.op) {
                         case 'log':
                             logger.debug(...e.data.args);
                             break;
                         case 'postRun':
-                            logger.debug('WebAssembly runtime loaded (web worker)', logger.ts(ts));
+                            logger.debug(
+                                'WebAssembly runtime loaded (web worker)',
+                                logger.ts(ts)
+                            );
                             URL.revokeObjectURL(objectUrl);
                             clearTimeout(loadTimeout);
                             worker.removeEventListener('message', onMessage);
                             this.runtimeModule = {
-                                hash(args) {
-                                    return new Promise((resolve, reject) => {
+                                hash(args: Argon2Args): Promise<Uint8Array> {
+                                    return new Promise<Uint8Array>((resolve, reject) => {
                                         worker.postMessage(args);
-                                        const onHashMessage = (e) => {
-                                            worker.removeEventListener('message', onHashMessage);
+                                        const onHashMessage = (
+                                            e: MessageEvent
+                                        ): void => {
+                                            worker.removeEventListener(
+                                                'message',
+                                                onHashMessage
+                                            );
                                             worker.terminate();
                                             KdbxwebInit.runtimeModule = null;
-                                            if (!e.data || e.data.error || !e.data.hash) {
+                                            if (
+                                                !e.data ||
+                                                e.data.error ||
+                                                !e.data.hash
+                                            ) {
                                                 const ex =
-                                                    (e.data && e.data.error) || 'unexpected error';
+                                                    (e.data && e.data.error) ||
+                                                    'unexpected error';
                                                 logger.error('Worker error', ex);
                                                 reject(ex);
                                             } else {
@@ -98,7 +175,7 @@ const KdbxwebInit = {
                                     });
                                 }
                             };
-                            resolve(this.runtimeModule);
+                            resolve(this.runtimeModule!);
                             break;
                         default:
                             logger.error('Unknown message', e.data);
@@ -110,28 +187,29 @@ const KdbxwebInit = {
             } catch (err) {
                 reject(err);
             }
-        }).catch((err) => {
+        }).catch((err: unknown) => {
             logger.warn('WebAssembly error', err);
             throw new Error('WebAssembly error');
         });
     },
 
     // eslint-disable-next-line object-shorthand
-    workerPostRun: function () {
+    workerPostRun: function (): void {
         self.postMessage({ op: 'postRun' });
-        self.onmessage = (e) => {
+        self.onmessage = (e: MessageEvent) => {
             try {
                 /* eslint-disable-next-line no-undef */
+                // @ts-ignore -- Module is available in the worker scope
                 const hash = Module.calcHash(Module, e.data);
                 self.postMessage({ hash });
             } catch (e) {
-                self.postMessage({ error: e.toString() });
+                self.postMessage({ error: (e as Error).toString() });
             }
         };
     },
 
-    // eslint-disable-next-line object-shorthand
-    calcHash: function (Module, args) {
+    // eslint-disable-next-line object-shorthand, @typescript-eslint/no-explicit-any
+    calcHash: function (Module: any, args: any): Uint8Array {
         let { password, salt } = args;
         const { memory, iterations, length, parallelism, type, version } = args;
         const passwordLen = password.byteLength;

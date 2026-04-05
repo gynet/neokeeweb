@@ -1,14 +1,18 @@
+// @ts-ignore -- kdbxweb has no type declarations
 import * as kdbxweb from 'kdbxweb';
 
-const ExpectedFieldRefChars = '{REF:0@I:00000000000000000000000000000000}'.split('');
-const ExpectedFieldRefByteLength = ExpectedFieldRefChars.length;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PV: any = kdbxweb.ProtectedValue;
 
-kdbxweb.ProtectedValue.prototype.isProtected = true;
+const ExpectedFieldRefChars: string[] = '{REF:0@I:00000000000000000000000000000000}'.split('');
+const ExpectedFieldRefByteLength: number = ExpectedFieldRefChars.length;
 
-kdbxweb.ProtectedValue.prototype.forEachChar = function (fn) {
-    const value = this.value;
-    const salt = this.salt;
-    let b, b1, b2, b3;
+PV.prototype.isProtected = true;
+
+PV.prototype.forEachChar = function (fn: (charCode: number) => void | false): void {
+    const value: Uint8Array = this.value;
+    const salt: Uint8Array = this.salt;
+    let b: number, b1: number, b2: number, b3: number;
     for (let i = 0, len = value.length; i < len; i++) {
         b = value[i] ^ salt[i];
         if (b < 128) {
@@ -63,14 +67,14 @@ kdbxweb.ProtectedValue.prototype.forEachChar = function (fn) {
     }
 };
 
-Object.defineProperty(kdbxweb.ProtectedValue.prototype, 'length', {
-    get() {
+Object.defineProperty(PV.prototype, 'length', {
+    get(): number {
         return this.textLength;
     }
 });
 
-Object.defineProperty(kdbxweb.ProtectedValue.prototype, 'textLength', {
-    get() {
+Object.defineProperty(PV.prototype, 'textLength', {
+    get(): number {
         let textLength = 0;
         this.forEachChar(() => {
             textLength++;
@@ -79,24 +83,24 @@ Object.defineProperty(kdbxweb.ProtectedValue.prototype, 'textLength', {
     }
 });
 
-kdbxweb.ProtectedValue.prototype.includesLower = function (findLower) {
+PV.prototype.includesLower = function (findLower: string): boolean {
     return this.indexOfLower(findLower) !== -1;
 };
 
-kdbxweb.ProtectedValue.prototype.indexOfLower = function (findLower) {
+PV.prototype.indexOfLower = function (findLower: string): number {
     let index = -1;
-    const foundSeqs = [];
+    const foundSeqs: number[] = [];
     const len = findLower.length;
     let chIndex = -1;
-    this.forEachChar((ch) => {
+    this.forEachChar((ch: number) => {
         chIndex++;
-        ch = String.fromCharCode(ch).toLowerCase();
+        const chLower = String.fromCharCode(ch).toLowerCase();
         if (index !== -1) {
             return;
         }
         for (let i = 0; i < foundSeqs.length; i++) {
             const seqIx = ++foundSeqs[i];
-            if (findLower[seqIx] !== ch) {
+            if (findLower[seqIx] !== chLower) {
                 foundSeqs.splice(i, 1);
                 i--;
                 continue;
@@ -106,7 +110,7 @@ kdbxweb.ProtectedValue.prototype.indexOfLower = function (findLower) {
                 return;
             }
         }
-        if (findLower[0] === ch) {
+        if (findLower[0] === chLower) {
             if (len === 1) {
                 index = chIndex - len + 1;
             } else {
@@ -117,29 +121,30 @@ kdbxweb.ProtectedValue.prototype.indexOfLower = function (findLower) {
     return index;
 };
 
-kdbxweb.ProtectedValue.prototype.indexOfSelfInLower = function (targetLower) {
+PV.prototype.indexOfSelfInLower = function (targetLower: string): number {
     let firstCharIndex = -1;
     let found = false;
     do {
         let chIndex = -1;
-        this.forEachChar((ch) => {
+        this.forEachChar((ch: number) => {
             chIndex++;
-            ch = String.fromCharCode(ch).toLowerCase();
+            const chLower = String.fromCharCode(ch).toLowerCase();
             if (chIndex === 0) {
-                firstCharIndex = targetLower.indexOf(ch, firstCharIndex + 1);
+                firstCharIndex = targetLower.indexOf(chLower, firstCharIndex + 1);
                 found = firstCharIndex !== -1;
                 return;
             }
             if (!found) {
                 return;
             }
-            found = targetLower[firstCharIndex + chIndex] === ch;
+            found = targetLower[firstCharIndex + chIndex] === chLower;
         });
     } while (!found && firstCharIndex >= 0);
     return firstCharIndex;
 };
 
-kdbxweb.ProtectedValue.prototype.equals = function (other) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+PV.prototype.equals = function (other: any): boolean {
     if (!other) {
         return false;
     }
@@ -149,7 +154,7 @@ kdbxweb.ProtectedValue.prototype.equals = function (other) {
     if (other === this) {
         return true;
     }
-    const len = this.byteLength;
+    const len: number = this.byteLength;
     if (len !== other.byteLength) {
         return false;
     }
@@ -161,12 +166,12 @@ kdbxweb.ProtectedValue.prototype.equals = function (other) {
     return true;
 };
 
-kdbxweb.ProtectedValue.prototype.isFieldReference = function () {
+PV.prototype.isFieldReference = function (): boolean {
     if (this.byteLength !== ExpectedFieldRefByteLength) {
         return false;
     }
     let ix = 0;
-    this.forEachChar((ch) => {
+    this.forEachChar((ch: number) => {
         const expected = ExpectedFieldRefChars[ix++];
         if (expected !== '0' && ch !== expected) {
             return false;
@@ -175,14 +180,15 @@ kdbxweb.ProtectedValue.prototype.isFieldReference = function () {
     return true;
 };
 
-const RandomSalt = kdbxweb.CryptoEngine.random(128);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const RandomSalt: any = (kdbxweb as any).CryptoEngine.random(128);
 
-kdbxweb.ProtectedValue.prototype.saltedValue = function () {
+PV.prototype.saltedValue = function (): string | number {
     if (!this.byteLength) {
         return 0;
     }
-    const value = this.value;
-    const salt = this.salt;
+    const value: Uint8Array = this.value;
+    const salt: Uint8Array = this.salt;
     let salted = '';
     for (let i = 0, len = value.length; i < len; i++) {
         const byte = value[i] ^ salt[i];
@@ -191,21 +197,25 @@ kdbxweb.ProtectedValue.prototype.saltedValue = function () {
     return salted;
 };
 
-kdbxweb.ProtectedValue.prototype.dataAndSalt = function () {
+PV.prototype.dataAndSalt = function (): { data: number[]; salt: number[] } {
     return {
         data: [...this.value],
         salt: [...this.salt]
     };
 };
 
-kdbxweb.ProtectedValue.prototype.toBase64 = function () {
+PV.prototype.toBase64 = function (): string {
     const binary = this.getBinary();
-    const base64 = kdbxweb.ByteUtils.bytesToBase64(binary);
-    kdbxweb.ByteUtils.zeroBuffer(binary);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const base64: string = (kdbxweb as any).ByteUtils.bytesToBase64(binary);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (kdbxweb as any).ByteUtils.zeroBuffer(binary);
     return base64;
 };
 
-kdbxweb.ProtectedValue.fromBase64 = function (base64) {
-    const bytes = kdbxweb.ByteUtils.base64ToBytes(base64);
-    return kdbxweb.ProtectedValue.fromBinary(bytes);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+PV.fromBase64 = function (base64: string): any {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bytes = (kdbxweb as any).ByteUtils.base64ToBytes(base64);
+    return PV.fromBinary(bytes);
 };

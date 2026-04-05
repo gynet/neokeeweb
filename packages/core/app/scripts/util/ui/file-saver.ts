@@ -1,7 +1,7 @@
 import { Timeouts } from 'const/timeouts';
 
 const FileSaver = {
-    saveAs(blob, name) {
+    saveAs(blob: Blob, name: string): void {
         const link = document.createElement('a');
 
         link.download = name;

@@ -46,20 +46,7 @@ declare module 'baron' {
     export default baron;
 }
 
-// util/ui/tip — JS module not yet migrated
-declare module 'util/ui/tip' {
-    interface TipInstance {
-        show(): void;
-        hide(): void;
-    }
-    const Tip: {
-        createTips(el: Element): void;
-        destroyTips(el: Element): void;
-        hideTips(el: Element): void;
-        createTip(el: Element, opts: Record<string, unknown>): TipInstance;
-    };
-    export { Tip };
-}
+// util/ui/tip — now a real TS module (migrated from JS)
 
 // comp/browser/key-handler — JS module not yet migrated
 declare module 'comp/browser/key-handler' {
@@ -116,7 +103,8 @@ declare module 'hbs' {
 }
 
 // jQuery global
-declare const $: (selector: string | Element) => unknown;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const $: (selector: string | Element, context?: Element | null) => any;
 
 // localStorage extended
 interface Storage {

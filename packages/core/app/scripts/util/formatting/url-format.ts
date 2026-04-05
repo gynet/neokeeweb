@@ -4,7 +4,7 @@ const UrlFormat = {
     kdbxEndRegex: /\.kdbx$/i,
     maxShortPresentableUrlLength: 60,
 
-    getDataFileName(url) {
+    getDataFileName(url: string): string {
         const ix = url.lastIndexOf('/');
         if (ix >= 0) {
             url = url.substr(ix + 1);
@@ -13,44 +13,44 @@ const UrlFormat = {
         return url;
     },
 
-    isKdbx(url) {
-        return url && this.kdbxEndRegex.test(url);
+    isKdbx(url: string): boolean {
+        return !!url && this.kdbxEndRegex.test(url);
     },
 
-    fixSlashes(url) {
+    fixSlashes(url: string): string {
         return url.replace(this.multiSlashRegex, '/');
     },
 
-    fileToDir(url) {
+    fileToDir(url: string): string {
         return url.replace(this.lastPartRegex, '') || '/';
     },
 
-    makeUrl(base, args) {
+    makeUrl(base: string, args: Record<string, string>): string {
         const queryString = Object.entries(args)
             .map(([key, value]) => key + '=' + encodeURIComponent(value))
             .join('&');
         return base + '?' + queryString;
     },
 
-    buildFormData(params) {
+    buildFormData(params: Record<string, string>): string {
         return Object.entries(params)
             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
             .join('&');
     },
 
-    presentAsShortUrl(url) {
+    presentAsShortUrl(url: string): string {
         if (url.length <= this.maxShortPresentableUrlLength) {
             return url;
         }
 
         const [beforeHash] = url.split('#', 1);
         if (beforeHash.length <= this.maxShortPresentableUrlLength) {
-            return beforeHash + '#…';
+            return beforeHash + '#\u2026';
         }
 
         const [beforeQuestionMark] = url.split('?', 1);
         if (beforeQuestionMark.length <= this.maxShortPresentableUrlLength) {
-            return beforeQuestionMark + '?…';
+            return beforeQuestionMark + '?\u2026';
         }
 
         const parsed = new URL(beforeQuestionMark);
@@ -61,11 +61,11 @@ const UrlFormat = {
             parsed.pathname = pathParts.join('/');
             const res = parsed.toString();
             if (res.length < this.maxShortPresentableUrlLength) {
-                return res + '/…';
+                return res + '/\u2026';
             }
         }
 
-        return parsed + '…';
+        return parsed.toString() + '\u2026';
     }
 };
 
