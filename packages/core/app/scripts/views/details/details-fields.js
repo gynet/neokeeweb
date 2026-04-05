@@ -12,51 +12,15 @@ import { FieldViewTags } from 'views/fields/field-view-tags';
 import { FieldViewDate } from 'views/fields/field-view-date';
 import { FieldViewHistory } from 'views/fields/field-view-history';
 import { FieldViewCustom } from 'views/fields/field-view-custom';
-import { FieldViewReadOnlyWithOptions } from 'views/fields/field-view-read-only-with-options';
 import { ExtraUrlFieldName } from 'models/entry-model';
 
 function createDetailsFields(detailsView) {
     const model = detailsView.model;
-    const otpEntry = detailsView.matchingOtpEntry;
 
     const fieldViews = [];
     const fieldViewsAside = [];
 
-    if (model.backend === 'otp-device') {
-        fieldViewsAside.push(
-            new FieldViewReadOnly({
-                name: 'Device',
-                title: StringFormat.capFirst(Locale.device),
-                value() {
-                    return model.device.name;
-                }
-            })
-        );
-        fieldViews.push(
-            new FieldViewReadOnlyWithOptions({
-                name: '$UserName',
-                title: StringFormat.capFirst(Locale.user),
-                aside: false,
-                value() {
-                    return model.user;
-                },
-                sequence: '{USERNAME}'
-            })
-        );
-        fieldViews.push(
-            new FieldViewOtp({
-                name: '$otp',
-                title: Locale.detOtpField,
-                value() {
-                    return model.otpGenerator;
-                },
-                sequence: '{TOTP}',
-                readonly: true,
-                needsTouch: model.needsTouch,
-                deviceShortName: model.device.shortName
-            })
-        );
-    } else {
+    {
         const writeableFiles = AppModel.instance.files.filter(
             (file) => file.active && !file.readOnly
         );
@@ -198,46 +162,27 @@ function createDetailsFields(detailsView) {
                 })
             );
         }
-        if (!model.backend) {
-            fieldViewsAside.push(
-                new FieldViewHistory({
-                    name: 'History',
-                    title: StringFormat.capFirst(Locale.history),
-                    value() {
-                        return { length: model.historyLength, unsaved: model.unsaved };
-                    }
-                })
-            );
-        }
-        if (otpEntry) {
-            fieldViews.push(
-                new FieldViewOtp({
-                    name: '$otp',
-                    title: Locale.detOtpField,
-                    value() {
-                        return otpEntry.otpGenerator;
-                    },
-                    sequence: '{TOTP}',
-                    readonly: true,
-                    needsTouch: otpEntry.needsTouch,
-                    deviceShortName: otpEntry.device.shortName
-                })
-            );
-        }
+        fieldViewsAside.push(
+            new FieldViewHistory({
+                name: 'History',
+                title: StringFormat.capFirst(Locale.history),
+                value() {
+                    return { length: model.historyLength, unsaved: model.unsaved };
+                }
+            })
+        );
         for (const field of Object.keys(model.fields)) {
             if (field === 'otp' && model.otpGenerator) {
-                if (!otpEntry) {
-                    fieldViews.push(
-                        new FieldViewOtp({
-                            name: '$' + field,
-                            title: Locale.detOtpField,
-                            value() {
-                                return model.otpGenerator;
-                            },
-                            sequence: '{TOTP}'
-                        })
-                    );
-                }
+                fieldViews.push(
+                    new FieldViewOtp({
+                        name: '$' + field,
+                        title: Locale.detOtpField,
+                        value() {
+                            return model.otpGenerator;
+                        },
+                        sequence: '{TOTP}'
+                    })
+                );
             } else {
                 const isUrl = field.startsWith(ExtraUrlFieldName);
                 if (isUrl) {

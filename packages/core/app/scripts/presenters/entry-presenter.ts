@@ -95,9 +95,6 @@ class EntryPresenter {
         if (!this.entry) {
             return '[' + (Locale as any).listGroup + ']';
         }
-        if (this.entry.backend === 'otp-device') {
-            return this.entry.description;
-        }
         switch (this.descField) {
             case 'website':
                 return this.url || '(' + (Locale as any).listNoWebsite + ')';

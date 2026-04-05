@@ -261,9 +261,6 @@ class FieldView extends View {
             case 'hide':
                 this.hideValue();
                 break;
-            case 'autotype':
-                this.emit('autotype', { source: this });
-                break;
         }
     }
 

@@ -156,7 +156,7 @@ class DetailsView extends View {
                 fieldView.render();
                 fieldView.on('change', this.fieldChanged.bind(this));
                 fieldView.on('copy', (e) => this.copyFieldValue(e));
-                fieldView.on('autotype', (e) => this.autoType(e.source.model.sequence));
+                // auto-type removed in web-only fork
                 if (hideEmptyFields) {
                     const value = fieldView.model.value();
                     if (!value || value.length === 0 || value.byteLength === 0) {
@@ -456,8 +456,6 @@ class DetailsView extends View {
     }
 
     initOtp() {
-        this.matchingOtpEntry = null;
-
         if (!this.model) {
             return;
         }
@@ -489,10 +487,6 @@ class DetailsView extends View {
         if (!this.model) {
             return;
         }
-        if (this.model.backend === 'otp-device') {
-            this.copyOtp();
-            e.preventDefault();
-        }
         const copied = this.copyKeyPress(this.getFieldView('$Password'));
         if (copied) {
             e.preventDefault();
@@ -513,13 +507,6 @@ class DetailsView extends View {
 
     copyOtp() {
         const otpField = this.getFieldView('$otp');
-        if (this.model.backend === 'otp-device') {
-            if (!otpField) {
-                return false;
-            }
-            otpField.copyValue();
-            return true;
-        }
         this.copyKeyPress(otpField);
     }
 
@@ -712,9 +699,6 @@ class DetailsView extends View {
     }
 
     editTitle() {
-        if (this.model.backend === 'otp-device') {
-            return;
-        }
         const input = $('<input/>')
             .addClass('details__header-title-input')
             .attr({ autocomplete: 'off', spellcheck: 'false', placeholder: 'Title' })
@@ -872,35 +856,25 @@ class DetailsView extends View {
         const canCopy = document.queryCommandSupported('copy');
         const options = [];
         if (canCopy) {
-            if (this.model.backend === 'otp-device') {
-                options.push({
-                    value: 'det-copy-otp',
-                    icon: 'copy',
-                    text: Locale.detMenuCopyOtp
-                });
-            } else {
-                options.push({
-                    value: 'det-copy-password',
-                    icon: 'copy',
-                    text: Locale.detMenuCopyPassword
-                });
-            }
+            options.push({
+                value: 'det-copy-password',
+                icon: 'copy',
+                text: Locale.detMenuCopyPassword
+            });
             options.push({
                 value: 'det-copy-user',
                 icon: 'copy',
                 text: Locale.detMenuCopyUser
             });
         }
-        if (!this.model.backend) {
-            options.push({ value: 'det-add-new', icon: 'plus', text: Locale.detMenuAddNewField });
-            options.push({ value: 'det-clone', icon: 'clone', text: Locale.detClone });
-            if (canCopy) {
-                options.push({
-                    value: 'copy-to-clipboard',
-                    icon: 'clipboard',
-                    text: Locale.detCopyEntryToClipboard
-                });
-            }
+        options.push({ value: 'det-add-new', icon: 'plus', text: Locale.detMenuAddNewField });
+        options.push({ value: 'det-clone', icon: 'clone', text: Locale.detClone });
+        if (canCopy) {
+            options.push({
+                value: 'copy-to-clipboard',
+                icon: 'clipboard',
+                text: Locale.detCopyEntryToClipboard
+            });
         }
         Events.emit('show-context-menu', Object.assign(e, { options }));
     }
@@ -913,17 +887,11 @@ class DetailsView extends View {
             case 'det-copy-user':
                 this.copyUserName();
                 break;
-            case 'det-copy-otp':
-                this.copyOtp();
-                break;
             case 'det-add-new':
                 this.addNewField();
                 break;
             case 'det-clone':
                 this.clone();
-                break;
-            case 'det-auto-type':
-                this.autoType();
                 break;
             case 'copy-to-clipboard':
                 this.copyToClipboard();
