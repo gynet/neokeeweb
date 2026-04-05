@@ -170,10 +170,10 @@ test.describe('Core Features', () => {
     test('edit entry title and verify change persists', async ({ page }) => {
         await createNewDatabase(page);
 
-        // Add a new entry using the "+" button in the list search header
+        // Add a new entry using the "+" button with Shift to skip dropdown
         const addBtn = page.locator('.list__search-btn-new');
         await expect(addBtn).toBeVisible();
-        await addBtn.click();
+        await addBtn.click({ modifiers: ['Shift'] });
 
         // A new entry should appear in the list
         const listItems = page.locator('.list__item');
@@ -216,10 +216,10 @@ test.describe('Core Features', () => {
     test('delete entry moves to trash', async ({ page }) => {
         await createNewDatabase(page);
 
-        // Add a new entry
+        // Add a new entry using Shift+click to skip dropdown
         const addBtn = page.locator('.list__search-btn-new');
         await expect(addBtn).toBeVisible();
-        await addBtn.click();
+        await addBtn.click({ modifiers: ['Shift'] });
 
         const listItems = page.locator('.list__item');
         await expect(listItems.first()).toBeVisible({ timeout: 10_000 });

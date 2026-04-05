@@ -128,29 +128,35 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 
 ## Roadmap
 
-### Phase 1: Foundation (current) — [milestone](https://github.com/gynet/neokeeweb/milestone/1)
-- [x] Merge 3 repos into monorepo
-- [x] Strip Electron/desktop code (#1)
-- [x] Drop KDBX3 support, keep KDBX4 only (#3)
-- [x] Modernize build: Grunt -> Bun + Webpack (#5)
-- [x] Strip OAuth storage providers, keep WebDAV + IndexedDB (#8)
-- [x] CI/CD with GitHub Actions (#7)
-- [x] Playwright E2E framework (config + spec stubs)
-- [x] keepass-rs interop tests (607 tests passing)
-- [x] Remove dead desktop/plugin/YubiKey code (-1500 lines)
-- [ ] Remove legacy dependencies (#6 — jquery, lodash, baron, etc.)
-- [ ] Complete TypeScript migration for packages/core (#2)
-- [ ] E2E test scenarios (#4)
+### Phase 1: Foundation — stable, tested, TypeScript
+**Goal**: Make the codebase maintainable and trustworthy. No new features.
+- [x] Monorepo merge (keeweb + kdbxweb + keeweb-connect)
+- [x] Web-only (strip Electron/desktop)
+- [x] KDBX4 only (strip KDBX3)
+- [x] Bun + Webpack (strip Grunt/Babel)
+- [x] WebDAV + IndexedDB only (strip OAuth providers)
+- [x] CI/CD (GitHub Actions + Pages demo)
+- [x] 100% TypeScript (163 .ts files, 80 need @ts-nocheck cleanup)
+- [x] 860+ tests (unit + interop: KeePassXC, pykeepass, keepass-rs)
+- [x] Playwright E2E framework
+- [ ] Remove @ts-nocheck from comp/ (25 files, #23) and views/ (55 files, #24)
+- [ ] Remove legacy deps: jquery, lodash, baron (#6)
+- [ ] Core feature E2E: OTP, search, password generator, autofill (#4)
 
-### Phase 2: Features — [milestone](https://github.com/gynet/neokeeweb/milestone/2)
-- Passkey support: store passkeys + WebAuthn PRF database unlock (#9)
-- Cloud storage with user-provided OAuth credentials (BYOK)
-- UX improvements
+### Phase 2: Passkey — catch up with 1Password/Bitwarden
+**Goal**: Passkey as first-class citizen. Match industry standard.
+- Store passkeys in KDBX entries (replace TOTP for supported sites) (#9)
+- Unlock database with passkey (WebAuthn PRF replaces master password)
+- Cloud storage with user-provided OAuth (BYOK model)
+- Works on Android PWA + Chrome/Edge desktop
 
-### Phase 3: Hardware Security
-- Per-entry YubiKey encryption — sensitive entries get a second encryption layer requiring physical key tap (#25)
-- Even with master password compromised, hardware-encrypted entries stay protected
-- Industry first: true per-entry hardware-backed crypto (not UI re-prompt theater)
+### Phase 3: Per-Entry Hardware Encryption — the differentiator
+**Goal**: True hardware-backed per-entry security. No competitor has this.
+- Mark sensitive entries for YubiKey-required decryption (#25)
+- Even master password compromise can't read hardware-encrypted entries
+- Multi-passkey support (YubiKey office + YubiKey backup + phone)
+- Printed recovery key for YubiKey loss
+- Target users: crypto holders, DevOps/SRE, security professionals
 
 See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
 
