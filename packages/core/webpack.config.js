@@ -3,6 +3,7 @@ const fs = require('fs');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const rootDir = __dirname;
 const pkg = require('./package.json');
@@ -228,6 +229,12 @@ module.exports = (env, argv) => {
             new HtmlWebpackPlugin({
                 template: path.join(rootDir, 'app/index.html'),
                 inject: false
+            }),
+            new CopyWebpackPlugin({
+                patterns: [
+                    { from: path.join(rootDir, 'app/icons'), to: 'icons' },
+                    { from: path.join(rootDir, 'app/manifest'), to: '.' }
+                ]
             })
         ],
         externals: {
