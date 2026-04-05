@@ -142,11 +142,17 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [ ] Complete TypeScript migration for packages/core (#2)
 - [ ] E2E test scenarios (#4)
 
-### Phase 2: Features (planned) — [milestone](https://github.com/gynet/neokeeweb/milestone/2)
-- Passkey support (store + WebAuthn PRF unlock)
+### Phase 2: Features — [milestone](https://github.com/gynet/neokeeweb/milestone/2)
+- Passkey support: store passkeys + WebAuthn PRF database unlock (#9)
 - Cloud storage with user-provided OAuth credentials (BYOK)
 - UX improvements
-- See [GitHub Issues](https://github.com/gynet/neokeeweb/issues)
+
+### Phase 3: Hardware Security
+- Per-entry YubiKey encryption — sensitive entries get a second encryption layer requiring physical key tap (#25)
+- Even with master password compromised, hardware-encrypted entries stay protected
+- Industry first: true per-entry hardware-backed crypto (not UI re-prompt theater)
+
+See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
 
 ## License
 
