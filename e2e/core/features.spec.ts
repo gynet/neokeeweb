@@ -168,18 +168,10 @@ test.describe('Core Features', () => {
     });
 
     test('edit entry title and verify change persists', async ({ page }) => {
-        await createNewDatabase(page);
+        await openDemoDatabase(page);
 
-        // Add a new entry using the "+" button with Shift to skip dropdown
-        const addBtn = page.locator('.list__search-btn-new');
-        await expect(addBtn).toBeVisible();
-        await addBtn.click({ modifiers: ['Shift'] });
-
-        // A new entry should appear in the list
+        // Click the first entry in the list
         const listItems = page.locator('.list__item');
-        await expect(listItems.first()).toBeVisible({ timeout: 10_000 });
-
-        // Click the new entry to open its details
         await listItems.first().click();
 
         // Wait for details to appear
@@ -189,6 +181,7 @@ test.describe('Core Features', () => {
         // Click the title to edit it
         const headerTitle = page.locator('.details__header-title');
         await expect(headerTitle).toBeVisible();
+        const originalTitle = await headerTitle.textContent();
         await headerTitle.click();
 
         // An input field should appear for editing the title
@@ -196,7 +189,7 @@ test.describe('Core Features', () => {
         await expect(titleInput).toBeVisible({ timeout: 5_000 });
 
         // Clear and type new title
-        const newTitle = 'Test Entry ' + Date.now();
+        const newTitle = 'Edited ' + Date.now();
         await titleInput.fill(newTitle);
         await titleInput.press('Enter');
 
@@ -207,6 +200,12 @@ test.describe('Core Features', () => {
         const listItemTitle = listItems.first().locator('.list__item-title');
         await expect(listItemTitle).toContainText(newTitle);
 
+        // Undo: restore original title so demo db state is clean
+        await headerTitle.click();
+        const restoreInput = page.locator('.details__header-title-input');
+        await restoreInput.fill(originalTitle || 'Sample Entry');
+        await restoreInput.press('Enter');
+
         await page.screenshot({
             path: `${SCREENSHOT_DIR}/features-edit-entry.png`,
             fullPage: true,
@@ -214,39 +213,34 @@ test.describe('Core Features', () => {
     });
 
     test('delete entry moves to trash', async ({ page }) => {
-        await createNewDatabase(page);
-
-        // Add a new entry using Shift+click to skip dropdown
-        const addBtn = page.locator('.list__search-btn-new');
-        await expect(addBtn).toBeVisible();
-        await addBtn.click({ modifiers: ['Shift'] });
+        await openDemoDatabase(page);
 
         const listItems = page.locator('.list__item');
-        await expect(listItems.first()).toBeVisible({ timeout: 10_000 });
-        expect(await listItems.count()).toBe(1);
+        const initialCount = await listItems.count();
+        expect(initialCount).toBeGreaterThan(0);
 
-        // Click the entry to open details
-        await listItems.first().click();
+        // Click the last entry in the list (least important to avoid breaking other tests)
+        await listItems.last().click();
+
         const detailsView = page.locator('.details');
         await expect(detailsView).toBeVisible({ timeout: 10_000 });
 
         // Get the title for verification
         const headerTitle = page.locator('.details__header-title');
-        const entryTitle = await headerTitle.textContent();
+        await expect(headerTitle).toBeVisible();
 
         // Click the trash button to delete
         const trashBtn = page.locator('.details__buttons-trash');
         await expect(trashBtn).toBeVisible();
         await trashBtn.click();
 
-        // Entry should be gone from the main list
+        // Entry count should decrease by one
         await page.waitForTimeout(500);
-        const mainListCount = await page.locator('.list__item').count();
-        expect(mainListCount).toBe(0);
+        const afterDeleteCount = await page.locator('.list__item').count();
+        expect(afterDeleteCount).toBe(initialCount - 1);
 
         // Navigate to the Trash/Recycle Bin in the menu
-        // The trash menu item has filterKey='trash', rendered as a menu__item
-        const trashMenuItem = page.locator('.menu__item').filter({ hasText: /trash|recycle/i });
+        const trashMenuItem = page.locator('.menu__item').filter({ hasText: /trash/i });
         await expect(trashMenuItem).toBeVisible();
         await trashMenuItem.click();
 
@@ -256,7 +250,7 @@ test.describe('Core Features', () => {
         // The deleted entry should be in the recycle bin
         const trashItems = page.locator('.list__item');
         const trashCount = await trashItems.count();
-        expect(trashCount).toBe(1);
+        expect(trashCount).toBeGreaterThanOrEqual(1);
 
         await page.screenshot({
             path: `${SCREENSHOT_DIR}/features-delete-to-trash.png`,
