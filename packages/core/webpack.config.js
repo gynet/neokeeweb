@@ -20,7 +20,7 @@ module.exports = (env, argv) => {
     return {
         mode,
         entry: {
-            app: path.join(rootDir, 'app/scripts/app.js')
+            app: path.join(rootDir, 'app/scripts/app.ts')
         },
         output: {
             path: path.resolve(rootDir, 'dist'),
