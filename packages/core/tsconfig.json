@@ -17,7 +17,8 @@
       "framework/*": ["./app/scripts/framework/*"],
       "comp/*": ["./app/scripts/comp/*"],
       "collections/*": ["./app/scripts/collections/*"],
-      "storage": ["./app/scripts/storage/index.js"],
+      "storage": ["./app/scripts/storage/index.ts"],
+      "storage/*": ["./app/scripts/storage/*"],
       "hbs": ["./node_modules/handlebars/types/index.d.ts"],
       "locales/*": ["./app/resources/locales/*"]
     }
@@ -25,7 +26,8 @@
   "include": [
     "app/scripts/const/**/*.ts",
     "app/scripts/util/**/*.ts",
-    "app/scripts/models/**/*.ts"
+    "app/scripts/models/**/*.ts",
+    "app/scripts/storage/**/*.ts"
   ],
   "exclude": [
     "node_modules"

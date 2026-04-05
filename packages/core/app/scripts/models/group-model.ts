@@ -10,14 +10,45 @@ const KdbxIcons = kdbxweb.Consts.Icons;
 
 const DefaultAutoTypeSequence = '{USERNAME}{TAB}{PASSWORD}{ENTER}';
 
+interface GroupFilter {
+    includeDisabled?: boolean;
+    autoType?: boolean;
+}
+
+interface FileModel {
+    subId(id: string): string;
+    name: string;
+    db: kdbxweb.Kdbx;
+    getGroup(id: string): GroupModel | undefined;
+    getEntry(id: string): EntryModel | undefined;
+    setModified(): void;
+    reload(): void;
+}
+
 class GroupModel extends MenuItemModel {
-    setGroup(group, file, parentGroup) {
-        const isRecycleBin = group.uuid.equals(file.db.meta.recycleBinUuid);
-        const id = file.subId(group.uuid.id);
+    declare uuid: string;
+    declare iconId: number;
+    declare entries: EntryCollection;
+    declare filterKey: string;
+    declare top: boolean;
+    declare drop: boolean;
+    declare enableSearching: boolean | null;
+    declare enableAutoType: boolean | null;
+    declare autoTypeSeq: string | null;
+    declare parentGroup: GroupModel | null;
+    declare customIconId: string | null;
+    declare isJustCreated: boolean;
+
+    group!: kdbxweb.KdbxGroup;
+    file!: FileModel;
+
+    setGroup(group: kdbxweb.KdbxGroup, file: FileModel, parentGroup?: GroupModel): void {
+        const isRecycleBin = group.uuid.equals(file.db.meta.recycleBinUuid as kdbxweb.KdbxUuid);
+        const id = file.subId((group.uuid as unknown as { id: string }).id);
         this.set(
             {
                 id,
-                uuid: group.uuid.id,
+                uuid: (group.uuid as unknown as { id: string }).id,
                 expanded: group.expanded,
                 visible: !isRecycleBin,
                 items: new GroupCollection(),
@@ -34,66 +65,70 @@ class GroupModel extends MenuItemModel {
         );
         this.group = group;
         this.file = file;
-        this.parentGroup = parentGroup;
+        this.parentGroup = parentGroup ?? null;
         this._fillByGroup(true);
-        const items = this.items;
+        const items = this.items as GroupCollection;
         const entries = this.entries;
 
         const itemsArray = group.groups.map((subGroup) => {
-            let g = file.getGroup(file.subId(subGroup.uuid.id));
+            let g = file.getGroup(file.subId((subGroup.uuid as unknown as { id: string }).id));
             if (g) {
                 g.setGroup(subGroup, file, this);
             } else {
                 g = GroupModel.fromGroup(subGroup, file, this);
             }
             return g;
-        }, this);
+        });
         items.push(...itemsArray);
 
         const entriesArray = group.entries.map((entry) => {
-            let e = file.getEntry(file.subId(entry.uuid.id));
+            let e = file.getEntry(file.subId((entry.uuid as unknown as { id: string }).id));
             if (e) {
                 e.setEntry(entry, this, file);
             } else {
                 e = EntryModel.fromEntry(entry, this, file);
             }
             return e;
-        }, this);
+        });
         entries.push(...entriesArray);
     }
 
-    _fillByGroup(silent) {
+    _fillByGroup(silent?: boolean): void {
         this.set(
             {
                 title: this.parentGroup ? this.group.name : this.file.name,
                 iconId: this.group.icon,
-                icon: this._iconFromId(this.group.icon),
+                icon: this._iconFromId(this.group.icon as number),
                 customIcon: this._buildCustomIcon(),
-                customIconId: this.group.customIcon ? this.group.customIcon.toString() : null,
+                customIconId: this.group.customIcon
+                    ? this.group.customIcon.toString()
+                    : null,
                 expanded: this.group.expanded !== false
             },
-            { silent }
+            { silent: !!silent }
         );
     }
 
-    _iconFromId(id) {
+    _iconFromId(id: number): string | undefined {
         if (id === KdbxIcons.Folder || id === KdbxIcons.FolderOpen) {
             return undefined;
         }
-        return IconMap[id];
+        return (IconMap as Record<number, string>)[id];
     }
 
-    _buildCustomIcon() {
+    _buildCustomIcon(): string | null {
         this.customIcon = null;
         if (this.group.customIcon) {
             return IconUrlFormat.toDataUrl(
-                this.file.db.meta.customIcons.get(this.group.customIcon.id)?.data
+                this.file.db.meta.customIcons.get(
+                    (this.group.customIcon as unknown as { id: string }).id
+                )?.data
             );
         }
         return null;
     }
 
-    _groupModified() {
+    _groupModified(): void {
         if (this.isJustCreated) {
             this.isJustCreated = false;
         }
@@ -101,75 +136,78 @@ class GroupModel extends MenuItemModel {
         this.group.times.update();
     }
 
-    forEachGroup(callback, filter) {
+    forEachGroup(callback: (group: GroupModel) => boolean | void, filter?: GroupFilter): boolean {
         let result = true;
-        this.items.forEach((group) => {
+        (this.items as GroupModel[]).forEach((group) => {
             if (group.matches(filter)) {
                 result =
-                    callback(group) !== false && group.forEachGroup(callback, filter) !== false;
+                    callback(group) !== false &&
+                    group.forEachGroup(callback, filter) !== false;
             }
         });
         return result;
     }
 
-    forEachOwnEntry(filter, callback) {
-        this.entries.forEach(function (entry) {
-            if (entry.matches(filter)) {
+    forEachOwnEntry(filter: GroupFilter | null, callback: (entry: EntryModel, group?: GroupModel) => void): void {
+        this.entries.forEach((entry: EntryModel) => {
+            if (entry.matches(filter as Record<string, unknown>)) {
                 callback(entry, this);
             }
         });
     }
 
-    matches(filter) {
+    matches(filter?: GroupFilter): boolean {
         return (
             ((filter && filter.includeDisabled) ||
                 (this.group.enableSearching !== false &&
-                    !this.group.uuid.equals(this.file.db.meta.entryTemplatesGroup))) &&
+                    !this.group.uuid.equals(
+                        this.file.db.meta.entryTemplatesGroup as kdbxweb.KdbxUuid
+                    ))) &&
             (!filter || !filter.autoType || this.group.enableAutoType !== false)
         );
     }
 
-    getOwnSubGroups() {
+    getOwnSubGroups(): kdbxweb.KdbxGroup[] {
         return this.group.groups;
     }
 
-    addEntry(entry) {
+    addEntry(entry: EntryModel): void {
         this.entries.push(entry);
     }
 
-    addGroup(group) {
-        this.items.push(group);
+    addGroup(group: GroupModel): void {
+        (this.items as GroupModel[]).push(group);
     }
 
-    setName(name) {
+    setName(name: string): void {
         this._groupModified();
         this.group.name = name;
         this._fillByGroup();
     }
 
-    setIcon(iconId) {
+    setIcon(iconId: number): void {
         this._groupModified();
         this.group.icon = iconId;
         this.group.customIcon = undefined;
         this._fillByGroup();
     }
 
-    setCustomIcon(customIconId) {
+    setCustomIcon(customIconId: string): void {
         this._groupModified();
         this.group.customIcon = new kdbxweb.KdbxUuid(customIconId);
         this._fillByGroup();
     }
 
-    setExpanded(expanded) {
+    setExpanded(expanded: boolean): void {
         // this._groupModified(); // it's not good to mark the file as modified when a group is collapsed
         this.group.expanded = expanded;
         this.expanded = expanded;
     }
 
-    setEnableSearching(enabled) {
+    setEnableSearching(enabled: boolean | null): void {
         this._groupModified();
         let parentEnableSearching = true;
-        let parentGroup = this.parentGroup;
+        let parentGroup = this.parentGroup as GroupModel | null;
         while (parentGroup) {
             if (typeof parentGroup.enableSearching === 'boolean') {
                 parentEnableSearching = parentGroup.enableSearching;
@@ -184,8 +222,8 @@ class GroupModel extends MenuItemModel {
         this.enableSearching = this.group.enableSearching;
     }
 
-    getEffectiveEnableSearching() {
-        let grp = this;
+    getEffectiveEnableSearching(): boolean {
+        let grp: GroupModel | null = this;
         while (grp) {
             if (typeof grp.enableSearching === 'boolean') {
                 return grp.enableSearching;
@@ -195,10 +233,10 @@ class GroupModel extends MenuItemModel {
         return true;
     }
 
-    setEnableAutoType(enabled) {
+    setEnableAutoType(enabled: boolean | null): void {
         this._groupModified();
         let parentEnableAutoType = true;
-        let parentGroup = this.parentGroup;
+        let parentGroup = this.parentGroup as GroupModel | null;
         while (parentGroup) {
             if (typeof parentGroup.enableAutoType === 'boolean') {
                 parentEnableAutoType = parentGroup.enableAutoType;
@@ -213,8 +251,8 @@ class GroupModel extends MenuItemModel {
         this.enableAutoType = this.group.enableAutoType;
     }
 
-    getEffectiveEnableAutoType() {
-        let grp = this;
+    getEffectiveEnableAutoType(): boolean {
+        let grp: GroupModel | null = this;
         while (grp) {
             if (typeof grp.enableAutoType === 'boolean') {
                 return grp.enableAutoType;
@@ -224,14 +262,14 @@ class GroupModel extends MenuItemModel {
         return true;
     }
 
-    setAutoTypeSeq(seq) {
+    setAutoTypeSeq(seq: string | undefined): void {
         this._groupModified();
         this.group.defaultAutoTypeSeq = seq || undefined;
-        this.autoTypeSeq = this.group.defaultAutoTypeSeq;
+        this.autoTypeSeq = this.group.defaultAutoTypeSeq ?? null;
     }
 
-    getEffectiveAutoTypeSeq() {
-        let grp = this;
+    getEffectiveAutoTypeSeq(): string {
+        let grp: GroupModel | null = this;
         while (grp) {
             if (grp.autoTypeSeq) {
                 return grp.autoTypeSeq;
@@ -241,46 +279,56 @@ class GroupModel extends MenuItemModel {
         return DefaultAutoTypeSequence;
     }
 
-    getParentEffectiveAutoTypeSeq() {
+    getParentEffectiveAutoTypeSeq(): string {
         return this.parentGroup
             ? this.parentGroup.getEffectiveAutoTypeSeq()
             : DefaultAutoTypeSequence;
     }
 
-    isEntryTemplatesGroup() {
-        return this.group.uuid.equals(this.file.db.meta.entryTemplatesGroup);
+    isEntryTemplatesGroup(): boolean {
+        return this.group.uuid.equals(
+            this.file.db.meta.entryTemplatesGroup as kdbxweb.KdbxUuid
+        );
     }
 
-    moveToTrash() {
+    moveToTrash(): void {
         this.file.setModified();
         this.file.db.remove(this.group);
-        if (this.group.uuid.equals(this.file.db.meta.entryTemplatesGroup)) {
+        if (
+            this.group.uuid.equals(
+                this.file.db.meta.entryTemplatesGroup as kdbxweb.KdbxUuid
+            )
+        ) {
             this.file.db.meta.entryTemplatesGroup = undefined;
         }
         this.file.reload();
     }
 
-    deleteFromTrash() {
+    deleteFromTrash(): void {
         this.file.db.move(this.group, null);
         this.file.reload();
     }
 
-    removeWithoutHistory() {
-        const ix = this.parentGroup.group.groups.indexOf(this.group);
+    removeWithoutHistory(): void {
+        const ix = this.parentGroup!.group.groups.indexOf(this.group);
         if (ix >= 0) {
-            this.parentGroup.group.groups.splice(ix, 1);
+            this.parentGroup!.group.groups.splice(ix, 1);
         }
         this.file.reload();
     }
 
-    moveHere(object) {
-        if (!object || object.id === this.id) {
+    moveHere(object: GroupModel | EntryModel | null): void {
+        if (!object || (object as { id: string }).id === this.id) {
             return;
         }
-        if (object.file === this.file) {
+        if ((object as { file: unknown }).file === this.file) {
             this.file.setModified();
             if (object instanceof GroupModel) {
-                for (let parent = this; parent; parent = parent.parentGroup) {
+                for (
+                    let parent: GroupModel | null = this;
+                    parent;
+                    parent = parent.parentGroup
+                ) {
                     if (object === parent) {
                         return;
                     }
@@ -301,47 +349,58 @@ class GroupModel extends MenuItemModel {
             if (object instanceof EntryModel) {
                 this.file.setModified();
                 const detachedEntry = object.detach();
-                this.file.db.importEntry(detachedEntry, this.group, object.file.db);
+                this.file.db.importEntry(
+                    detachedEntry,
+                    this.group,
+                    (object as unknown as { file: { db: kdbxweb.Kdbx } }).file.db
+                );
                 this.file.reload();
-            } else {
-                // moving groups between files is not supported for now
             }
+            // moving groups between files is not supported for now
         }
     }
 
-    moveToTop(object) {
+    moveToTop(object: GroupModel | null): void {
         if (
             !object ||
-            object.id === this.id ||
-            object.file !== this.file ||
+            (object as { id: string }).id === this.id ||
+            (object as { file: unknown }).file !== this.file ||
             !(object instanceof GroupModel)
         ) {
             return;
         }
         this.file.setModified();
-        for (let parent = this; parent; parent = parent.parentGroup) {
+        for (
+            let parent: GroupModel | null = this;
+            parent;
+            parent = parent.parentGroup
+        ) {
             if (object === parent) {
                 return;
             }
         }
-        let atIndex = this.parentGroup.group.groups.indexOf(this.group);
-        const selfIndex = this.parentGroup.group.groups.indexOf(object.group);
+        let atIndex = this.parentGroup!.group.groups.indexOf(this.group);
+        const selfIndex = this.parentGroup!.group.groups.indexOf(object.group);
         if (selfIndex >= 0 && selfIndex < atIndex) {
             atIndex--;
         }
         if (atIndex >= 0) {
-            this.file.db.move(object.group, this.parentGroup.group, atIndex);
+            this.file.db.move(object.group, this.parentGroup!.group, atIndex);
         }
         this.file.reload();
     }
 
-    static fromGroup(group, file, parentGroup) {
+    static fromGroup(
+        group: kdbxweb.KdbxGroup,
+        file: FileModel,
+        parentGroup?: GroupModel
+    ): GroupModel {
         const model = new GroupModel();
         model.setGroup(group, file, parentGroup);
         return model;
     }
 
-    static newGroup(group, file) {
+    static newGroup(group: GroupModel, file: FileModel): GroupModel {
         const model = new GroupModel();
         const grp = file.db.createGroup(group.group);
         model.setGroup(grp, file, group);
@@ -375,3 +434,4 @@ GroupModel.defineModelProperties({
 });
 
 export { GroupModel };
+export type { GroupFilter };
