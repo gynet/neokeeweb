@@ -1,10 +1,9 @@
-// @ts-nocheck
 // Stub: settings persistence
 const SettingsStore = {
-    load() {
+    load(): Promise<void> {
         return Promise.resolve();
     },
-    save() {
+    save(): Promise<void> {
         return Promise.resolve();
     }
 };

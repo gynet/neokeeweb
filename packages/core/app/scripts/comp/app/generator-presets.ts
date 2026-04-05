@@ -1,9 +1,31 @@
-// @ts-nocheck
 import { AppSettingsModel } from 'models/app-settings-model';
 import { Locale } from 'util/locale';
 
+interface GeneratorPreset {
+    name: string;
+    title?: string;
+    length: number;
+    upper?: boolean;
+    lower?: boolean;
+    digits?: boolean;
+    special?: boolean;
+    brackets?: boolean;
+    ambiguous?: boolean;
+    include?: string;
+    pattern?: string;
+    builtIn?: boolean;
+    disabled?: boolean;
+    default?: boolean;
+}
+
+interface GeneratorPresetsSetting {
+    user: GeneratorPreset[];
+    disabled?: Record<string, boolean>;
+    default?: string;
+}
+
 const GeneratorPresets = {
-    get defaultPreset() {
+    get defaultPreset(): GeneratorPreset {
         return {
             name: 'Default',
             title: Locale.genPresetDefault,
@@ -14,7 +36,7 @@ const GeneratorPresets = {
         };
     },
 
-    get browserExtensionPreset() {
+    get browserExtensionPreset(): GeneratorPreset {
         return {
             name: 'BrowserExtension',
             length: 20,
@@ -26,7 +48,7 @@ const GeneratorPresets = {
         };
     },
 
-    get builtIn() {
+    get builtIn(): GeneratorPreset[] {
         return [
             this.defaultPreset,
             {
@@ -78,15 +100,16 @@ const GeneratorPresets = {
         ];
     },
 
-    get all() {
-        let presets = this.builtIn;
+    get all(): GeneratorPreset[] {
+        const presets: GeneratorPreset[] = this.builtIn;
         presets.forEach((preset) => {
             preset.builtIn = true;
         });
-        const setting = AppSettingsModel.generatorPresets;
+        const setting = AppSettingsModel.generatorPresets as GeneratorPresetsSetting | null;
         if (setting) {
             if (setting.user) {
-                presets = presets.concat(setting.user.map((item) => ({ ...item })));
+                const userPresets = setting.user.map((item) => ({ ...item }));
+                presets.push(...userPresets);
             }
             let hasDefault = false;
             presets.forEach((preset) => {
@@ -105,7 +128,7 @@ const GeneratorPresets = {
         return presets;
     },
 
-    get enabled() {
+    get enabled(): GeneratorPreset[] {
         const allPresets = this.all.filter((preset) => !preset.disabled);
         if (!allPresets.length) {
             allPresets.push(this.defaultPreset);
@@ -113,15 +136,15 @@ const GeneratorPresets = {
         return allPresets;
     },
 
-    getOrCreateSetting() {
-        let setting = AppSettingsModel.generatorPresets;
+    getOrCreateSetting(): GeneratorPresetsSetting {
+        let setting = AppSettingsModel.generatorPresets as GeneratorPresetsSetting | null;
         if (!setting) {
             setting = { user: [] };
         }
         return setting;
     },
 
-    add(preset) {
+    add(preset: GeneratorPreset): void {
         const setting = this.getOrCreateSetting();
         if (preset.name && !setting.user.filter((p) => p.name === preset.name).length) {
             setting.user.push(preset);
@@ -129,13 +152,13 @@ const GeneratorPresets = {
         }
     },
 
-    remove(name) {
+    remove(name: string): void {
         const setting = this.getOrCreateSetting();
         setting.user = setting.user.filter((p) => p.name !== name);
         this.save(setting);
     },
 
-    setPreset(name, props) {
+    setPreset(name: string, props: Partial<GeneratorPreset>): void {
         const setting = this.getOrCreateSetting();
         const preset = setting.user.filter((p) => p.name === name)[0];
         if (preset) {
@@ -144,7 +167,7 @@ const GeneratorPresets = {
         }
     },
 
-    setDisabled(name, disabled) {
+    setDisabled(name: string, disabled: boolean): void {
         const setting = this.getOrCreateSetting();
         if (disabled) {
             if (!setting.disabled) {
@@ -159,7 +182,7 @@ const GeneratorPresets = {
         this.save(setting);
     },
 
-    setDefault(name) {
+    setDefault(name: string | null): void {
         const setting = this.getOrCreateSetting();
         if (name) {
             setting.default = name;
@@ -169,10 +192,11 @@ const GeneratorPresets = {
         this.save(setting);
     },
 
-    save(setting) {
+    save(setting: GeneratorPresetsSetting): void {
         AppSettingsModel.set({ generatorPresets: undefined }, { silent: true });
         AppSettingsModel.generatorPresets = setting;
     }
 };
 
 export { GeneratorPresets };
+export type { GeneratorPreset, GeneratorPresetsSetting };

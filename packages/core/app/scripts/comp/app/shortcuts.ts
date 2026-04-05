@@ -1,18 +1,17 @@
-// @ts-nocheck
 // Stub: desktop shortcuts removed in web-only fork
 import { Features } from 'util/features';
 
 const Shortcuts = {
-    init() {},
-    setGlobalShortcut() {},
-    screenCaptureParam: null,
-    altShortcutSymbol(html) {
+    init(): void {},
+    setGlobalShortcut(_key?: string): void {},
+    screenCaptureParam: null as string | null,
+    altShortcutSymbol(_html?: boolean): string {
         return Features.isMac ? '⌥' : 'Alt';
     },
-    actionShortcutSymbol(html) {
+    actionShortcutSymbol(_html?: boolean): string {
         return Features.isMac ? '⌘' : 'Ctrl';
     },
-    globalShortcutText(type) {
+    globalShortcutText(_type?: string): string {
         return '';
     }
 };
