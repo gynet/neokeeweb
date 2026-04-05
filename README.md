@@ -143,19 +143,24 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [ ] Remove legacy deps: jquery, lodash, baron (#6)
 - [ ] Core feature E2E: OTP, search, password generator, autofill (#4)
 
-### Phase 2: Passkey — catch up with 1Password/Bitwarden
-**Goal**: Passkey as first-class citizen. Match industry standard.
-- Store passkeys in KDBX entries (replace TOTP for supported sites) (#9)
-- Unlock database with passkey (WebAuthn PRF replaces master password)
+### Phase 2: Quick Unlock — convenience, catch up with industry
+**Goal**: Passkey replaces typing master password. Same security, better UX.
+- Quick unlock: tap YubiKey / Face ID / fingerprint instead of typing password (#9)
+- How it works: passkey encrypts your master password via PRF, retrieves it on tap
+- KDBX format unchanged — fully compatible with KeePass/KeePassXC
+- Store website passkeys in KDBX entries (act as passkey authenticator)
 - Cloud storage with user-provided OAuth (BYOK model)
 - Works on Android PWA + Chrome/Edge desktop
 
-### Phase 3: Per-Entry Hardware Encryption — the differentiator
-**Goal**: True hardware-backed per-entry security. No competitor has this.
+### Phase 3: Per-Entry Hardware Encryption — the real security upgrade
+**Goal**: True hardware-backed per-entry crypto. No competitor has this.
+- Unlike Phase 2 (convenience), this is a **real security upgrade**
 - Mark sensitive entries for YubiKey-required decryption (#25)
+- Entry key derived directly from YubiKey PRF — no master password involved
 - Even master password compromise can't read hardware-encrypted entries
-- Multi-passkey support (YubiKey office + YubiKey backup + phone)
+- Multi-passkey per entry (YubiKey office + YubiKey backup + phone)
 - Printed recovery key for YubiKey loss
+- Target: crypto holders, DevOps/SRE, security professionals
 - Target users: crypto holders, DevOps/SRE, security professionals
 
 See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
