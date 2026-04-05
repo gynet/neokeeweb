@@ -6,8 +6,8 @@ const rootDir = path.join(__dirname, '..');
 const scriptsDir = path.join(rootDir, 'app/scripts');
 
 describe('core package smoke tests', () => {
-    test('entry point app.js exists', () => {
-        const entryPath = path.join(scriptsDir, 'app.js');
+    test('entry point app.ts exists', () => {
+        const entryPath = path.join(scriptsDir, 'app.ts');
         expect(fs.existsSync(entryPath)).toBe(true);
     });
 
@@ -22,7 +22,7 @@ describe('core package smoke tests', () => {
         const content = fs.readFileSync(configPath, 'utf-8');
         // Verify key structural elements are present
         expect(content).toContain("entry:");
-        expect(content).toContain("app/scripts/app.js");
+        expect(content).toContain("app/scripts/app.ts");
         expect(content).toContain("module.exports");
         expect(content).toContain("devServer:");
     });
