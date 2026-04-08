@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as kdbxweb from 'kdbxweb';
 import { Keys } from 'const/keys';
 import { Locale } from 'util/locale';
@@ -6,8 +6,13 @@ import { Tip } from 'util/ui/tip';
 import { FieldView } from 'views/fields/field-view';
 import { FieldViewText } from 'views/fields/field-view-text';
 
+const loc = Locale as unknown as Record<string, any>;
+
 class FieldViewCustom extends FieldViewText {
-    constructor(model, options) {
+    isProtected: boolean | undefined;
+    labelInput: any;
+
+    constructor(model: any, options?: any) {
         super(model, options);
         this.events = {
             ...this.events,
@@ -15,7 +20,7 @@ class FieldViewCustom extends FieldViewText {
         };
     }
 
-    startEdit() {
+    startEdit(): void {
         super.startEdit();
         this.$el.addClass('details__field--can-edit-title');
         if (this.isProtected === undefined) {
@@ -26,9 +31,9 @@ class FieldViewCustom extends FieldViewText {
             .addClass('details__field-value-btn details__field-value-btn-protect')
             .appendTo(this.valueEl)
             .mousedown(this.protectBtnClick.bind(this));
-        let securityTipTitle = Locale.detLockField;
+        let securityTipTitle = loc.detLockField as string;
         if (this.isProtected) {
-            securityTipTitle = Locale.detUnlockField;
+            securityTipTitle = loc.detUnlockField as string;
         }
         const securityTip = new Tip($(this.valueEl).find('.details__field-value-btn'), {
             title: securityTipTitle
@@ -36,7 +41,7 @@ class FieldViewCustom extends FieldViewText {
         securityTip.init();
     }
 
-    endEdit(newVal, extra) {
+    endEdit(newVal?: any, extra?: any): void {
         this.$el.removeClass('details__field--can-edit-title');
         extra = { ...extra };
         if (this.model.titleChanged) {
@@ -59,7 +64,7 @@ class FieldViewCustom extends FieldViewText {
         }
     }
 
-    startEditTitle(emptyTitle) {
+    startEditTitle(emptyTitle?: boolean): void {
         const text = emptyTitle ? '' : this.model.title || '';
         this.labelInput = $('<input/>');
         this.labelEl.empty().append(this.labelInput);
@@ -78,7 +83,7 @@ class FieldViewCustom extends FieldViewText {
         });
     }
 
-    endEditTitle(newTitle) {
+    endEditTitle(newTitle?: string): void {
         if (newTitle && newTitle !== this.model.title) {
             this.model.title = newTitle;
             this.model.titleChanged = true;
@@ -95,7 +100,7 @@ class FieldViewCustom extends FieldViewText {
         }
     }
 
-    fieldLabelClick(e) {
+    fieldLabelClick(e: Event): void {
         e.stopImmediatePropagation();
 
         if (this.model.newField) {
@@ -107,13 +112,13 @@ class FieldViewCustom extends FieldViewText {
         }
     }
 
-    fieldLabelMousedown(e) {
+    fieldLabelMousedown(e: Event): void {
         if (this.editing) {
             e.stopPropagation();
         }
     }
 
-    fieldValueBlur() {
+    fieldValueBlur(): void {
         if (this.labelInput) {
             this.endEditTitle(this.labelInput.val());
         }
@@ -122,15 +127,15 @@ class FieldViewCustom extends FieldViewText {
         }
     }
 
-    fieldLabelInput(e) {
+    fieldLabelInput(e: Event): void {
         e.stopPropagation();
     }
 
-    fieldLabelInputClick(e) {
+    fieldLabelInputClick(e: Event): void {
         e.stopPropagation();
     }
 
-    fieldLabelKeydown(e) {
+    fieldLabelKeydown(e: any): void {
         e.stopPropagation();
         const code = e.keyCode || e.which;
         if (code === Keys.DOM_VK_ESCAPE) {
@@ -141,21 +146,21 @@ class FieldViewCustom extends FieldViewText {
         }
     }
 
-    fieldLabelKeyup(e) {
+    fieldLabelKeyup(e: any): void {
         const code = e.keyCode || e.which;
         if (code === Keys.DOM_VK_RETURN) {
             this.endEditTitle(e.target.value);
         }
     }
 
-    fieldValueInputClick() {
+    fieldValueInputClick(): void {
         if (this.labelInput) {
             this.endEditTitle(this.labelInput.val());
         }
         super.fieldValueInputClick.call(this);
     }
 
-    protectBtnClick(e) {
+    protectBtnClick(e: Event): void {
         e.stopPropagation();
         this.isProtected = !this.isProtected;
         this.$el.toggleClass('details__field--protected', this.isProtected);

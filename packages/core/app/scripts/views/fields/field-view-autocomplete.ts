@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Keys } from 'const/keys';
 import { FieldViewText } from 'views/fields/field-view-text';
 import completionsTemplate from 'templates/details/fields/completions.hbs';
@@ -6,7 +6,10 @@ import completionsTemplate from 'templates/details/fields/completions.hbs';
 class FieldViewAutocomplete extends FieldViewText {
     hasOptions = true;
 
-    endEdit(newVal, extra) {
+    autocomplete: any;
+    selectedCompletionIx?: number;
+
+    endEdit(newVal?: any, extra?: any): void {
         if (this.autocomplete) {
             this.autocomplete.remove();
             this.autocomplete = null;
@@ -15,7 +18,7 @@ class FieldViewAutocomplete extends FieldViewText {
         super.endEdit(newVal, extra);
     }
 
-    startEdit() {
+    startEdit(): void {
         super.startEdit();
         const fieldRect = this.input[0].getBoundingClientRect();
         const shadowSpread = parseInt(this.input.css('--focus-shadow-spread')) || 0;
@@ -34,13 +37,13 @@ class FieldViewAutocomplete extends FieldViewText {
         }
     }
 
-    fieldValueInput(e) {
+    fieldValueInput(e: Event): void {
         e.stopPropagation();
         this.updateAutocomplete();
         super.fieldValueInput.call(this, e);
     }
 
-    fieldValueKeydown(e) {
+    fieldValueKeydown(e: any): void {
         switch (e.which) {
             case Keys.DOM_VK_UP:
                 this.moveAutocomplete(false);
@@ -66,7 +69,7 @@ class FieldViewAutocomplete extends FieldViewText {
         super.fieldValueKeydown(e);
     }
 
-    moveAutocomplete(next) {
+    moveAutocomplete(next: boolean): void {
         const completions = this.model.getCompletions(this.input.val());
         if (typeof this.selectedCompletionIx === 'number') {
             this.selectedCompletionIx =
@@ -78,7 +81,7 @@ class FieldViewAutocomplete extends FieldViewText {
         this.updateAutocomplete();
     }
 
-    updateAutocomplete() {
+    updateAutocomplete(): void {
         const completions = this.model.getCompletions(this.input.val());
         const completionsHtml = completionsTemplate({
             completions,
@@ -88,7 +91,7 @@ class FieldViewAutocomplete extends FieldViewText {
         this.autocomplete.toggle(!!completionsHtml);
     }
 
-    autocompleteClick(e) {
+    autocompleteClick(e: any): void {
         e.stopPropagation();
         if (e.target.classList.contains('details__field-autocomplete-item')) {
             const selectedItem = $(e.target).text();

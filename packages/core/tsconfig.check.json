@@ -45,6 +45,12 @@
     "app/scripts/views/fields/field-view-read-only-with-options.ts",
     "app/scripts/views/fields/field-view-history.ts",
     "app/scripts/views/fields/field-view-url.ts",
-    "app/scripts/views/fields/field-view-select.ts"
+    "app/scripts/views/fields/field-view-select.ts",
+    "app/scripts/views/fields/field-view-text.ts",
+    "app/scripts/views/fields/field-view-tags.ts",
+    "app/scripts/views/fields/field-view-date.ts",
+    "app/scripts/views/fields/field-view-custom.ts",
+    "app/scripts/views/fields/field-view-autocomplete.ts",
+    "app/scripts/views/fields/field-view-otp.ts"
   ]
 }

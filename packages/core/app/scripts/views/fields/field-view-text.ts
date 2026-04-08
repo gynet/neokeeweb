@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as kdbxweb from 'kdbxweb';
 import { Events } from 'framework/events';
 import { KeyHandler } from 'comp/browser/key-handler';
@@ -12,20 +12,33 @@ import { GeneratorView } from 'views/generator-view';
 import { escape } from 'util/fn';
 import { AppSettingsModel } from 'models/app-settings-model';
 
+const features = Features as unknown as { isMobile: boolean };
+const settings = AppSettingsModel as unknown as { useMarkdown: boolean };
+const mdToHtml = MdToHtml as unknown as {
+    convert(value: any): { html?: string; text?: string };
+};
+
 class FieldViewText extends FieldView {
     hasOptions = true;
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    input: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gen: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mobileControls: any;
+
+    constructor(model: any, options?: any) {
         super(model, options);
         this.once('remove', () => this.stopBlurListener());
     }
 
-    renderValue(value) {
-        if (this.model.markdown && AppSettingsModel.useMarkdown) {
+    renderValue(value: any): string {
+        if (this.model.markdown && settings.useMarkdown) {
             if (value && value.isProtected) {
                 value = value.getText();
             }
-            const converted = MdToHtml.convert(value);
+            const converted = mdToHtml.convert(value);
             if (converted.html) {
                 return converted.html;
             }
@@ -36,11 +49,11 @@ class FieldViewText extends FieldView {
             : escape(value || '').replace(/\n/g, '<br/>');
     }
 
-    getEditValue(value) {
+    getEditValue(value: any): string {
         return value && value.isProtected ? value.getText() : value || '';
     }
 
-    startEdit() {
+    startEdit(): void {
         const text = this.getEditValue(this.value);
         const isProtected = !!(this.value && this.value.isProtected);
         this.$el.toggleClass('details__field--protected', isProtected);
@@ -58,7 +71,7 @@ class FieldViewText extends FieldView {
             click: this.fieldValueInputClick.bind(this),
             mousedown: this.fieldValueInputMouseDown.bind(this)
         });
-        const fieldValueBlurBound = (e) => this.fieldValueBlur(e);
+        const fieldValueBlurBound = (e: any) => this.fieldValueBlur(e);
         Events.on('click', fieldValueBlurBound);
         this.stopBlurListener = () => Events.off('click', fieldValueBlurBound);
         this.listenTo(Events, 'main-window-will-close', this.externalEndEdit);
@@ -66,7 +79,7 @@ class FieldViewText extends FieldView {
         if (this.model.multiline) {
             this.setInputHeight();
         }
-        if (Features.isMobile) {
+        if (features.isMobile) {
             this.createMobileControls();
         } else {
             if (this.model.canGen) {
@@ -81,7 +94,7 @@ class FieldViewText extends FieldView {
         Tip.hideTip(this.labelEl[0]);
     }
 
-    createMobileControls() {
+    createMobileControls(): void {
         this.mobileControls = {};
         ['cancel', 'apply'].forEach((action) => {
             this.mobileControls[action] = $('<div/>')
@@ -97,20 +110,22 @@ class FieldViewText extends FieldView {
         });
     }
 
-    showGeneratorClick(e) {
+    showGeneratorClick(e: Event): void {
         e.stopPropagation();
         if (!this.gen) {
             this.input.focus();
         }
     }
 
-    showGenerator() {
+    showGenerator(): void {
         if (this.gen) {
             this.hideGenerator();
         } else {
             const fieldRect = this.input[0].getBoundingClientRect();
             const shadowSpread = parseInt(this.input.css('--focus-shadow-spread')) || 0;
-            const pos = { left: fieldRect.left };
+            const pos: { left: number; top?: number; bottom?: number } = {
+                left: fieldRect.left
+            };
             const top = fieldRect.bottom + shadowSpread;
             const windowHeight = document.documentElement.clientHeight;
             if (top > windowHeight / 2 && top > 200) {
@@ -118,7 +133,7 @@ class FieldViewText extends FieldView {
             } else {
                 pos.top = top;
             }
-            this.gen = new GeneratorView({
+            this.gen = new (GeneratorView as any)({
                 pos,
                 password: this.value
             });
@@ -128,7 +143,7 @@ class FieldViewText extends FieldView {
         }
     }
 
-    hideGenerator() {
+    hideGenerator(): void {
         if (this.gen) {
             const gen = this.gen;
             delete this.gen;
@@ -136,21 +151,21 @@ class FieldViewText extends FieldView {
         }
     }
 
-    generatorClosed() {
+    generatorClosed(): void {
         if (this.gen) {
             delete this.gen;
             this.endEdit();
         }
     }
 
-    generatorResult(password) {
+    generatorResult(password: any): void {
         if (this.gen) {
             delete this.gen;
             this.endEdit(password);
         }
     }
 
-    setInputHeight() {
+    setInputHeight(): void {
         const MinHeight = 18;
         this.input.height(MinHeight);
         let newHeight = this.input[0].scrollHeight;
@@ -160,30 +175,30 @@ class FieldViewText extends FieldView {
         this.input.height(newHeight);
     }
 
-    fieldValueBlur() {
+    fieldValueBlur(_e?: any): void {
         if (!this.gen && this.input) {
             this.endEdit(this.input.val());
         }
     }
 
-    fieldValueInput(e) {
+    fieldValueInput(e: Event): void {
         e.stopPropagation();
         if (this.model.multiline) {
             this.setInputHeight();
         }
     }
 
-    fieldValueInputClick() {
+    fieldValueInputClick(): void {
         if (this.gen) {
             this.hideGenerator();
         }
     }
 
-    fieldValueInputMouseDown(e) {
+    fieldValueInputMouseDown(e: Event): void {
         e.stopPropagation();
     }
 
-    fieldValueKeydown(e) {
+    fieldValueKeydown(e: any): void {
         KeyHandler.reg();
         const code = e.keyCode || e.which;
         if (code === Keys.DOM_VK_RETURN) {
@@ -214,13 +229,13 @@ class FieldViewText extends FieldView {
         e.stopPropagation();
     }
 
-    externalEndEdit() {
+    externalEndEdit(): void {
         if (this.input) {
             this.endEdit(this.input.val());
         }
     }
 
-    endEdit(newVal, extra) {
+    endEdit(newVal?: any, extra?: any): void {
         if (this.gen) {
             this.hideGenerator();
         }
@@ -243,9 +258,11 @@ class FieldViewText extends FieldView {
         super.endEdit(newVal, extra);
     }
 
-    stopBlurListener() {}
+    stopBlurListener(): void {
+        /* replaced inside startEdit */
+    }
 
-    mobileFieldControlMouseDown(e) {
+    mobileFieldControlMouseDown(e: any): void {
         e.stopPropagation();
         this.stopBlurListener();
         const action = $(e.target).data('action');
@@ -256,11 +273,11 @@ class FieldViewText extends FieldView {
         }
     }
 
-    mobileFieldControlTouchStart(e) {
+    mobileFieldControlTouchStart(e: any): void {
         this.$el.attr('active-mobile-action', $(e.target).data('action'));
     }
 
-    mobileFieldControlTouchEnd(e) {
+    mobileFieldControlTouchEnd(e: any): void {
         const shouldExecute = this.$el.attr('active-mobile-action') === $(e.target).data('action');
         this.$el.removeAttr('active-mobile-action');
         if (shouldExecute) {
@@ -268,7 +285,7 @@ class FieldViewText extends FieldView {
         }
     }
 
-    mobileFieldControlTouchMove(e) {
+    mobileFieldControlTouchMove(e: any): void {
         const touch = e.originalEvent.targetTouches[0];
         const rect = touch.target.getBoundingClientRect();
         const inside =

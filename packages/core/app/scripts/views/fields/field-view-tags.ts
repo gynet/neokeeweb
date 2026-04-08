@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FieldViewText } from 'views/fields/field-view-text';
 import { escape } from 'util/fn';
 import tagsTemplate from 'templates/details/fields/tags.hbs';
@@ -6,24 +6,26 @@ import tagsTemplate from 'templates/details/fields/tags.hbs';
 class FieldViewTags extends FieldViewText {
     hasOptions = false;
 
-    renderValue(value) {
+    tagsAutocomplete: any;
+
+    renderValue(value: any): string {
         return value ? escape(value.join(', ')) : '';
     }
 
-    getEditValue(value) {
+    getEditValue(value: any): string {
         return value ? value.join(', ') : '';
     }
 
-    getTextValue() {
+    getTextValue(): string {
         return this.value ? this.value.join(', ') : '';
     }
 
-    valueToTags(val) {
-        const allTags = {};
-        this.model.tags.forEach((tag) => {
+    valueToTags(val: string): string[] {
+        const allTags: Record<string, string> = {};
+        this.model.tags.forEach((tag: string) => {
             allTags[tag.toLowerCase()] = tag;
         });
-        const valueTags = {};
+        const valueTags: Record<string, string> = {};
         val.split(/\s*[;,:]\s*/)
             .filter((tag) => tag)
             .map((tag) => allTags[tag.toLowerCase()] || tag)
@@ -33,7 +35,7 @@ class FieldViewTags extends FieldViewText {
         return Object.keys(valueTags);
     }
 
-    endEdit(newVal, extra) {
+    endEdit(newVal?: any, extra?: any): void {
         if (newVal !== undefined) {
             newVal = this.valueToTags(newVal);
         }
@@ -44,7 +46,7 @@ class FieldViewTags extends FieldViewText {
         super.endEdit(newVal, extra);
     }
 
-    startEdit() {
+    startEdit(): void {
         super.startEdit();
         const fieldRect = this.input[0].getBoundingClientRect();
         const shadowSpread = parseInt(this.input.css('--focus-shadow-spread')) || 0;
@@ -60,17 +62,17 @@ class FieldViewTags extends FieldViewText {
         this.setTags();
     }
 
-    fieldValueInput(e) {
+    fieldValueInput(e: Event): void {
         e.stopPropagation();
         this.setTags();
         super.fieldValueInput(e);
     }
 
-    getAvailableTags() {
+    getAvailableTags(): string[] {
         const tags = this.valueToTags(this.input.val());
         const last = tags[tags.length - 1];
         const isLastPart = last && this.model.tags.indexOf(last) < 0;
-        return this.model.tags.filter((tag) => {
+        return this.model.tags.filter((tag: string) => {
             return (
                 tags.indexOf(tag) < 0 &&
                 (!isLastPart || tag.toLowerCase().indexOf(last.toLowerCase()) >= 0)
@@ -78,14 +80,14 @@ class FieldViewTags extends FieldViewText {
         });
     }
 
-    setTags() {
+    setTags(): void {
         const availableTags = this.getAvailableTags();
         const tagsHtml = tagsTemplate({ tags: availableTags });
         this.tagsAutocomplete.html(tagsHtml);
         this.tagsAutocomplete.toggle(!!tagsHtml);
     }
 
-    tagsAutocompleteClick(e) {
+    tagsAutocompleteClick(e: any): void {
         e.stopPropagation();
         if (e.target.classList.contains('details__field-autocomplete-item')) {
             const selectedTag = $(e.target).text();

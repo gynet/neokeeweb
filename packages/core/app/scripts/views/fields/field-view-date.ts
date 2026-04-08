@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Pikaday from 'pikaday';
 import { DateFormat } from 'comp/i18n/date-format';
 import { FieldViewText } from 'views/fields/field-view-text';
@@ -6,7 +6,9 @@ import { FieldViewText } from 'views/fields/field-view-text';
 class FieldViewDate extends FieldViewText {
     hasOptions = false;
 
-    renderValue(value) {
+    picker: any;
+
+    renderValue(value: any): string {
         let result = value ? DateFormat.dStr(value) : '';
         if (value && this.model.lessThanNow && value < new Date()) {
             result += ' ' + this.model.lessThanNow;
@@ -14,11 +16,11 @@ class FieldViewDate extends FieldViewText {
         return result;
     }
 
-    getEditValue(value) {
+    getEditValue(value: any): string {
         return value ? DateFormat.dStr(value) : '';
     }
 
-    startEdit() {
+    startEdit(): void {
         super.startEdit();
         this.picker = new Pikaday({
             field: this.input[0],
@@ -38,9 +40,9 @@ class FieldViewDate extends FieldViewText {
         setTimeout(() => this.picker.show(), 0);
     }
 
-    adjustPickerPosition(...args) {
-        window.Pikaday = Pikaday;
-        Pikaday.prototype.adjustPosition.apply(this.picker, args);
+    adjustPickerPosition(...args: any[]): void {
+        (window as any).Pikaday = Pikaday;
+        (Pikaday as any).prototype.adjustPosition.apply(this.picker, args);
         const shadowSpread = parseInt(this.input.css('--focus-shadow-spread')) || 0;
         if (shadowSpread) {
             const isOnTop = this.picker.el.classList.contains('top-aligned');
@@ -50,17 +52,19 @@ class FieldViewDate extends FieldViewText {
         }
     }
 
-    fieldValueBlur(e) {
+    fieldValueBlur(e?: any): void {
         if (!this.picker) {
             super.fieldValueBlur(e);
         }
     }
 
-    endEdit(newVal, extra) {
+    endEdit(newVal?: any, extra?: any): void {
         if (this.picker) {
             try {
                 this.picker.destroy();
-            } catch (e) {}
+            } catch {
+                /* ignore */
+            }
             this.picker = null;
         }
         newVal = new Date(newVal);
@@ -70,11 +74,11 @@ class FieldViewDate extends FieldViewText {
         super.endEdit(newVal, extra);
     }
 
-    pickerClose() {
+    pickerClose(): void {
         this.endEdit(this.input.val());
     }
 
-    pickerSelect(dt) {
+    pickerSelect(dt: Date): void {
         this.endEdit(dt);
     }
 }

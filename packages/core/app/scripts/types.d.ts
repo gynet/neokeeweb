@@ -66,6 +66,23 @@ declare module 'baron' {
     export default baron;
 }
 
+// pikaday — date picker library (used by field-view-date)
+declare module 'pikaday' {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    class Pikaday {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        constructor(options: any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        el: any;
+        show(): void;
+        hide(): void;
+        destroy(): void;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        adjustPosition: (...args: any[]) => void;
+    }
+    export default Pikaday;
+}
+
 // jsqrcode — pure JS QR code decoder (no types published)
 declare module 'jsqrcode' {
     class QrCode {
@@ -106,6 +123,7 @@ declare module 'comp/browser/key-handler' {
         ): void;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         offKey(key: number, handler: (...args: any[]) => void, view: unknown): void;
+        reg(): void;
     };
     export { KeyHandler };
 }
@@ -135,6 +153,9 @@ declare module 'comp/i18n/date-format' {
         dtStr(dt: Date | number | null | undefined): string;
         dStr(dt: Date | number | null | undefined): string;
         dtStrFs(dt: Date | number | null | undefined): string;
+        months(): string[];
+        weekDays(): string[];
+        shortWeekDays(): string[];
     };
     export { DateFormat };
 }

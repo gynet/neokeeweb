@@ -1,22 +1,25 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Timeouts } from 'const/timeouts';
 import { FieldViewText } from 'views/fields/field-view-text';
 import { Locale } from 'util/locale';
 import { StringFormat } from 'util/formatting/string-format';
 
+const loc = Locale as unknown as Record<string, any>;
+const timeouts = Timeouts as unknown as { OtpFadeDuration: number };
+
 const MinOpacity = 0.1;
 
 class FieldViewOtp extends FieldViewText {
-    otpTimeout = null;
-    otpTickInterval = null;
-    otpValue = null;
-    otpGenerator = null;
+    otpTimeout: any = null;
+    otpTickInterval: any = null;
+    otpValue: string | null = null;
+    otpGenerator: any = null;
     otpTimeLeft = 0;
     otpValidUntil = 0;
-    fieldOpacity = null;
-    otpState = null;
+    fieldOpacity: number | null = null;
+    otpState: string | null = null;
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
         this.once('remove', () => this.stopOtpUpdater());
         if (model.readonly) {
@@ -24,7 +27,7 @@ class FieldViewOtp extends FieldViewText {
         }
     }
 
-    renderValue(value) {
+    renderValue(value: any): string {
         if (!value) {
             this.resetOtp();
             return '';
@@ -39,33 +42,34 @@ class FieldViewOtp extends FieldViewText {
         }
         switch (this.otpState) {
             case 'awaiting-command':
-                return Locale.detOtpClickToTouch;
+                return loc.detOtpClickToTouch as string;
             case 'awaiting-touch':
-                return Locale.detOtpTouch.replace('{}', this.model.deviceShortName);
+                return (loc.detOtpTouch as string).replace('{}', this.model.deviceShortName);
             case 'error':
-                return StringFormat.capFirst(Locale.error);
+                return StringFormat.capFirst(loc.error as string);
             case 'generating':
-                return Locale.detOtpGenerating;
+                return loc.detOtpGenerating as string;
             default:
                 return '';
         }
     }
 
-    getEditValue(value) {
+    getEditValue(value: any): string {
         return value && value.url;
     }
 
-    getTextValue() {
-        return this.otpValue;
+    getTextValue(): string {
+        return this.otpValue ?? '';
     }
 
-    render() {
+    render(): this | undefined {
         super.render();
         this.fieldOpacity = null;
         this.otpTick();
+        return this;
     }
 
-    resetOtp() {
+    resetOtp(): void {
         this.otpGenerator = null;
         this.otpValue = null;
         this.otpTimeLeft = 0;
@@ -81,7 +85,7 @@ class FieldViewOtp extends FieldViewText {
         }
     }
 
-    requestOtpUpdate() {
+    requestOtpUpdate(): void {
         if (this.value) {
             if (this.model.needsTouch) {
                 this.otpState = 'awaiting-command';
@@ -92,7 +96,7 @@ class FieldViewOtp extends FieldViewText {
         }
     }
 
-    otpUpdated(err, pass, timeLeft) {
+    otpUpdated(err: any, pass: string | undefined, timeLeft: number | undefined): void {
         if (this.removed) {
             return;
         }
@@ -107,7 +111,7 @@ class FieldViewOtp extends FieldViewText {
         }
         this.otpValue = pass;
         this.otpTimeLeft = timeLeft || 0;
-        this.otpValidUntil = Date.now() + timeLeft;
+        this.otpValidUntil = Date.now() + (timeLeft ?? 0);
         if (!this.editing) {
             this.render();
         }
@@ -133,18 +137,18 @@ class FieldViewOtp extends FieldViewText {
         }
     }
 
-    otpTick() {
+    otpTick(): void {
         if (!this.value || !this.otpValidUntil) {
             return;
         }
         let opacity;
         const timeLeft = this.otpValidUntil - Date.now();
-        if (timeLeft >= Timeouts.OtpFadeDuration || this.editing) {
+        if (timeLeft >= timeouts.OtpFadeDuration || this.editing) {
             opacity = 1;
         } else if (timeLeft <= 0) {
             opacity = MinOpacity;
         } else {
-            opacity = Math.max(MinOpacity, Math.pow(timeLeft / Timeouts.OtpFadeDuration, 2));
+            opacity = Math.max(MinOpacity, Math.pow(timeLeft / timeouts.OtpFadeDuration, 2));
         }
         if (this.fieldOpacity === opacity) {
             return;
@@ -153,15 +157,15 @@ class FieldViewOtp extends FieldViewText {
         this.valueEl.css('opacity', opacity);
     }
 
-    copyValue() {
-        this.refreshOtp((err) => {
+    copyValue(): void {
+        this.refreshOtp((err: any) => {
             if (!err) {
                 super.copyValue();
             }
         });
     }
 
-    refreshOtp(callback) {
+    refreshOtp(callback: (err?: any) => void): void {
         if (this.model.needsTouch) {
             if (this.otpValue) {
                 callback();
@@ -173,16 +177,16 @@ class FieldViewOtp extends FieldViewText {
         }
     }
 
-    requestTouch(callback) {
+    requestTouch(callback: (err?: any) => void): void {
         this.otpState = 'awaiting-touch';
-        this.value.next((err, code, timeLeft) => {
+        this.value.next((err: any, code: string | undefined, timeLeft: number | undefined) => {
             this.otpUpdated(err, code, timeLeft);
             callback(err);
         });
         this.render();
     }
 
-    stopOtpUpdater() {
+    stopOtpUpdater(): void {
         if (this.otpState === 'awaiting-touch') {
             if (this.value && this.value.cancel) {
                 this.value.cancel();
