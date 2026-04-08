@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { FieldViewText } from 'views/fields/field-view-text';
 import { escape } from 'util/fn';
 
@@ -8,7 +7,7 @@ class FieldViewUrl extends FieldViewText {
     displayUrlRegex = /^https:\/\//i;
     cssClass = 'url';
 
-    renderValue(value) {
+    renderValue(value: string | undefined): string {
         try {
             return value
                 ? '<a href="' +
@@ -17,12 +16,12 @@ class FieldViewUrl extends FieldViewText {
                       escape(this.displayUrl(value)) +
                       '</a>'
                 : '';
-        } catch (e) {
-            return escape(value);
+        } catch {
+            return escape(value ?? '');
         }
     }
 
-    fixUrl(url) {
+    fixUrl(url: string): string {
         const proto = new URL(url, 'ws://x').protocol;
         if (proto === 'ws:') {
             return 'https://' + url;
@@ -33,11 +32,11 @@ class FieldViewUrl extends FieldViewText {
         return url;
     }
 
-    displayUrl(url) {
+    displayUrl(url: string): string {
         return url.replace(this.displayUrlRegex, '');
     }
 
-    getTextValue() {
+    getTextValue(): string {
         return this.value;
     }
 }

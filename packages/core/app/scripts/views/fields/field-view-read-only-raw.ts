@@ -1,10 +1,10 @@
-// @ts-nocheck
 import { FieldView } from 'views/fields/field-view';
 
 class FieldViewReadOnlyRaw extends FieldView {
     readonly = true;
 
-    renderValue(value) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    renderValue(value: any): any {
         return value;
     }
 }

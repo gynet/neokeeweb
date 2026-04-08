@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
@@ -9,14 +9,16 @@ import { Features } from 'util/features';
 import { Locale } from 'util/locale';
 import { PasswordPresenter } from 'util/formatting/password-presenter';
 import { DropdownView } from 'views/dropdown-view';
-import { AppSettingsModel } from 'models/app-settings-model';
-import { Timeouts } from 'const/timeouts';
 import template from 'templates/details/fields/field.hbs';
+
+const loc = Locale as unknown as Record<string, any>;
+const copyPaste = CopyPaste as unknown as any;
+const features = Features as unknown as { isMobile: boolean };
 
 class FieldView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .details__field-label': 'fieldLabelClick',
         'dblclick .details__field-label': 'fieldLabelDblClick',
         'click .details__field-value': 'fieldValueClick',
@@ -24,20 +26,47 @@ class FieldView extends View {
         'click .details__field-options': 'fieldOptionsClick'
     };
 
-    constructor(model, options) {
+    // Fields accessed by the class and its subclasses; typed permissively.
+    value: any;
+    cssClass?: string;
+    readonly?: boolean;
+    editing = false;
+    preventCopy = false;
+    hasOptions?: boolean;
+    valueEl: any;
+    labelEl: any;
+    tip: any;
+    mobileActionsEl: any;
+
+    constructor(model: any, options?: Record<string, any>) {
         super(model, options);
         this.once('remove', () => {
             if (this.tip) {
                 Tip.hideTip(this.valueEl[0]);
             }
         });
-        if (Features.isMobile) {
+        if (features.isMobile) {
             this.listenTo(Events, 'click', this.bodyClick);
         }
     }
 
-    render() {
-        this.value = typeof this.model.value === 'function' ? this.model.value() : this.model.value;
+    // Subclass hook; default just returns the raw value as a string.
+    renderValue(value: any): any {
+        return value;
+    }
+
+    // Subclass hooks — implemented by subclasses that support edit.
+    startEdit(): void {
+        /* override */
+    }
+
+    showGenerator(): void {
+        /* override */
+    }
+
+    render(): this | undefined {
+        this.value =
+            typeof this.model.value === 'function' ? this.model.value() : this.model.value;
         const renderedValue = this.renderValue(this.value);
         super.render({
             cls: this.cssClass,
@@ -47,21 +76,23 @@ class FieldView extends View {
             canEditTitle: this.model.newField,
             canGen: this.model.canGen,
             protect: this.value && this.value.isProtected,
-            hasOptions: !Features.isMobile && renderedValue && this.hasOptions
+            hasOptions: !features.isMobile && renderedValue && this.hasOptions
         });
         this.valueEl = this.$el.find('.details__field-value');
         this.valueEl.html(renderedValue);
         this.labelEl = this.$el.find('.details__field-label');
         if (this.model.tip) {
-            this.tip = typeof this.model.tip === 'function' ? this.model.tip() : this.model.tip;
+            this.tip =
+                typeof this.model.tip === 'function' ? this.model.tip() : this.model.tip;
             if (this.tip) {
                 this.valueEl.attr('title', this.tip);
                 Tip.createTip(this.valueEl[0]);
             }
         }
+        return this;
     }
 
-    update() {
+    update(): void {
         if (typeof this.model.value === 'function') {
             const newVal = this.model.value();
             if (
@@ -73,7 +104,7 @@ class FieldView extends View {
         }
     }
 
-    fieldLabelClick(e) {
+    fieldLabelClick(e: Event): void {
         e.stopImmediatePropagation();
         this.hideOptionsDropdown();
         if (this.preventCopy) {
@@ -82,7 +113,7 @@ class FieldView extends View {
         this.copyValue();
     }
 
-    copyValue() {
+    copyValue(): void {
         const field = this.model.name;
         let copyRes;
         if (field) {
@@ -90,10 +121,10 @@ class FieldView extends View {
             if (!text) {
                 return;
             }
-            if (!CopyPaste.simpleCopy) {
-                CopyPaste.createHiddenInput(text);
+            if (!copyPaste.simpleCopy) {
+                copyPaste.createHiddenInput(text);
             }
-            copyRes = CopyPaste.copy(text);
+            copyRes = copyPaste.copy(text);
             this.emit('copy', { source: this, copyRes });
             return;
         }
@@ -103,23 +134,26 @@ class FieldView extends View {
         const selection = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(this.valueEl[0]);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        copyRes = CopyPaste.copy(this.valueEl[0].innerText || this.valueEl.text());
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        copyRes = copyPaste.copy(this.valueEl[0].innerText || this.valueEl.text());
         if (copyRes) {
-            selection.removeAllRanges();
+            selection?.removeAllRanges();
             this.emit('copy', { source: this, copyRes });
         }
     }
 
-    fieldValueClick(e) {
+    fieldValueClick(e: Event): void {
         this.hideOptionsDropdown();
-        if (['a', 'input', 'textarea'].indexOf(e.target.tagName.toLowerCase()) >= 0) {
+        if (
+            ['a', 'input', 'textarea'].indexOf((e.target as Element).tagName.toLowerCase()) >=
+            0
+        ) {
             return;
         }
-        const sel = window.getSelection().toString();
+        const sel = window.getSelection()?.toString();
         if (!sel) {
-            if (Features.isMobile) {
+            if (features.isMobile) {
                 e.stopPropagation();
                 this.showMobileActions();
             } else {
@@ -128,13 +162,14 @@ class FieldView extends View {
         }
     }
 
-    fieldLabelDrag(e) {
+    fieldLabelDrag(e: DragEvent): void {
         e.stopPropagation();
         this.hideOptionsDropdown();
         if (!this.value) {
             return;
         }
         const dt = e.dataTransfer;
+        if (!dt) return;
         const txtval = this.getTextValue();
         if (this.valueEl[0].tagName.toLowerCase() === 'a') {
             dt.setData('text/uri-list', txtval);
@@ -143,7 +178,7 @@ class FieldView extends View {
         dt.effectAllowed = 'copy';
     }
 
-    edit() {
+    edit(): void {
         if (this.readonly || this.editing) {
             return;
         }
@@ -155,7 +190,7 @@ class FieldView extends View {
         this.labelEl[0].setAttribute('draggable', 'false');
     }
 
-    endEdit(newVal, extra) {
+    endEdit(newVal?: any, extra?: any): void {
         if (!this.editing) {
             return;
         }
@@ -199,12 +234,12 @@ class FieldView extends View {
         this.labelEl[0].setAttribute('draggable', 'true');
     }
 
-    triggerChange(arg) {
+    triggerChange(arg: any): void {
         arg.sender = this;
         this.emit('change', arg);
     }
 
-    fieldOptionsClick(e) {
+    fieldOptionsClick(e: Event): void {
         if (this.views.optionsDropdown) {
             this.hideOptionsDropdown();
             return;
@@ -217,15 +252,23 @@ class FieldView extends View {
         this.listenTo(dropdownView, 'cancel', this.hideOptionsDropdown);
         this.listenTo(dropdownView, 'select', this.optionsDropdownSelect);
 
-        const options = [];
+        const options: Array<{ value: string; icon: string; text: string }> = [];
 
-        options.push({ value: 'copy', icon: 'copy', text: Locale.alertCopy });
+        options.push({ value: 'copy', icon: 'copy', text: loc.alertCopy as string });
 
         if (this.value instanceof kdbxweb.ProtectedValue) {
             if (this.valueEl.hasClass('details__field-value--revealed')) {
-                options.push({ value: 'hide', icon: 'eye-slash', text: Locale.detHideField });
+                options.push({
+                    value: 'hide',
+                    icon: 'eye-slash',
+                    text: loc.detHideField as string
+                });
             } else {
-                options.push({ value: 'reveal', icon: 'eye', text: Locale.detRevealField });
+                options.push({
+                    value: 'reveal',
+                    icon: 'eye',
+                    text: loc.detRevealField as string
+                });
             }
         }
 
@@ -240,17 +283,17 @@ class FieldView extends View {
             options
         });
 
-        this.views.optionsDropdown = dropdownView;
+        this.views.optionsDropdown = dropdownView as unknown as View;
     }
 
-    hideOptionsDropdown() {
+    hideOptionsDropdown(): void {
         if (this.views.optionsDropdown) {
-            this.views.optionsDropdown.remove();
+            (this.views.optionsDropdown as View).remove();
             delete this.views.optionsDropdown;
         }
     }
 
-    optionsDropdownSelect(e) {
+    optionsDropdownSelect(e: { item: string }): void {
         this.hideOptionsDropdown();
         switch (e.item) {
             case 'copy':
@@ -265,30 +308,34 @@ class FieldView extends View {
         }
     }
 
-    revealValue() {
+    revealValue(): void {
         const revealedEl = PasswordPresenter.asDOM(this.value);
         this.valueEl.addClass('details__field-value--revealed').empty();
         this.valueEl.append(revealedEl);
     }
 
-    hideValue() {
+    hideValue(): void {
         this.valueEl
             .removeClass('details__field-value--revealed')
             .html(this.renderValue(this.value));
     }
 
-    bodyClick(e) {
+    bodyClick(e: Event): void {
         if (!this.mobileActionsEl) {
             return;
         }
-        if (this.valueEl[0].contains(e.target) || this.mobileActionsEl[0].contains(e.target)) {
+        const target = e.target as Node;
+        if (
+            this.valueEl[0].contains(target) ||
+            this.mobileActionsEl[0].contains(target)
+        ) {
             return;
         }
         this.mobileActionsEl.remove();
         delete this.mobileActionsEl;
     }
 
-    showMobileActions() {
+    showMobileActions(): void {
         if (this.readonly) {
             return;
         }
@@ -306,7 +353,7 @@ class FieldView extends View {
             .appendTo(this.$el)
             .css({ left, top, width });
 
-        const actions = [];
+        const actions: Array<{ name: string; icon: string }> = [];
         if (this.value) {
             actions.push({ name: 'copy', icon: 'copy' });
         }
@@ -327,7 +374,7 @@ class FieldView extends View {
         this.mobileActionsEl = mobileActionsEl;
     }
 
-    doMobileAction(name) {
+    doMobileAction(name: string): void {
         this.mobileActionsEl.remove();
         delete this.mobileActionsEl;
         switch (name) {
@@ -347,7 +394,7 @@ class FieldView extends View {
         }
     }
 
-    getTextValue() {
+    getTextValue(): string {
         if (!this.value) {
             return '';
         }
