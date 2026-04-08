@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { AppSettingsModel } from 'models/app-settings-model';
 import { Resizable } from 'framework/views/resizable';
@@ -7,17 +6,30 @@ import { MenuItemView } from 'views/menu/menu-item-view';
 import throttle from 'lodash/throttle';
 import template from 'templates/menu/menu-section.hbs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const settings = AppSettingsModel as unknown as any;
+
 class MenuSectionView extends View {
     template = template;
 
-    events = {};
+    events: Record<string, string> = {};
 
-    itemViews = [];
+    itemViews: View[] = [];
 
     minHeight = 55;
     autoHeight = 'auto';
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    itemsEl: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    scroll: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createScroll!: (config: any) => void;
+    initScroll!: () => void;
+    pageResized!: () => void;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options?: Record<string, unknown>) {
         super(model, options);
         this.listenTo(this.model, 'change-items', this.itemsChanged);
         this.listenTo(this, 'view-resize', this.viewResized);
@@ -29,7 +41,7 @@ class MenuSectionView extends View {
         });
     }
 
-    render() {
+    render(): this | undefined {
         if (!this.itemsEl) {
             super.render(this.model);
             this.itemsEl = this.model.scrollable ? this.$el.find('.scroller') : this.$el;
@@ -44,41 +56,43 @@ class MenuSectionView extends View {
         } else {
             this.removeInnerViews();
         }
-        this.model.items.forEach((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.model.items.forEach((item: any) => {
             const itemView = new MenuItemView(item, { parent: this.itemsEl[0] });
             itemView.render();
-            this.itemViews.push(itemView);
+            this.itemViews.push(itemView as unknown as View);
         });
         if (this.model.drag) {
-            const height = AppSettingsModel.tagsViewHeight;
+            const height = settings.tagsViewHeight;
             if (typeof height === 'number') {
                 this.$el.height();
                 this.$el.css('flex', '0 0 ' + height + 'px');
             }
         }
         this.pageResized();
+        return this;
     }
 
-    maxHeight() {
+    maxHeight(): number {
         return this.$el.parent().height() - 116;
     }
 
-    removeInnerViews() {
+    removeInnerViews(): void {
         this.itemViews.forEach((itemView) => itemView.remove());
         this.itemViews = [];
     }
 
-    itemsChanged() {
+    itemsChanged(): void {
         this.render();
     }
 
-    viewResized(size) {
+    viewResized(size: number): void {
         this.$el.css('flex', '0 0 ' + (size ? size + 'px' : 'auto'));
         this.saveViewHeight(size);
     }
 
-    saveViewHeight = throttle((size) => {
-        AppSettingsModel.tagsViewHeight = size;
+    saveViewHeight = throttle((size: number) => {
+        settings.tagsViewHeight = size;
     }, 1000);
 }
 

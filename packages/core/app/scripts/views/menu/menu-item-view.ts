@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
 import { DragDropInfo } from 'comp/app/drag-drop-info';
@@ -8,10 +7,25 @@ import { Keys } from 'const/keys';
 import { Locale } from 'util/locale';
 import template from 'templates/menu/menu-item.hbs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loc = Locale as unknown as Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const alerts = Alerts as unknown as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dragDropInfo = DragDropInfo as unknown as { dragObject: any };
+
+interface MenuOption {
+    value: unknown;
+}
+
 class MenuItemView extends View {
     template = template;
 
-    events = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    iconEl: any = null;
+    itemViews: View[] = [];
+
+    events: Record<string, string> = {
         'mouseover': 'mouseover',
         'mouseout': 'mouseout',
         'click .menu__item-option': 'selectOption',
@@ -27,10 +41,8 @@ class MenuItemView extends View {
         'dragleave .menu__item-drag-top': 'dragleaveTop'
     };
 
-    iconEl = null;
-    itemViews = [];
-
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options?: Record<string, unknown>) {
         super(model, options);
         this.listenTo(this.model, 'change:title', this.changeTitle);
         this.listenTo(this.model, 'change:icon', this.changeIcon);
@@ -53,65 +65,76 @@ class MenuItemView extends View {
         });
     }
 
-    render() {
+    render(): this | undefined {
         this.removeInnerViews();
         super.render(this.model);
         if (this.model.options) {
-            window.model = this.model;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (window as any).model = this.model;
         }
         this.iconEl = this.$el.find('.menu__item-icon');
         const items = this.model.items;
         if (items) {
-            items.forEach((item) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            items.forEach((item: any) => {
                 if (item.visible) {
                     this.insertItem(item);
                 }
             });
         }
         this.$el.toggleClass('menu__item--collapsed', !this.model.expanded);
+        return this;
     }
 
-    insertItem(item) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    insertItem(item: any): void {
         const itemView = new MenuItemView(item, { parent: this.el });
         itemView.render();
-        this.itemViews.push(itemView);
+        this.itemViews.push(itemView as unknown as View);
     }
 
-    removeInnerViews() {
+    removeInnerViews(): void {
         this.itemViews.forEach((itemView) => itemView.remove());
         this.itemViews = [];
     }
 
-    changeTitle(model, title) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeTitle(_model: any, title: string): void {
         this.$el
             .find('.menu__item-title')
             .first()
             .text(title || '(no title)');
     }
 
-    changeIcon(model, icon) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeIcon(_model: any, icon: string | undefined): void {
         this.iconEl[0].className =
             'menu__item-icon fa ' + (icon ? 'fa-' + icon : 'menu__item-icon--no-icon');
     }
 
-    changeActive(model, active) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeActive(_model: any, active: boolean): void {
         this.$el.toggleClass('menu__item--active', active);
     }
 
-    changeExpanded(model, expanded) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeExpanded(_model: any, expanded: boolean): void {
         this.$el.toggleClass('menu__item--collapsed', !expanded);
         this.model.setExpanded(expanded);
     }
 
-    changeCls(model, cls, oldCls) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeCls(_model: any, cls: string, oldCls?: string): void {
         if (oldCls) {
             this.$el.removeClass(oldCls);
         }
         this.$el.addClass(cls);
     }
 
-    changeIconCls(model, cls, oldCls) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    changeIconCls(_model: any, cls?: string, oldCls?: string): void {
         const iconEl = this.el.querySelector('.menu__item-icon');
+        if (!iconEl) return;
         if (oldCls) {
             iconEl.classList.remove(oldCls);
         }
@@ -120,34 +143,34 @@ class MenuItemView extends View {
         }
     }
 
-    mouseover(e) {
+    mouseover(e: MouseEvent): void {
         if (!e.button) {
             this.$el.addClass('menu__item--hover');
             e.stopPropagation();
         }
     }
 
-    mouseout(e) {
+    mouseout(e: MouseEvent): void {
         this.$el.removeClass('menu__item--hover');
         e.stopPropagation();
     }
 
-    selectItem(e) {
+    selectItem(e: Event): void {
         e.stopPropagation();
         e.preventDefault();
         if (this.model.active) {
             return;
         }
         if (this.model.disabled) {
-            Alerts.info(this.model.disabled);
+            alerts.info(this.model.disabled);
         } else {
             Events.emit('menu-select', { item: this.model });
         }
     }
 
-    selectOption(e) {
-        const options = this.model.options;
-        const value = $(e.target).data('value');
+    selectOption(e: Event): void {
+        const options = this.model.options as MenuOption[] | undefined;
+        const value = $(e.target as Element).data('value');
         if (options && options.length) {
             const option = options.find((op) => op.value === value);
             if (option) {
@@ -158,14 +181,14 @@ class MenuItemView extends View {
         e.preventDefault();
     }
 
-    expandItem(e) {
+    expandItem(e: Event): void {
         if (this.model.toggleExpanded) {
             this.model.toggleExpanded();
         }
         e.stopPropagation();
     }
 
-    editItem(e) {
+    editItem(e: Event): void {
         if (this.model.active && this.model.editable) {
             e.stopPropagation();
             switch (this.model.filterKey) {
@@ -179,11 +202,11 @@ class MenuItemView extends View {
         }
     }
 
-    emptyTrash(e) {
+    emptyTrash(e: Event): void {
         e.stopPropagation();
-        Alerts.yesno({
-            header: Locale.menuEmptyTrashAlert,
-            body: Locale.menuEmptyTrashAlertBody,
+        alerts.yesno({
+            header: loc.menuEmptyTrashAlert,
+            body: loc.menuEmptyTrashAlertBody,
             icon: 'minus-circle',
             success() {
                 Events.emit('empty-trash');
@@ -191,26 +214,30 @@ class MenuItemView extends View {
         });
     }
 
-    dropAllowed(e) {
-        const types = e.dataTransfer.types;
+    dropAllowed(e: DragEvent): boolean {
+        const types = e.dataTransfer?.types ?? [];
         for (let i = 0; i < types.length; i++) {
             if (types[i] === 'text/group' || types[i] === 'text/entry') {
-                return DragDropInfo.dragObject && !DragDropInfo.dragObject.readOnly;
+                return !!(
+                    dragDropInfo.dragObject && !dragDropInfo.dragObject.readOnly
+                );
             }
         }
         return false;
     }
 
-    dragstart(e) {
+    dragstart(e: DragEvent): void {
         e.stopPropagation();
         if (this.model.drag) {
-            e.dataTransfer.setData('text/group', this.model.id);
-            e.dataTransfer.effectAllowed = 'move';
-            DragDropInfo.dragObject = this.model;
+            e.dataTransfer?.setData('text/group', this.model.id);
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+            }
+            dragDropInfo.dragObject = this.model;
         }
     }
 
-    dragover(e) {
+    dragover(e: DragEvent): void {
         if (this.model.drop && this.dropAllowed(e)) {
             e.stopPropagation();
             e.preventDefault();
@@ -218,33 +245,33 @@ class MenuItemView extends View {
         }
     }
 
-    dragleave(e) {
+    dragleave(e: DragEvent): void {
         e.stopPropagation();
         if (this.model.drop && this.dropAllowed(e)) {
             this.$el.removeClass('menu__item--drag menu__item--drag-top');
         }
     }
 
-    drop(e) {
+    drop(e: DragEvent): void {
         e.stopPropagation();
         if (this.model.drop && this.dropAllowed(e)) {
             const isTop = this.$el.hasClass('menu__item--drag-top');
             this.$el.removeClass('menu__item--drag menu__item--drag-top');
             if (isTop) {
-                this.model.moveToTop(DragDropInfo.dragObject);
+                this.model.moveToTop(dragDropInfo.dragObject);
             } else {
                 if (this.model.filterKey === 'trash') {
-                    DragDropInfo.dragObject.moveToTrash();
+                    dragDropInfo.dragObject.moveToTrash();
                 } else {
-                    this.model.moveHere(DragDropInfo.dragObject);
+                    this.model.moveHere(dragDropInfo.dragObject);
                 }
             }
             Events.emit('refresh');
         }
     }
 
-    dropTopAllowed(e) {
-        const types = e.dataTransfer.types;
+    dropTopAllowed(e: DragEvent): boolean {
+        const types = e.dataTransfer?.types ?? [];
         for (let i = 0; i < types.length; i++) {
             if (types[i] === 'text/group') {
                 return true;
@@ -253,13 +280,13 @@ class MenuItemView extends View {
         return false;
     }
 
-    dragoverTop(e) {
+    dragoverTop(e: DragEvent): void {
         if (this.dropTopAllowed(e)) {
             this.$el.addClass('menu__item--drag-top');
         }
     }
 
-    dragleaveTop(e) {
+    dragleaveTop(e: DragEvent): void {
         if (this.dropTopAllowed(e)) {
             this.$el.removeClass('menu__item--drag-top');
         }

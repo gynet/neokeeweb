@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
 import { KeyHandler } from 'comp/browser/key-handler';
@@ -10,19 +9,23 @@ import { MenuSectionView } from 'views/menu/menu-section-view';
 import throttle from 'lodash/throttle';
 import template from 'templates/menu/menu.hbs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const settings = AppSettingsModel as unknown as any;
+
 class MenuView extends View {
     parent = '.app__menu';
 
     template = template;
 
-    events = {};
+    events: Record<string, string> = {};
 
-    sectionViews = [];
+    sectionViews: View[] = [];
 
     minWidth = 130;
     maxWidth = 300;
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options?: Record<string, unknown>) {
         super(model, options);
         this.listenTo(this.model, 'change:sections', this.menuChanged);
         this.listenTo(this, 'view-resize', this.viewResized);
@@ -42,43 +45,48 @@ class MenuView extends View {
         });
     }
 
-    render() {
+    render(): this | undefined {
         super.render();
         const sectionsEl = this.$el.find('.menu');
-        this.model.sections.forEach(function (section) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.model.sections.forEach((section: any) => {
             const sectionView = new MenuSectionView(section, { parent: sectionsEl[0] });
             sectionView.render();
             if (section.drag) {
-                const dragEl = $('<div/>').addClass('menu__drag-section').appendTo(sectionsEl);
+                const dragEl = $('<div/>')
+                    .addClass('menu__drag-section')
+                    .appendTo(sectionsEl);
                 const dragView = new DragView('y', { parent: dragEl[0] });
-                sectionView.listenDrag(dragView);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (sectionView as any).listenDrag(dragView);
                 dragView.render();
-                this.sectionViews.push(dragView);
+                this.sectionViews.push(dragView as unknown as View);
             }
-            this.sectionViews.push(sectionView);
-        }, this);
-        if (typeof AppSettingsModel.menuViewWidth === 'number') {
-            this.$el.width(AppSettingsModel.menuViewWidth);
+            this.sectionViews.push(sectionView as unknown as View);
+        });
+        if (typeof settings.menuViewWidth === 'number') {
+            this.$el.width(settings.menuViewWidth);
         }
+        return this;
     }
 
-    menuChanged() {
+    menuChanged(): void {
         this.render();
     }
 
-    viewResized = throttle((size) => {
-        AppSettingsModel.menuViewWidth = size;
+    viewResized = throttle((size: number) => {
+        settings.menuViewWidth = size;
     }, 1000);
 
-    switchVisibility(visible) {
+    switchVisibility(visible: boolean): void {
         this.$el.toggleClass('menu-visible', visible);
     }
 
-    selectPreviousSection() {
+    selectPreviousSection(): void {
         Events.emit('select-previous-menu-item');
     }
 
-    selectNextSection() {
+    selectNextSection(): void {
         Events.emit('select-next-menu-item');
     }
 }
