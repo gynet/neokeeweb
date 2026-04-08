@@ -139,7 +139,7 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [x] 100% TypeScript migration complete (0 @ts-nocheck files remaining)
 - [x] 899 tests (509 db + 262 core + 128 extension)
 - [x] 23 Playwright E2E tests (smoke, database open/create, search, details, generator, edit, delete, keyboard, **OTP/TOTP**)
-- [ ] Remove legacy deps: lodash, baron, pikaday, bourbon (#6) — jquery stays, still used by view layer
+- [x] Remove legacy deps (#6): lodash removed (native throttle/debounce in util/fn.ts), bourbon removed (inlined position/size/triangle/shade/modular-scale/$ease-in-expo/$all-buttons in base/_override-mixins.scss). baron (custom scrollbar, 9 views) and pikaday (localized date picker) documented as kept for now — both back user-facing features. jquery stays, still used by view layer.
 - [ ] Core feature E2E: database round-trip, autofill protocol (#4)
 
 ### Phase 2: Quick Unlock + Passkey
