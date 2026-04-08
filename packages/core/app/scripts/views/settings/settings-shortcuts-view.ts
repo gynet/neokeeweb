@@ -1,10 +1,21 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View } from 'framework/views/view';
 import { Shortcuts } from 'comp/app/shortcuts';
 import { Keys } from 'const/keys';
 import { Features } from 'util/features';
 import { Locale } from 'util/locale';
 import template from 'templates/settings/settings-shortcuts.hbs';
+
+const loc = Locale as unknown as Record<string, any>;
+const features = Features as unknown as { isMac: boolean };
+const shortcuts = Shortcuts as unknown as {
+    actionShortcutSymbol(short: boolean): string;
+    altShortcutSymbol(short: boolean): string;
+    globalShortcutText(type: string): string;
+    setGlobalShortcut(type: string, value: any): void;
+    keyEventToShortcut(e: any): { value: any; text: string; valid: boolean };
+    presentShortcut(value: any): string;
+};
 
 class SettingsShortcutsView extends View {
     template = template;
@@ -27,21 +38,22 @@ class SettingsShortcutsView extends View {
         'Meta+L'
     ];
 
-    events = {
+    events: Record<string, string> = {
         'click button.shortcut': 'shortcutClick'
     };
 
-    render() {
+    render(): this | undefined {
         super.render({
-            cmd: Shortcuts.actionShortcutSymbol(true),
-            alt: Shortcuts.altShortcutSymbol(true),
-            globalIsLarge: !Features.isMac,
+            cmd: shortcuts.actionShortcutSymbol(true),
+            alt: shortcuts.altShortcutSymbol(true),
+            globalIsLarge: !features.isMac,
             autoTypeSupported: false,
             globalShortcuts: undefined
         });
+        return this;
     }
 
-    shortcutClick(e) {
+    shortcutClick(e: any): void {
         const globalShortcutType = e.target.dataset.shortcut;
 
         const existing = $(`.shortcut__editor[data-shortcut=${globalShortcutType}]`);
@@ -53,34 +65,34 @@ class SettingsShortcutsView extends View {
         const shortcutEditor = $('<div/>')
             .addClass('shortcut__editor')
             .attr('data-shortcut', globalShortcutType);
-        $('<div/>').text(Locale.setShEdit).appendTo(shortcutEditor);
+        $('<div/>').text(loc.setShEdit as string).appendTo(shortcutEditor);
         const shortcutEditorInput = $('<input/>')
             .addClass('shortcut__editor-input')
-            .val(Shortcuts.globalShortcutText(globalShortcutType))
+            .val(shortcuts.globalShortcutText(globalShortcutType))
             .appendTo(shortcutEditor);
-        if (!Features.isMac) {
+        if (!features.isMac) {
             shortcutEditorInput.addClass('shortcut__editor-input--large');
         }
 
         shortcutEditor.insertAfter($(e.target).parent());
         shortcutEditorInput.focus();
-        shortcutEditorInput.on('keypress', (e) => e.preventDefault());
-        shortcutEditorInput.on('keydown', (e) => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
+        shortcutEditorInput.on('keypress', (ev: any) => ev.preventDefault());
+        shortcutEditorInput.on('keydown', (ev: any) => {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
 
-            if (e.which === Keys.DOM_VK_DELETE || e.which === Keys.DOM_VK_BACK_SPACE) {
-                Shortcuts.setGlobalShortcut(globalShortcutType, undefined);
+            if (ev.which === Keys.DOM_VK_DELETE || ev.which === Keys.DOM_VK_BACK_SPACE) {
+                shortcuts.setGlobalShortcut(globalShortcutType, undefined);
                 this.render();
                 return;
             }
-            if (e.which === Keys.DOM_VK_ESCAPE) {
+            if (ev.which === Keys.DOM_VK_ESCAPE) {
                 shortcutEditorInput.blur();
                 return;
             }
 
-            const shortcut = Shortcuts.keyEventToShortcut(e);
-            const presentableShortcutText = Shortcuts.presentShortcut(shortcut.value);
+            const shortcut = shortcuts.keyEventToShortcut(ev);
+            const presentableShortcutText = shortcuts.presentShortcut(shortcut.value);
 
             shortcutEditorInput.val(presentableShortcutText);
 
@@ -89,7 +101,7 @@ class SettingsShortcutsView extends View {
 
             const isValid = shortcut.valid && !exists;
             if (isValid) {
-                Shortcuts.setGlobalShortcut(globalShortcutType, shortcut.value);
+                shortcuts.setGlobalShortcut(globalShortcutType, shortcut.value);
                 this.render();
             }
         });

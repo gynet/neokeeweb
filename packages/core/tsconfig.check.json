@@ -57,6 +57,12 @@
     "app/scripts/views/details/details-fields.ts",
     "app/scripts/views/details/details-history-view.ts",
     "app/scripts/views/list-view.ts",
-    "app/scripts/views/list-search-view.ts"
+    "app/scripts/views/list-search-view.ts",
+    "app/scripts/views/settings/settings-view.ts",
+    "app/scripts/views/settings/settings-about-view.ts",
+    "app/scripts/views/settings/settings-help-view.ts",
+    "app/scripts/views/settings/settings-prv-view.ts",
+    "app/scripts/views/settings/settings-logs-view.ts",
+    "app/scripts/views/settings/settings-shortcuts-view.ts"
   ]
 }

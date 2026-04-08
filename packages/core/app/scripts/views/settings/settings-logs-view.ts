@@ -1,28 +1,31 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View } from 'framework/views/view';
 import { StringFormat } from 'util/formatting/string-format';
 import { Logger } from 'util/logger';
 import template from 'templates/settings/settings-logs-view.hbs';
 
+const logger = Logger as unknown as { getLast(): any[] };
+
 class SettingsLogsView extends View {
     parent = '.settings__general-advanced';
     template = template;
-    levelToColor = { debug: 'muted', warn: 'yellow', error: 'red' };
+    levelToColor: Record<string, string> = { debug: 'muted', warn: 'yellow', error: 'red' };
 
-    render() {
-        const logs = Logger.getLast().map((item) => ({
+    render(): this | undefined {
+        const logs = logger.getLast().map((item: any) => ({
             level: item.level,
             color: this.levelToColor[item.level],
             msg:
                 '[' +
                 StringFormat.padStr(item.level.toUpperCase(), 5) +
                 '] ' +
-                item.args.map((arg) => this.mapArg(arg)).join(' ')
+                item.args.map((arg: any) => this.mapArg(arg)).join(' ')
         }));
         super.render({ logs });
+        return this;
     }
 
-    mapArg(arg) {
+    mapArg(arg: any): any {
         if (arg === null) {
             return 'null';
         }
@@ -36,11 +39,11 @@ class SettingsLogsView extends View {
             return arg ? arg.toString() : arg;
         }
         if (arg instanceof Array) {
-            return '[' + arg.map((item) => this.mapArg(item)).join(', ') + ']';
+            return '[' + arg.map((item: any) => this.mapArg(item)).join(', ') + ']';
         }
         let str = arg.toString();
         if (str === '[object Object]') {
-            const cache = [];
+            const cache: any[] = [];
             str = JSON.stringify(arg, (key, value) => {
                 if (typeof value === 'object' && value !== null) {
                     if (cache.indexOf(value) !== -1) {

@@ -1,20 +1,27 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View } from 'framework/views/view';
 import { RuntimeInfo } from 'const/runtime-info';
 import { Links } from 'const/links';
 import template from 'templates/settings/settings-help.hbs';
 
+const links = Links as unknown as Record<string, string>;
+const runtimeInfo = RuntimeInfo as unknown as {
+    version: string;
+    commit: string;
+    buildDate: string;
+};
+
 class SettingsHelpView extends View {
     template = template;
 
-    render() {
+    render(): this | undefined {
         const appInfo =
             'KeeWeb v' +
-            RuntimeInfo.version +
+            runtimeInfo.version +
             ' (' +
-            RuntimeInfo.commit +
+            runtimeInfo.commit +
             ', ' +
-            RuntimeInfo.buildDate +
+            runtimeInfo.buildDate +
             ')\n' +
             'Environment: web' +
             '\n' +
@@ -23,13 +30,14 @@ class SettingsHelpView extends View {
 
         super.render({
             issueLink:
-                Links.Repo +
+                links.Repo +
                 '/issues/new?body=' +
                 encodeURIComponent('# please describe your issue here\n\n' + appInfo),
-            desktopLink: Links.Desktop,
-            webAppLink: Links.WebApp,
+            desktopLink: links.Desktop,
+            webAppLink: links.WebApp,
             appInfo
         });
+        return this;
     }
 }
 
