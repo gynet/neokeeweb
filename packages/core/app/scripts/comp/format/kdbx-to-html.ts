@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* eslint-disable import/no-commonjs */
 import * as kdbxweb from 'kdbxweb';
 import { RuntimeInfo } from 'const/runtime-info';
@@ -7,28 +6,47 @@ import { DateFormat } from 'comp/i18n/date-format';
 import { StringFormat } from 'util/formatting/string-format';
 import { Locale } from 'util/locale';
 
-const Templates = {
+type HbsTemplate = (data: Record<string, unknown>) => string;
+
+// webpack commonjs require for handlebars templates
+declare const require: (id: string) => HbsTemplate;
+
+const Templates: { db: HbsTemplate; entry: HbsTemplate } = {
     db: require('templates/export/db.hbs'),
     entry: require('templates/export/entry.hbs')
 };
 
-const FieldMapping = [
+interface FieldMappingEntry {
+    name: string;
+    locStr: string;
+    protect?: boolean;
+}
+
+const FieldMapping: FieldMappingEntry[] = [
     { name: 'UserName', locStr: 'user' },
     { name: 'Password', locStr: 'password', protect: true },
     { name: 'URL', locStr: 'website' },
     { name: 'Notes', locStr: 'notes' }
 ];
 
-const KnownFields = { 'Title': true };
+const KnownFields: Record<string, boolean> = { 'Title': true };
 for (const { name } of FieldMapping) {
     KnownFields[name] = true;
 }
 
-function walkGroup(db, group, parents) {
+interface ConvertOptions {
+    name: string;
+}
+
+function walkGroup(
+    db: kdbxweb.Kdbx,
+    group: kdbxweb.KdbxGroup,
+    parents: kdbxweb.KdbxGroup[]
+): string {
     parents = [...parents, group];
     if (
-        group.uuid.equals(db.meta.recycleBinUuid) ||
-        group.uuid.equals(db.meta.entryTemplatesGroup)
+        (db.meta.recycleBinUuid && group.uuid.equals(db.meta.recycleBinUuid)) ||
+        (db.meta.entryTemplatesGroup && group.uuid.equals(db.meta.entryTemplatesGroup))
     ) {
         return '';
     }
@@ -39,14 +57,20 @@ function walkGroup(db, group, parents) {
     return self + children;
 }
 
-function walkEntry(db, entry, parents) {
+function walkEntry(
+    db: kdbxweb.Kdbx,
+    entry: kdbxweb.KdbxEntry,
+    parents: kdbxweb.KdbxGroup[]
+): string {
     const path = parents.map((group) => group.name).join(' / ');
-    const fields = [];
+    const fields: Array<{ title: string; value: string; protect?: boolean }> = [];
     for (const field of FieldMapping) {
         const value = entryField(entry, field.name);
         if (value) {
             fields.push({
-                title: StringFormat.capFirst(Locale[field.locStr]),
+                title: StringFormat.capFirst(
+                    (Locale as unknown as Record<string, string>)[field.locStr]
+                ),
                 value,
                 protect: field.protect
             });
@@ -59,27 +83,35 @@ function walkEntry(db, entry, parents) {
                 fields.push({
                     title: fieldName,
                     value,
-                    protect: fieldValue.isProtected
+                    protect: fieldValue instanceof kdbxweb.ProtectedValue
                 });
             }
         }
     }
     const title = entryField(entry, 'Title');
-    let expires;
+    let expires: string | undefined;
     if (entry.times.expires && entry.times.expiryTime) {
         expires = DateFormat.dtStr(entry.times.expiryTime);
     }
 
+    const created = entry.times.creationTime;
+    const modified = entry.times.lastModTime;
+
     const attachments = [...entry.binaries]
         .map(([name, data]) => {
-            if (data && data.ref) {
-                data = data.value;
+            let bytes: ArrayBuffer | Uint8Array | undefined;
+            if (data && typeof data === 'object' && 'ref' in data) {
+                const refData = (data as kdbxweb.KdbxBinaryRefWithValue).value;
+                bytes = refData as ArrayBuffer | Uint8Array | undefined;
+            } else {
+                bytes = data as ArrayBuffer | Uint8Array | undefined;
             }
-            if (data) {
-                const base64 = kdbxweb.ByteUtils.bytesToBase64(data);
-                data = 'data:application/octet-stream;base64,' + base64;
+            let dataUrl: string | undefined;
+            if (bytes) {
+                const base64 = kdbxweb.ByteUtils.bytesToBase64(bytes);
+                dataUrl = 'data:application/octet-stream;base64,' + base64;
             }
-            return { name, data };
+            return { name, data: dataUrl };
         })
         .filter((att) => att.name && att.data);
 
@@ -88,20 +120,23 @@ function walkEntry(db, entry, parents) {
         title,
         fields,
         tags: entry.tags.join(', '),
-        created: DateFormat.dtStr(entry.times.creationTime),
-        modified: DateFormat.dtStr(entry.times.lastModTime),
+        created: created ? DateFormat.dtStr(created) : '',
+        modified: modified ? DateFormat.dtStr(modified) : '',
         expires,
         attachments
     });
 }
 
-function entryField(entry, fieldName) {
+function entryField(entry: kdbxweb.KdbxEntry, fieldName: string): string {
     const value = entry.fields.get(fieldName);
-    return (value && value.isProtected && value.getText()) || value || '';
+    if (value instanceof kdbxweb.ProtectedValue) {
+        return value.getText() || '';
+    }
+    return (value as string) || '';
 }
 
 const KdbxToHtml = {
-    convert(db, options) {
+    convert(db: kdbxweb.Kdbx, options: ConvertOptions): string {
         const content = db.groups.map((group) => walkGroup(db, group, [])).join('\n');
         return Templates.db({
             name: options.name,
@@ -112,7 +147,7 @@ const KdbxToHtml = {
         });
     },
 
-    entryToHtml(db, entry) {
+    entryToHtml(db: kdbxweb.Kdbx, entry: kdbxweb.KdbxEntry): string {
         return walkEntry(db, entry, []);
     }
 };

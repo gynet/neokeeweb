@@ -13,6 +13,11 @@ const Shortcuts = {
     },
     globalShortcutText(_type?: string): string {
         return '';
+    },
+    // Web builds cannot take screenshots programmatically; kept as stub
+    // so legacy OTP QR reader alert body can safely query the shortcut.
+    screenshotToClipboardShortcut(): string {
+        return '';
     }
 };
 export { Shortcuts };

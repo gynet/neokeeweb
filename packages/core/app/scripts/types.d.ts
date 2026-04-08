@@ -46,6 +46,15 @@ declare module 'baron' {
     export default baron;
 }
 
+// jsqrcode — pure JS QR code decoder (no types published)
+declare module 'jsqrcode' {
+    class QrCode {
+        constructor(image: HTMLImageElement | HTMLCanvasElement);
+        decode(): string;
+    }
+    export default QrCode;
+}
+
 // util/ui/tip — now a real TS module (migrated from JS)
 
 // comp/browser/key-handler — JS module not yet migrated
@@ -83,11 +92,12 @@ declare module 'comp/settings/settings-store' {
     export { SettingsStore };
 }
 
-// comp/i18n/date-format — JS module not yet migrated
+// comp/i18n/date-format — now a real TS module, keep ambient signature broader
 declare module 'comp/i18n/date-format' {
     const DateFormat: {
-        dtStr(date: Date): string;
-        dStr(date: Date): string;
+        dtStr(dt: Date | number | null | undefined): string;
+        dStr(dt: Date | number | null | undefined): string;
+        dtStrFs(dt: Date | number | null | undefined): string;
     };
     export { DateFormat };
 }
