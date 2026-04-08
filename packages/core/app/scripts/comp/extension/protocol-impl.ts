@@ -93,9 +93,9 @@ interface ProtocolInitVars {
     sendEvent: (data: ProtocolResponse) => void;
 }
 
-// Loose interfaces for the appModel shape consumed by this module.
-// Keeping these as unknown-ish records avoids tightly coupling to
-// AppModel's internals while still enabling @ts-nocheck removal.
+// Loose alias for the appModel / view shapes consumed by this module.
+// Using an `any` escape hatch here keeps the file out of strict-mode
+// failures without deeply coupling to AppModel internals.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyAppModel = any;
 
