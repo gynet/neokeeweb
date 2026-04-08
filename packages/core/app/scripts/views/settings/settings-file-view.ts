@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Storage } from 'storage';
@@ -10,20 +10,42 @@ import { DateFormat } from 'comp/i18n/date-format';
 import { UrlFormat } from 'util/formatting/url-format';
 import { PasswordPresenter } from 'util/formatting/password-presenter';
 import { Locale } from 'util/locale';
-import { Features } from 'util/features';
 import { FileSaver } from 'util/ui/file-saver';
 import { OpenConfigView } from 'views/open-config-view';
 import { omit } from 'util/fn';
 import template from 'templates/settings/settings-file.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const links = Links as unknown as Record<string, string | undefined>;
+const settings = AppSettingsModel as unknown as Record<string, any>;
+const storageProvs = Storage as unknown as Record<string, any>;
+const alerts = Alerts as unknown as {
+    yesno(opts: any): void;
+    alert(opts: any): void;
+    error(opts: any): void;
+    notImplemented(): void;
+    buttons: { ok: any; cancel: any };
+};
+
 const DefaultBackupPath = 'Backups/{name}.{date}.bak';
 const DefaultBackupSchedule = '1w';
 
+interface YubiKeyInfo {
+    serial: number;
+    fullName: string;
+    vid: number;
+    pid: number;
+    slots: { number: number; valid: boolean }[];
+}
+
 class SettingsFileView extends View {
     template = template;
-    yubiKeys = [];
+    yubiKeys: YubiKeyInfo[] = [];
+    backupInProgress = false;
 
-    events = {
+    appModel: any;
+
+    events: Record<string, string> = {
         'click .settings__file-button-save-default': 'saveDefault',
         'click .settings__file-button-save-choose': 'toggleChooser',
         'click .settings__file-button-close': 'closeFile',
@@ -58,7 +80,7 @@ class SettingsFileView extends View {
         'change #settings__file-yubikey': 'changeYubiKey'
     };
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
         const watchedProps = ['syncing', 'syncError', 'syncDate'];
         for (const prop of watchedProps) {
@@ -70,12 +92,12 @@ class SettingsFileView extends View {
         this.refreshYubiKeys(false);
     }
 
-    render() {
-        const storageProviders = [];
+    render(): this | undefined {
+        const storageProviders: any[] = [];
         const fileStorage = this.model.storage;
         let canBackup = false;
-        Object.keys(Storage).forEach((name) => {
-            const prv = Storage[name];
+        Object.keys(storageProvs).forEach((name) => {
+            const prv = storageProvs[name];
             if (!canBackup && prv.backup && prv.enabled) {
                 canBackup = true;
             }
@@ -95,7 +117,7 @@ class SettingsFileView extends View {
             ? `${this.model.chalResp.serial}:${this.model.chalResp.slot}`
             : '';
         const showYubiKeyBlock = !!this.model.chalResp;
-        const yubiKeys = [];
+        const yubiKeys: any[] = [];
         if (showYubiKeyBlock) {
             for (const yk of this.yubiKeys) {
                 for (const slot of yk.slots.filter((s) => s.valid)) {
@@ -124,7 +146,7 @@ class SettingsFileView extends View {
         super.render({
             cmd: Shortcuts.actionShortcutSymbol(true),
             supportFiles: false,
-            desktopLink: Links.Desktop,
+            desktopLink: links.Desktop,
             name: this.model.name,
             path: this.model.path,
             storage: this.model.storage,
@@ -149,9 +171,9 @@ class SettingsFileView extends View {
             kdfParameters: this.kdfParametersToUi(this.model.kdfParameters),
             storageProviders,
             canBackup,
-            canSaveTo: AppSettingsModel.canSaveTo,
-            canExportXml: AppSettingsModel.canExportXml,
-            canExportHtml: AppSettingsModel.canExportHtml,
+            canSaveTo: settings.canSaveTo,
+            canExportXml: settings.canExportXml,
+            canExportHtml: settings.canExportHtml,
             showYubiKeyBlock,
             selectedYubiKey,
             yubiKeys
@@ -160,18 +182,19 @@ class SettingsFileView extends View {
             this.$el.find('.settings__file-master-pass-warning').toggle(this.model.passwordChanged);
             this.$el
                 .find('#settings__file-master-pass-warning-text')
-                .text(Locale.setFilePassChanged);
+                .text(loc.setFilePassChanged);
         }
         this.renderKeyFileSelect();
+        return this;
     }
 
-    kdfParametersToUi(kdfParameters) {
+    kdfParametersToUi(kdfParameters: any): any {
         return kdfParameters
             ? { ...kdfParameters, memory: Math.round(kdfParameters.memory / 1024) }
             : null;
     }
 
-    renderKeyFileSelect() {
+    renderKeyFileSelect(): void {
         const keyFileName = this.model.keyFileName;
         const oldKeyFileName = this.model.oldKeyFileName;
         const keyFileChanged = this.model.keyFileChanged;
@@ -180,18 +203,18 @@ class SettingsFileView extends View {
         if (keyFileName && keyFileChanged) {
             const text =
                 keyFileName !== 'Generated'
-                    ? Locale.setFileUseKeyFile + ' ' + keyFileName
-                    : Locale.setFileUseGenKeyFile;
+                    ? loc.setFileUseKeyFile + ' ' + keyFileName
+                    : loc.setFileUseGenKeyFile;
             $('<option/>').val('ex').text(text).appendTo(sel);
         }
         if (oldKeyFileName) {
             const useText = keyFileChanged
-                ? Locale.setFileUseOldKeyFile
-                : Locale.setFileUseKeyFile + ' ' + oldKeyFileName;
+                ? loc.setFileUseOldKeyFile
+                : loc.setFileUseKeyFile + ' ' + oldKeyFileName;
             $('<option/>').val('old').text(useText).appendTo(sel);
         }
-        $('<option/>').val('gen').text(Locale.setFileGenKeyFile).appendTo(sel);
-        $('<option/>').val('none').text(Locale.setFileDontUseKeyFile).appendTo(sel);
+        $('<option/>').val('gen').text(loc.setFileGenKeyFile).appendTo(sel);
+        $('<option/>').val('none').text(loc.setFileDontUseKeyFile).appendTo(sel);
         if (keyFileName && keyFileChanged) {
             sel.val('ex');
         } else if (!keyFileName) {
@@ -201,11 +224,11 @@ class SettingsFileView extends View {
         }
     }
 
-    validatePassword(continueCallback) {
+    validatePassword(continueCallback: () => void): boolean {
         if (!this.model.passwordLength) {
-            Alerts.yesno({
-                header: Locale.setFileEmptyPass,
-                body: Locale.setFileEmptyPassBody,
+            alerts.yesno({
+                header: loc.setFileEmptyPass,
+                body: loc.setFileEmptyPassBody,
                 success: () => {
                     continueCallback();
                 },
@@ -218,7 +241,7 @@ class SettingsFileView extends View {
         return true;
     }
 
-    save(arg) {
+    save(arg?: any): void {
         if (!arg) {
             arg = {};
         }
@@ -236,20 +259,20 @@ class SettingsFileView extends View {
         this.appModel.syncFile(this.model, arg);
     }
 
-    saveDefault() {
+    saveDefault(): void {
         this.save();
     }
 
-    toggleChooser() {
+    toggleChooser(): void {
         this.$el.find('.settings__file-save-choose').toggleClass('hide');
     }
 
-    saveToFile(skipValidation) {
+    saveToFile(skipValidation?: boolean | unknown): void {
         if (skipValidation !== true && !this.validatePassword(this.saveToFile.bind(this, true))) {
             return;
         }
         const fileName = this.model.name + '.kdbx';
-        this.model.getData((data) => {
+        this.model.getData((data: ArrayBuffer | Uint8Array | null) => {
             if (!data) {
                 return;
             }
@@ -258,12 +281,12 @@ class SettingsFileView extends View {
         });
     }
 
-    saveToXml() {
-        Alerts.yesno({
-            header: Locale.setFileExportRaw,
-            body: Locale.setFileExportRawBody,
+    saveToXml(): void {
+        alerts.yesno({
+            header: loc.setFileExportRaw,
+            body: loc.setFileExportRawBody,
             success: () => {
-                this.model.getXml((xml) => {
+                this.model.getXml((xml: string) => {
                     const blob = new Blob([xml], { type: 'text/xml' });
                     FileSaver.saveAs(blob, this.model.name + '.xml');
                 });
@@ -271,12 +294,12 @@ class SettingsFileView extends View {
         });
     }
 
-    saveToHtml() {
-        Alerts.yesno({
-            header: Locale.setFileExportRaw,
-            body: Locale.setFileExportRawBody,
+    saveToHtml(): void {
+        alerts.yesno({
+            header: loc.setFileExportRaw,
+            body: loc.setFileExportRawBody,
             success: () => {
-                this.model.getHtml((html) => {
+                this.model.getHtml((html: string) => {
                     const blob = new Blob([html], { type: 'text/html' });
                     FileSaver.saveAs(blob, this.model.name + '.html');
                 });
@@ -284,12 +307,12 @@ class SettingsFileView extends View {
         });
     }
 
-    saveToStorage(e) {
+    saveToStorage(e: any): void {
         if (this.model.syncing || this.model.demo) {
             return;
         }
         const storageName = $(e.target).closest('.settings__file-save-to-storage').data('storage');
-        const storage = Storage[storageName];
+        const storage = storageProvs[storageName];
         if (!storage) {
             return;
         }
@@ -300,17 +323,17 @@ class SettingsFileView extends View {
                 if (storage.getOpenConfig) {
                     const config = {
                         id: storage.name,
-                        name: Locale[storage.name] || storage.name,
+                        name: loc[storage.name] || storage.name,
                         icon: storage.icon,
                         buttons: false,
                         ...storage.getOpenConfig()
                     };
-                    const openConfigView = new OpenConfigView(config);
-                    Alerts.alert({
+                    const openConfigView = new (OpenConfigView as any)(config);
+                    alerts.alert({
                         header: '',
                         body: '',
                         icon: storage.icon || 'file-alt',
-                        buttons: [Alerts.buttons.ok, Alerts.buttons.cancel],
+                        buttons: [alerts.buttons.ok, alerts.buttons.cancel],
                         esc: '',
                         opaque: true,
                         view: openConfigView,
@@ -327,12 +350,12 @@ class SettingsFileView extends View {
                         }
                     });
                 } else {
-                    Alerts.notImplemented();
+                    alerts.notImplemented();
                 }
                 return;
             }
             this.model.syncing = true;
-            storage.list('', (err, files) => {
+            storage.list('', (err: any, files: any[]) => {
                 this.model.syncing = false;
                 if (err) {
                     return;
@@ -343,12 +366,12 @@ class SettingsFileView extends View {
                         !file.dir && UrlFormat.getDataFileName(file.name).toLowerCase() === expName
                 );
                 if (existingFile) {
-                    Alerts.yesno({
-                        header: Locale.setFileAlreadyExists,
-                        body: Locale.setFileAlreadyExistsBody.replace('{}', this.model.name),
+                    alerts.yesno({
+                        header: loc.setFileAlreadyExists,
+                        body: loc.setFileAlreadyExistsBody.replace('{}', this.model.name),
                         success: () => {
                             this.model.syncing = true;
-                            storage.remove(existingFile.path, (err) => {
+                            storage.remove(existingFile.path, (err: any) => {
                                 this.model.syncing = false;
                                 if (!err) {
                                     this.save({ storage: storageName });
@@ -363,16 +386,16 @@ class SettingsFileView extends View {
         }
     }
 
-    closeFile() {
+    closeFile(): void {
         if (this.model.modified) {
-            Alerts.yesno({
-                header: Locale.setFileUnsaved,
-                body: Locale.setFileUnsavedBody,
+            alerts.yesno({
+                header: loc.setFileUnsaved,
+                body: loc.setFileUnsavedBody,
                 buttons: [
-                    { result: 'close', title: Locale.setFileCloseNoSave, error: true },
-                    { result: '', title: Locale.setFileDontClose }
+                    { result: 'close', title: loc.setFileCloseNoSave, error: true },
+                    { result: '', title: loc.setFileDontClose }
                 ],
-                success: (result) => {
+                success: (result: string) => {
                     if (result === 'close') {
                         this.closeFileNoCheck();
                     }
@@ -383,11 +406,11 @@ class SettingsFileView extends View {
         }
     }
 
-    closeFileNoCheck() {
+    closeFileNoCheck(): void {
         this.appModel.closeFile(this.model);
     }
 
-    keyFileChange(e) {
+    keyFileChange(e: any): void {
         switch (e.target.value) {
             case 'old':
                 this.selectOldKeyFile();
@@ -401,46 +424,46 @@ class SettingsFileView extends View {
         }
     }
 
-    selectOldKeyFile() {
+    selectOldKeyFile(): void {
         this.model.resetKeyFile();
         this.renderKeyFileSelect();
     }
 
-    generateKeyFile() {
-        this.model.generateAndSetKeyFile().then((keyFile) => {
+    generateKeyFile(): void {
+        this.model.generateAndSetKeyFile().then((keyFile: ArrayBuffer | Uint8Array) => {
             const blob = new Blob([keyFile], { type: 'application/octet-stream' });
             FileSaver.saveAs(blob, this.model.name + '.key');
             this.renderKeyFileSelect();
         });
     }
 
-    clearKeyFile() {
+    clearKeyFile(): void {
         this.model.removeKeyFile();
         this.renderKeyFileSelect();
     }
 
-    triggerSelectFile() {
+    triggerSelectFile(): void {
         this.$el.find('#settings__file-file-select').click();
     }
 
-    fileSelected(e) {
+    fileSelected(e: any): void {
         const file = e.target.files[0];
         const reader = new FileReader();
-        reader.onload = (e) => {
-            const res = e.target.result;
+        reader.onload = (ev: ProgressEvent<FileReader>) => {
+            const res = (ev.target as FileReader).result;
             this.model.setKeyFile(res, file.name);
             this.renderKeyFileSelect();
         };
         reader.readAsArrayBuffer(file);
     }
 
-    focusMasterPass(e) {
+    focusMasterPass(e: any): void {
         e.target.value = '';
         e.target.setAttribute('type', 'text');
         this.model.passwordChanged = false;
     }
 
-    changeMasterPass(e) {
+    changeMasterPass(e: any): void {
         if (!e.target.value) {
             this.model.resetPassword();
             this.$el.find('.settings__file-master-pass-warning').hide();
@@ -448,14 +471,14 @@ class SettingsFileView extends View {
             this.$el.find('#settings__file-confirm-master-pass-group').show();
             this.$el
                 .find('#settings__file-master-pass-warning-text')
-                .text(Locale.setFilePassChange);
+                .text(loc.setFilePassChange);
             if (!this.model.created) {
                 this.$el.find('.settings__file-master-pass-warning').show();
             }
         }
     }
 
-    blurMasterPass(e) {
+    blurMasterPass(e: any): void {
         if (!e.target.value) {
             this.model.resetPassword();
             this.resetConfirmMasterPass();
@@ -465,37 +488,37 @@ class SettingsFileView extends View {
         e.target.setAttribute('type', 'password');
     }
 
-    resetConfirmMasterPass() {
+    resetConfirmMasterPass(): void {
         this.$el.find('#settings__file-confirm-master-pass').val('');
         this.$el.find('#settings__file-confirm-master-pass-group').hide();
-        this.$el.find('#settings__file-master-pass-warning-text').text(Locale.setFilePassChange);
+        this.$el.find('#settings__file-master-pass-warning-text').text(loc.setFilePassChange);
     }
 
-    focusConfirmMasterPass(e) {
+    focusConfirmMasterPass(e: any): void {
         e.target.value = '';
         e.target.setAttribute('type', 'text');
     }
 
-    blurConfirmMasterPass(e) {
+    blurConfirmMasterPass(e: any): void {
         e.target.setAttribute('type', 'password');
         const masterPassword = this.$el.find('#settings__file-master-pass').val();
         const confirmPassword = e.target.value;
         if (masterPassword === confirmPassword) {
             this.$el
                 .find('#settings__file-master-pass-warning-text')
-                .text(Locale.setFilePassChanged);
+                .text(loc.setFilePassChanged);
             this.$el.find('.settings__file-confirm-master-pass-warning').hide();
             this.model.setPassword(kdbxweb.ProtectedValue.fromString(confirmPassword));
         } else {
             this.$el
                 .find('#settings__file-master-pass-warning-text')
-                .text(Locale.setFilePassChange);
+                .text(loc.setFilePassChange);
             this.$el.find('.settings__file-confirm-master-pass-warning').show();
             this.model.resetPassword();
         }
     }
 
-    changeName(e) {
+    changeName(e: any): void {
         const value = $.trim(e.target.value);
         if (!value) {
             return;
@@ -503,12 +526,12 @@ class SettingsFileView extends View {
         this.model.setName(value);
     }
 
-    changeDefUser(e) {
+    changeDefUser(e: any): void {
         const value = $.trim(e.target.value);
         this.model.setDefaultUser(value);
     }
 
-    changeBackupEnabled(e) {
+    changeBackupEnabled(e: any): void {
         const enabled = e.target.checked;
         let backup = this.model.backup;
         if (!backup) {
@@ -543,55 +566,55 @@ class SettingsFileView extends View {
         this.setBackup(backup);
     }
 
-    changeBackupPath(e) {
+    changeBackupPath(e: any): void {
         const backup = this.model.backup;
         backup.path = e.target.value.trim();
         this.setBackup(backup);
     }
 
-    changeBackupStorage(e) {
+    changeBackupStorage(e: any): void {
         const backup = this.model.backup;
         backup.storage = e.target.value;
         this.setBackup(backup);
     }
 
-    changeBackupSchedule(e) {
+    changeBackupSchedule(e: any): void {
         const backup = this.model.backup;
         backup.schedule = e.target.value;
         this.setBackup(backup);
     }
 
-    setBackup(backup) {
+    setBackup(backup: any): void {
         this.model.backup = backup;
         this.appModel.setFileBackup(this.model.id, backup);
     }
 
-    backupFile() {
+    backupFile(): void {
         if (this.backupInProgress) {
             return;
         }
         const backupButton = this.$el.find('.settings__file-button-backup');
-        backupButton.text(Locale.setFileBackupNowWorking);
-        this.model.getData((data) => {
+        backupButton.text(loc.setFileBackupNowWorking);
+        this.model.getData((data: ArrayBuffer | Uint8Array | null) => {
             if (!data) {
                 this.backupInProgress = false;
-                backupButton.text(Locale.setFileBackupNow);
+                backupButton.text(loc.setFileBackupNow);
                 return;
             }
-            this.appModel.backupFile(this.model, data, (err) => {
+            this.appModel.backupFile(this.model, data, (err: any) => {
                 this.backupInProgress = false;
-                backupButton.text(Locale.setFileBackupNow);
+                backupButton.text(loc.setFileBackupNow);
                 if (err) {
                     let title = '';
                     let description = '';
                     if (err.isDir) {
-                        title = Locale.setFileBackupErrorIsDir;
-                        description = Locale.setFileBackupErrorIsDirDescription;
+                        title = loc.setFileBackupErrorIsDir;
+                        description = loc.setFileBackupErrorIsDirDescription;
                     } else {
-                        title = Locale.setFileBackupError;
-                        description = Locale.setFileBackupErrorDescription;
+                        title = loc.setFileBackupError;
+                        description = loc.setFileBackupErrorDescription;
                     }
-                    Alerts.error({
+                    alerts.error({
                         title,
                         body: description,
                         pre: err.toString()
@@ -601,11 +624,11 @@ class SettingsFileView extends View {
         });
     }
 
-    changeTrash(e) {
+    changeTrash(e: any): void {
         this.model.setRecycleBinEnabled(e.target.checked);
     }
 
-    changeHistoryLength(e) {
+    changeHistoryLength(e: any): void {
         if (!e.target.validity.valid) {
             return;
         }
@@ -617,7 +640,7 @@ class SettingsFileView extends View {
         this.model.setHistoryMaxItems(value);
     }
 
-    changeHistoryMode(e) {
+    changeHistoryMode(e: any): void {
         let value = +e.target.value;
         if (value > 0) {
             value = 10;
@@ -626,7 +649,7 @@ class SettingsFileView extends View {
         this.render();
     }
 
-    changeHistorySize(e) {
+    changeHistorySize(e: any): void {
         if (!e.target.validity.valid) {
             return;
         }
@@ -638,18 +661,18 @@ class SettingsFileView extends View {
         this.model.setHistoryMaxSize(value * 1024 * 1024);
     }
 
-    changeFormatVersion(e) {
+    changeFormatVersion(e: any): void {
         const version = +e.target.value;
         this.model.setFormatVersion(version);
         this.render();
     }
 
-    changeKdf(e) {
+    changeKdf(e: any): void {
         this.model.setKdf(e.target.value);
         this.render();
     }
 
-    changeKeyRounds(e) {
+    changeKeyRounds(e: any): void {
         if (!e.target.validity.valid) {
             return;
         }
@@ -661,7 +684,7 @@ class SettingsFileView extends View {
         this.model.setKeyEncryptionRounds(value);
     }
 
-    changeKeyChangeForce(e) {
+    changeKeyChangeForce(e: any): void {
         if (!e.target.validity.valid) {
             return;
         }
@@ -672,7 +695,7 @@ class SettingsFileView extends View {
         this.model.setKeyChange(true, value);
     }
 
-    changeKdfParameter(e) {
+    changeKdfParameter(e: any): void {
         if (!e.target.validity.valid) {
             return;
         }
@@ -688,11 +711,11 @@ class SettingsFileView extends View {
         }
     }
 
-    refreshYubiKeys() {
+    refreshYubiKeys(_force?: boolean): void {
         // No-op: YubiKey support removed in web-only fork
     }
 
-    changeYubiKey(e) {
+    changeYubiKey(e: any): void {
         let chalResp = null;
         const value = e.target.value;
         if (value === 'refresh') {
@@ -708,9 +731,9 @@ class SettingsFileView extends View {
             const slot = +option.dataset.slot;
             chalResp = { vid, pid, serial, slot };
         }
-        Alerts.yesno({
-            header: Locale.setFileYubiKeyHeader,
-            body: Locale.setFileYubiKeyBody,
+        alerts.yesno({
+            header: loc.setFileYubiKeyHeader,
+            body: loc.setFileYubiKeyBody,
             success: () => {
                 this.model.setChallengeResponse(chalResp);
             },
