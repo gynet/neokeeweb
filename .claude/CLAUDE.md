@@ -52,6 +52,7 @@ e2e/                                Playwright E2E tests
 **Domain expertise**: Password manager architecture, KDBX format, TOTP/HOTP, WebAuthn, browser extension protocols, key derivation (Argon2/AES-KDF), WebCrypto API.
 **Responsibilities**:
 - GitHub milestone health check
+- **Keep CLAUDE.md in sync** every milestone review — branch name, deps status, test counts, E2E spec list, phase checklist ↔ closed GitHub issues. Stale docs defeat the whole point.
 - Fix CI/CD failures
 - Code quality review — understand WHAT code does before touching it
 - Priority: correctness > security > UX > performance > features
@@ -175,10 +176,12 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Remove dead desktop/plugin/YubiKey code (-1500 lines)
 - [x] CI/CD with GitHub Actions
 - [x] Playwright E2E framework
-- [x] keepass-rs interop tests (607 tests passing)
-- [ ] Remove legacy deps (#6 — jquery, lodash, baron still in package.json)
-- [ ] TypeScript migration for core (#2 — Phase A done, 21 files migrated)
-- [ ] E2E test scenarios (#4 — database open tests added, more needed)
+- [x] keepass-rs interop tests
+- [x] Legacy deps cleaned (#6 — lodash + bourbon removed; baron + pikaday kept as feature-backing; jquery kept, view layer)
+- [x] TypeScript migration for core (#2 — 58 → 0 @ts-nocheck files)
+- [ ] E2E test scenarios (#4 — roundtrip + clipboard + import + NaCl + OTP done; UI-only scenarios remaining)
+
+**Current test counts**: db 509 pass + 12 skip · core 284 pass · extension 128 pass · E2E specs in `e2e/core/`: app, clipboard, database-lifecycle, database-open, database-roundtrip, features, import, otp, smoke
 
 ## Phase 2 Goals (Planned)
 
