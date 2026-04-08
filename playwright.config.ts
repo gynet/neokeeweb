@@ -14,6 +14,10 @@ export default defineConfig({
     screenshot: 'on',
     trace: 'on-first-retry',
     video: 'on',
+    // Grant clipboard read/write so navigator.clipboard.* works without prompts.
+    // Chromium honours these names; Firefox ignores them and falls back to its
+    // own permission policy (clipboard tests are gated to chromium).
+    permissions: ['clipboard-read', 'clipboard-write'],
   },
 
   projects: [
