@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
 import { Storage } from 'storage';
@@ -18,10 +18,43 @@ import { mapObject, minmax } from 'util/fn';
 import { ThemeWatcher } from 'comp/browser/theme-watcher';
 import template from 'templates/settings/settings-general.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const links = Links as unknown as Record<string, string | undefined>;
+const settings = AppSettingsModel as unknown as Record<string, any> & {
+    set(changes: Record<string, any>): void;
+};
+const updateModel = UpdateModel as unknown as Record<string, any>;
+const features = Features as unknown as {
+    isMobile: boolean;
+    isStandalone: boolean;
+    supportsTitleBarStyles: boolean;
+    supportsCustomTitleBarAndDraggableWindow: boolean;
+};
+const settingsManager = SettingsManager as unknown as {
+    activeTheme: string;
+    allLocales: Record<string, string>;
+    activeLocale: string;
+    allThemes: Record<string, string>;
+    autoSwitchedThemes: { dark: string; light: string; name: string }[];
+    setTheme(theme: string): void;
+    darkModeChanged(): void;
+};
+const themeWatcher = ThemeWatcher as unknown as { dark: boolean };
+const alerts = Alerts as unknown as { info(opts: any): void };
+
+interface StorageProviderInfo {
+    name: string;
+    enabled: boolean;
+    hasConfig: boolean;
+    loggedIn: boolean;
+}
+
 class SettingsGeneralView extends View {
     template = template;
 
-    events = {
+    appModel: any;
+
+    events: Record<string, string> = {
         'click .settings__general-theme': 'changeTheme',
         'click .settings__general-auto-switch-theme': 'changeAuthSwitchTheme',
         'change .settings__general-locale': 'changeLocale',
@@ -71,35 +104,35 @@ class SettingsGeneralView extends View {
         'click .settings__general-reload-app-link': 'reloadApp'
     };
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
-        this.listenTo(UpdateModel, 'change', this.render);
+        this.listenTo(UpdateModel as any, 'change', this.render);
         this.listenTo(Events, 'theme-applied', this.render);
     }
 
-    render() {
-        const updateReady = UpdateModel.updateStatus === 'ready';
-        const updateFound = UpdateModel.updateStatus === 'found';
-        const updateManual = UpdateModel.updateManual;
+    render(): this | undefined {
+        const updateReady = updateModel.updateStatus === 'ready';
+        const updateFound = updateModel.updateStatus === 'found';
+        const updateManual = updateModel.updateManual;
         const storageProviders = this.getStorageProviders();
 
         super.render({
             themes: this.getAllThemes(),
-            autoSwitchTheme: AppSettingsModel.autoSwitchTheme,
-            activeTheme: SettingsManager.activeTheme,
-            locales: SettingsManager.allLocales,
-            activeLocale: SettingsManager.activeLocale,
-            fontSize: AppSettingsModel.fontSize,
-            expandGroups: AppSettingsModel.expandGroups,
+            autoSwitchTheme: settings.autoSwitchTheme,
+            activeTheme: settingsManager.activeTheme,
+            locales: settingsManager.allLocales,
+            activeLocale: settingsManager.activeLocale,
+            fontSize: settings.fontSize,
+            expandGroups: settings.expandGroups,
             canClearClipboard: false,
-            clipboardSeconds: AppSettingsModel.clipboardSeconds,
-            rememberKeyFiles: AppSettingsModel.rememberKeyFiles,
+            clipboardSeconds: settings.clipboardSeconds,
+            rememberKeyFiles: settings.rememberKeyFiles,
             supportFiles: false,
-            autoSave: AppSettingsModel.autoSave,
-            autoSaveInterval: AppSettingsModel.autoSaveInterval,
-            idleMinutes: AppSettingsModel.idleMinutes,
-            minimizeOnClose: AppSettingsModel.minimizeOnClose,
-            minimizeOnFieldCopy: AppSettingsModel.minimizeOnFieldCopy,
+            autoSave: settings.autoSave,
+            autoSaveInterval: settings.autoSaveInterval,
+            idleMinutes: settings.idleMinutes,
+            minimizeOnClose: settings.minimizeOnClose,
+            minimizeOnFieldCopy: settings.minimizeOnFieldCopy,
             devTools: false,
             canAutoUpdate: false,
             canAutoSaveOnClose: false,
@@ -107,19 +140,19 @@ class SettingsGeneralView extends View {
             canDetectMinimize: false,
             canDetectOsSleep: false,
             canAutoType: false,
-            auditPasswords: AppSettingsModel.auditPasswords,
-            auditPasswordEntropy: AppSettingsModel.auditPasswordEntropy,
-            excludePinsFromAudit: AppSettingsModel.excludePinsFromAudit,
-            checkPasswordsOnHIBP: AppSettingsModel.checkPasswordsOnHIBP,
-            auditPasswordAge: AppSettingsModel.auditPasswordAge,
-            hibpLink: Links.HaveIBeenPwned,
-            hibpPrivacyLink: Links.HaveIBeenPwnedPrivacy,
+            auditPasswords: settings.auditPasswords,
+            auditPasswordEntropy: settings.auditPasswordEntropy,
+            excludePinsFromAudit: settings.excludePinsFromAudit,
+            checkPasswordsOnHIBP: settings.checkPasswordsOnHIBP,
+            auditPasswordAge: settings.auditPasswordAge,
+            hibpLink: (Links as any).HaveIBeenPwned,
+            hibpPrivacyLink: (Links as any).HaveIBeenPwnedPrivacy,
             lockOnMinimize: false,
-            lockOnCopy: AppSettingsModel.lockOnCopy,
-            lockOnAutoType: AppSettingsModel.lockOnAutoType,
-            lockOnOsLock: AppSettingsModel.lockOnOsLock,
-            tableView: AppSettingsModel.tableView,
-            canSetTableView: !Features.isMobile,
+            lockOnCopy: settings.lockOnCopy,
+            lockOnAutoType: settings.lockOnAutoType,
+            lockOnOsLock: settings.lockOnOsLock,
+            tableView: settings.tableView,
+            canSetTableView: !features.isMobile,
             autoUpdate: null,
             updateInProgress: false,
             updateInfo: this.getUpdateInfo(),
@@ -128,104 +161,112 @@ class SettingsGeneralView extends View {
             updateReady,
             updateFound,
             updateManual,
-            releaseNotesLink: Links.ReleaseNotes,
-            colorfulIcons: AppSettingsModel.colorfulIcons,
-            useMarkdown: AppSettingsModel.useMarkdown,
-            useGroupIconForEntries: AppSettingsModel.useGroupIconForEntries,
-            directAutotype: AppSettingsModel.directAutotype,
-            autoTypeTitleFilterEnabled: AppSettingsModel.autoTypeTitleFilterEnabled,
-            fieldLabelDblClickAutoType: AppSettingsModel.fieldLabelDblClickAutoType,
-            supportsTitleBarStyles: Features.supportsTitleBarStyles,
+            releaseNotesLink: (Links as any).ReleaseNotes,
+            colorfulIcons: settings.colorfulIcons,
+            useMarkdown: settings.useMarkdown,
+            useGroupIconForEntries: settings.useGroupIconForEntries,
+            directAutotype: settings.directAutotype,
+            autoTypeTitleFilterEnabled: settings.autoTypeTitleFilterEnabled,
+            fieldLabelDblClickAutoType: settings.fieldLabelDblClickAutoType,
+            supportsTitleBarStyles: features.supportsTitleBarStyles,
             supportsCustomTitleBarAndDraggableWindow:
-                Features.supportsCustomTitleBarAndDraggableWindow,
-            titlebarStyle: AppSettingsModel.titlebarStyle,
+                features.supportsCustomTitleBarAndDraggableWindow,
+            titlebarStyle: settings.titlebarStyle,
             storageProviders,
-            showReloadApp: Features.isStandalone,
+            showReloadApp: features.isStandalone,
             hasDeviceOwnerAuth: false,
-            deviceOwnerAuth: AppSettingsModel.deviceOwnerAuth,
-            deviceOwnerAuthTimeout: AppSettingsModel.deviceOwnerAuthTimeoutMinutes,
-            disableOfflineStorage: AppSettingsModel.disableOfflineStorage,
-            shortLivedStorageToken: AppSettingsModel.shortLivedStorageToken
+            deviceOwnerAuth: settings.deviceOwnerAuth,
+            deviceOwnerAuthTimeout: settings.deviceOwnerAuthTimeoutMinutes,
+            disableOfflineStorage: settings.disableOfflineStorage,
+            shortLivedStorageToken: settings.shortLivedStorageToken
         });
         this.renderProviderViews(storageProviders);
+        return this;
     }
 
-    renderProviderViews(storageProviders) {
-        storageProviders.forEach(function (prv) {
-            if (this.views[prv.name]) {
-                this.views[prv.name].remove();
+    renderProviderViews(storageProviders: StorageProviderInfo[]): void {
+        const self = this as any;
+        storageProviders.forEach(function (this: SettingsGeneralView, prv: StorageProviderInfo) {
+            if (self.views[prv.name]) {
+                self.views[prv.name].remove();
             }
             if (prv.hasConfig) {
-                const prvView = new SettingsPrvView(prv, {
-                    parent: this.$el.find('.settings__general-' + prv.name)[0]
+                const prvView = new (SettingsPrvView as any)(prv, {
+                    parent: self.$el.find('.settings__general-' + prv.name)[0]
                 });
-                this.views[prv.name] = prvView;
+                self.views[prv.name] = prvView;
                 prvView.render();
             }
         }, this);
     }
 
-    getUpdateInfo() {
-        switch (UpdateModel.status) {
+    getUpdateInfo(): string {
+        switch (updateModel.status) {
             case 'checking':
-                return Locale.setGenUpdateChecking + '...';
+                return (loc.setGenUpdateChecking as string) + '...';
             case 'error': {
-                let errMsg = Locale.setGenErrorChecking;
-                if (UpdateModel.lastError) {
-                    errMsg += ': ' + UpdateModel.lastError;
+                let errMsg = loc.setGenErrorChecking as string;
+                if (updateModel.lastError) {
+                    errMsg += ': ' + updateModel.lastError;
                 }
-                if (UpdateModel.lastSuccessCheckDate) {
+                if (updateModel.lastSuccessCheckDate) {
                     errMsg +=
                         '. ' +
-                        Locale.setGenLastCheckSuccess.replace(
+                        (loc.setGenLastCheckSuccess as string).replace(
                             '{}',
-                            DateFormat.dtStr(UpdateModel.lastSuccessCheckDate)
+                            DateFormat.dtStr(updateModel.lastSuccessCheckDate)
                         ) +
                         ': ' +
-                        Locale.setGenLastCheckVer.replace('{}', UpdateModel.lastVersion);
+                        (loc.setGenLastCheckVer as string).replace('{}', updateModel.lastVersion);
                 }
                 return errMsg;
             }
             case 'ok': {
                 let msg =
-                    Locale.setGenCheckedAt +
+                    (loc.setGenCheckedAt as string) +
                     ' ' +
-                    DateFormat.dtStr(UpdateModel.lastCheckDate) +
+                    DateFormat.dtStr(updateModel.lastCheckDate) +
                     ': ';
-                const cmp = SemVer.compareVersions(RuntimeInfo.version, UpdateModel.lastVersion);
+                const cmp = SemVer.compareVersions(
+                    (RuntimeInfo as any).version,
+                    updateModel.lastVersion
+                );
                 if (cmp >= 0) {
-                    msg += Locale.setGenLatestVer;
+                    msg += loc.setGenLatestVer as string;
                 } else {
                     msg +=
-                        Locale.setGenNewVer.replace('{}', UpdateModel.lastVersion) +
+                        (loc.setGenNewVer as string).replace('{}', updateModel.lastVersion) +
                         ' ' +
-                        DateFormat.dStr(UpdateModel.lastVersionReleaseDate);
+                        DateFormat.dStr(updateModel.lastVersionReleaseDate);
                 }
-                switch (UpdateModel.updateStatus) {
+                switch (updateModel.updateStatus) {
                     case 'downloading':
-                        return msg + '. ' + Locale.setGenDownloadingUpdate;
+                        return msg + '. ' + (loc.setGenDownloadingUpdate as string);
                     case 'extracting':
-                        return msg + '. ' + Locale.setGenExtractingUpdate;
+                        return msg + '. ' + (loc.setGenExtractingUpdate as string);
                     case 'error':
-                        return msg + '. ' + Locale.setGenCheckErr;
+                        return msg + '. ' + (loc.setGenCheckErr as string);
                 }
                 return msg;
             }
             default:
-                return Locale.setGenNeverChecked;
+                return loc.setGenNeverChecked as string;
         }
     }
 
-    getStorageProviders() {
-        const storageProviders = [];
-        Object.keys(Storage).forEach((name) => {
-            const prv = Storage[name];
+    getStorageProviders(): StorageProviderInfo[] {
+        const storageProviders: any[] = [];
+        const storageMap = Storage as unknown as Record<string, any>;
+        Object.keys(storageMap).forEach((name) => {
+            const prv = storageMap[name];
             if (!prv.system) {
                 storageProviders.push(prv);
             }
         });
-        storageProviders.sort((x, y) => (x.uipos || Infinity) - (y.uipos || Infinity));
-        return storageProviders.map((sp) => ({
+        storageProviders.sort(
+            (x: any, y: any) => (x.uipos || Infinity) - (y.uipos || Infinity)
+        );
+        return storageProviders.map((sp: any) => ({
             name: sp.name,
             enabled: sp.enabled,
             hasConfig: !!sp.getSettingsConfig,
@@ -233,322 +274,331 @@ class SettingsGeneralView extends View {
         }));
     }
 
-    getAllThemes() {
-        const { autoSwitchTheme } = AppSettingsModel;
+    getAllThemes(): Record<string, string> {
+        const { autoSwitchTheme } = settings;
         if (autoSwitchTheme) {
-            const themes = {};
-            const ignoredThemes = {};
-            for (const config of SettingsManager.autoSwitchedThemes) {
+            const themes: Record<string, string> = {};
+            const ignoredThemes: Record<string, boolean> = {};
+            for (const config of settingsManager.autoSwitchedThemes) {
                 ignoredThemes[config.dark] = true;
                 ignoredThemes[config.light] = true;
-                const activeTheme = ThemeWatcher.dark ? config.dark : config.light;
-                themes[activeTheme] = Locale[config.name];
+                const activeTheme = themeWatcher.dark ? config.dark : config.light;
+                themes[activeTheme] = loc[config.name] as string;
             }
-            for (const [th, name] of Object.entries(SettingsManager.allThemes)) {
+            for (const [th, name] of Object.entries(settingsManager.allThemes)) {
                 if (!ignoredThemes[th]) {
-                    themes[th] = Locale[name];
+                    themes[th] = loc[name as string] as string;
                 }
             }
             return themes;
         } else {
-            return mapObject(SettingsManager.allThemes, (theme) => Locale[theme]);
+            return mapObject(
+                settingsManager.allThemes,
+                (theme: string) => loc[theme] as string
+            ) as Record<string, string>;
         }
     }
 
-    changeTheme(e) {
+    changeTheme(e: any): void {
         const theme = e.target.closest('.settings__general-theme').dataset.theme;
         if (theme === '...') {
             this.goToPlugins();
         } else {
-            const changedInSettings = AppSettingsModel.theme !== theme;
+            const changedInSettings = settings.theme !== theme;
             if (changedInSettings) {
-                AppSettingsModel.theme = theme;
+                settings.theme = theme;
             } else {
-                SettingsManager.setTheme(theme);
+                settingsManager.setTheme(theme);
             }
         }
     }
 
-    changeAuthSwitchTheme(e) {
+    changeAuthSwitchTheme(e: any): void {
         const autoSwitchTheme = e.target.checked;
-        AppSettingsModel.autoSwitchTheme = autoSwitchTheme;
-        SettingsManager.darkModeChanged();
+        settings.autoSwitchTheme = autoSwitchTheme;
+        settingsManager.darkModeChanged();
         this.render();
     }
 
-    changeLocale(e) {
+    changeLocale(e: any): void {
         const locale = e.target.value;
         if (locale === '...') {
-            e.target.value = AppSettingsModel.locale || 'en-US';
+            e.target.value = settings.locale || 'en-US';
             this.goToPlugins();
         } else {
-            AppSettingsModel.locale = locale;
+            settings.locale = locale;
         }
     }
 
-    goToPlugins() {
+    goToPlugins(): void {
         this.appModel.menu.select({
             item: this.appModel.menu.pluginsSection.items[0]
         });
     }
 
-    changeFontSize(e) {
+    changeFontSize(e: any): void {
         const fontSize = +e.target.value;
-        AppSettingsModel.fontSize = fontSize;
+        settings.fontSize = fontSize;
     }
 
-    changeTitlebarStyle(e) {
+    changeTitlebarStyle(e: any): void {
         const titlebarStyle = e.target.value;
-        AppSettingsModel.titlebarStyle = titlebarStyle;
+        settings.titlebarStyle = titlebarStyle;
     }
 
-    changeClipboard(e) {
+    changeClipboard(e: any): void {
         const clipboardSeconds = +e.target.value;
-        AppSettingsModel.clipboardSeconds = clipboardSeconds;
+        settings.clipboardSeconds = clipboardSeconds;
     }
 
-    changeIdleMinutes(e) {
+    changeIdleMinutes(e: any): void {
         const idleMinutes = +e.target.value;
-        AppSettingsModel.idleMinutes = idleMinutes;
+        settings.idleMinutes = idleMinutes;
     }
 
-    changeAutoUpdate() {
+    changeAutoUpdate(): void {
         // No-op: auto-update removed in web-only fork
     }
 
-    checkUpdate() {
+    checkUpdate(): void {
         // No-op: auto-update removed in web-only fork
     }
 
-    changeAutoSave(e) {
+    changeAutoSave(e: any): void {
         const autoSave = e.target.checked || false;
-        AppSettingsModel.autoSave = autoSave;
+        settings.autoSave = autoSave;
     }
 
-    changeAutoSaveInterval(e) {
+    changeAutoSaveInterval(e: any): void {
         const autoSaveInterval = e.target.value | 0;
-        AppSettingsModel.autoSaveInterval = autoSaveInterval;
+        settings.autoSaveInterval = autoSaveInterval;
     }
 
-    changeRememberKeyFiles(e) {
+    changeRememberKeyFiles(e: any): void {
         const rememberKeyFiles = e.target.value || false;
-        AppSettingsModel.rememberKeyFiles = rememberKeyFiles;
+        settings.rememberKeyFiles = rememberKeyFiles;
         this.appModel.clearStoredKeyFiles();
     }
 
-    changeMinimize(e) {
+    changeMinimize(e: any): void {
         const minimizeOnClose = e.target.checked || false;
-        AppSettingsModel.minimizeOnClose = minimizeOnClose;
+        settings.minimizeOnClose = minimizeOnClose;
     }
 
-    changeMinimizeOnFieldCopy(e) {
+    changeMinimizeOnFieldCopy(e: any): void {
         const minimizeOnFieldCopy = e.target.checked || false;
-        AppSettingsModel.minimizeOnFieldCopy = minimizeOnFieldCopy;
+        settings.minimizeOnFieldCopy = minimizeOnFieldCopy;
     }
 
-    changeAuditPasswords(e) {
+    changeAuditPasswords(e: any): void {
         const auditPasswords = e.target.checked || false;
-        AppSettingsModel.auditPasswords = auditPasswords;
+        settings.auditPasswords = auditPasswords;
     }
 
-    changeAuditPasswordEntropy(e) {
+    changeAuditPasswordEntropy(e: any): void {
         const auditPasswordEntropy = e.target.checked || false;
-        AppSettingsModel.auditPasswordEntropy = auditPasswordEntropy;
+        settings.auditPasswordEntropy = auditPasswordEntropy;
     }
 
-    changeExcludePinsFromAudit(e) {
+    changeExcludePinsFromAudit(e: any): void {
         const excludePinsFromAudit = e.target.checked || false;
-        AppSettingsModel.excludePinsFromAudit = excludePinsFromAudit;
+        settings.excludePinsFromAudit = excludePinsFromAudit;
     }
 
-    changeCheckPasswordsOnHIBP(e) {
+    changeCheckPasswordsOnHIBP(e: any): void {
         if (e.target.closest('a')) {
             return;
         }
         const checkPasswordsOnHIBP = e.target.checked || false;
-        AppSettingsModel.checkPasswordsOnHIBP = checkPasswordsOnHIBP;
+        settings.checkPasswordsOnHIBP = checkPasswordsOnHIBP;
     }
 
-    clickToggleHelpHIBP() {
-        this.el.querySelector('.settings__general-help-hibp').classList.toggle('hide');
+    clickToggleHelpHIBP(): void {
+        this.el.querySelector('.settings__general-help-hibp')?.classList.toggle('hide');
     }
 
-    changeAuditPasswordAge(e) {
+    changeAuditPasswordAge(e: any): void {
         const auditPasswordAge = e.target.value | 0;
-        AppSettingsModel.auditPasswordAge = auditPasswordAge;
+        settings.auditPasswordAge = auditPasswordAge;
     }
 
-    changeLockOnMinimize(e) {
+    changeLockOnMinimize(e: any): void {
         const lockOnMinimize = e.target.checked || false;
-        AppSettingsModel.lockOnMinimize = lockOnMinimize;
+        settings.lockOnMinimize = lockOnMinimize;
     }
 
-    changeLockOnCopy(e) {
+    changeLockOnCopy(e: any): void {
         const lockOnCopy = e.target.checked || false;
-        AppSettingsModel.lockOnCopy = lockOnCopy;
+        settings.lockOnCopy = lockOnCopy;
     }
 
-    changeLockOnAutoType(e) {
+    changeLockOnAutoType(e: any): void {
         const lockOnAutoType = e.target.checked || false;
-        AppSettingsModel.lockOnAutoType = lockOnAutoType;
+        settings.lockOnAutoType = lockOnAutoType;
     }
 
-    changeLockOnOsLock(e) {
+    changeLockOnOsLock(e: any): void {
         const lockOnOsLock = e.target.checked || false;
-        AppSettingsModel.lockOnOsLock = lockOnOsLock;
+        settings.lockOnOsLock = lockOnOsLock;
     }
 
-    changeTableView(e) {
+    changeTableView(e: any): void {
         const tableView = e.target.checked || false;
-        AppSettingsModel.tableView = tableView;
+        settings.tableView = tableView;
         Events.emit('refresh');
     }
 
-    changeColorfulIcons(e) {
+    changeColorfulIcons(e: any): void {
         const colorfulIcons = e.target.checked || false;
-        AppSettingsModel.colorfulIcons = colorfulIcons;
+        settings.colorfulIcons = colorfulIcons;
         Events.emit('refresh');
     }
 
-    changeUseMarkdown(e) {
+    changeUseMarkdown(e: any): void {
         const useMarkdown = e.target.checked || false;
-        AppSettingsModel.useMarkdown = useMarkdown;
+        settings.useMarkdown = useMarkdown;
         Events.emit('refresh');
     }
 
-    changeUseGroupIconForEntries(e) {
+    changeUseGroupIconForEntries(e: any): void {
         const useGroupIconForEntries = e.target.checked || false;
-        AppSettingsModel.useGroupIconForEntries = useGroupIconForEntries;
+        settings.useGroupIconForEntries = useGroupIconForEntries;
     }
 
-    changeDirectAutotype(e) {
+    changeDirectAutotype(e: any): void {
         const directAutotype = e.target.checked || false;
-        AppSettingsModel.directAutotype = directAutotype;
+        settings.directAutotype = directAutotype;
     }
 
-    changeAutoTypeTitleFilter(e) {
+    changeAutoTypeTitleFilter(e: any): void {
         const autoTypeTitleFilterEnabled = e.target.checked || false;
-        AppSettingsModel.autoTypeTitleFilterEnabled = autoTypeTitleFilterEnabled;
+        settings.autoTypeTitleFilterEnabled = autoTypeTitleFilterEnabled;
     }
 
-    changeFieldLabelDblClickAutoType(e) {
+    changeFieldLabelDblClickAutoType(e: any): void {
         const fieldLabelDblClickAutoType = e.target.checked || false;
-        AppSettingsModel.fieldLabelDblClickAutoType = fieldLabelDblClickAutoType;
+        settings.fieldLabelDblClickAutoType = fieldLabelDblClickAutoType;
         Events.emit('refresh');
     }
 
-    changeDeviceOwnerAuth(e) {
+    changeDeviceOwnerAuth(e: any): void {
         const deviceOwnerAuth = e.target.value || null;
 
-        let deviceOwnerAuthTimeoutMinutes = AppSettingsModel.deviceOwnerAuthTimeoutMinutes | 0;
+        let deviceOwnerAuthTimeoutMinutes = (settings.deviceOwnerAuthTimeoutMinutes as number) | 0;
         if (deviceOwnerAuth) {
-            const timeouts = { memory: [30, 10080], file: [30, 525600] };
+            const timeouts: Record<string, [number, number]> = {
+                memory: [30, 10080],
+                file: [30, 525600]
+            };
             const [tMin, tMax] = timeouts[deviceOwnerAuth] || [0, 0];
             deviceOwnerAuthTimeoutMinutes = minmax(deviceOwnerAuthTimeoutMinutes, tMin, tMax);
         }
 
-        AppSettingsModel.set({ deviceOwnerAuth, deviceOwnerAuthTimeoutMinutes });
+        settings.set({ deviceOwnerAuth, deviceOwnerAuthTimeoutMinutes });
         this.render();
 
         this.appModel.checkEncryptedPasswordsStorage();
     }
 
-    changeDeviceOwnerAuthTimeout(e) {
+    changeDeviceOwnerAuthTimeout(e: any): void {
         const deviceOwnerAuthTimeout = e.target.value | 0;
-        AppSettingsModel.deviceOwnerAuthTimeoutMinutes = deviceOwnerAuthTimeout;
+        settings.deviceOwnerAuthTimeoutMinutes = deviceOwnerAuthTimeout;
     }
 
-    installUpdateAndRestart() {
+    installUpdateAndRestart(): void {
         window.location.reload();
     }
 
-    downloadUpdate() {
-        window.open(Links.Desktop);
+    downloadUpdate(): void {
+        window.open((Links as any).Desktop);
     }
 
-    installFoundUpdate() {
+    installFoundUpdate(): void {
         // No-op: auto-update removed in web-only fork
     }
 
-    changeExpandGroups(e) {
+    changeExpandGroups(e: any): void {
         const expand = e.target.checked;
-        AppSettingsModel.expandGroups = expand;
+        settings.expandGroups = expand;
         Events.emit('refresh');
     }
 
-    changeDisableOfflineStorage(e) {
+    changeDisableOfflineStorage(e: any): void {
         const disableOfflineStorage = e.target.checked;
-        AppSettingsModel.disableOfflineStorage = disableOfflineStorage;
+        settings.disableOfflineStorage = disableOfflineStorage;
         if (disableOfflineStorage) {
             this.appModel.deleteAllCachedFiles();
         }
     }
 
-    changeShortLivedStorageToken(e) {
+    changeShortLivedStorageToken(e: any): void {
         const shortLivedStorageToken = e.target.checked;
-        AppSettingsModel.shortLivedStorageToken = shortLivedStorageToken;
+        settings.shortLivedStorageToken = shortLivedStorageToken;
         if (shortLivedStorageToken) {
-            for (const storage of Object.values(Storage)) {
-                storage.deleteStoredToken();
+            for (const storage of Object.values(Storage as unknown as Record<string, any>)) {
+                (storage as any).deleteStoredToken();
             }
         }
     }
 
-    changeStorageEnabled(e) {
-        const storage = Storage[$(e.target).data('storage')];
+    changeStorageEnabled(e: any): void {
+        const storageMap = Storage as unknown as Record<string, any>;
+        const storage = storageMap[$(e.target).data('storage')];
         if (storage) {
             storage.setEnabled(e.target.checked);
-            AppSettingsModel[storage.name] = storage.enabled;
+            settings[storage.name] = storage.enabled;
             this.$el
                 .find('.settings__general-' + storage.name)
                 .toggleClass('hide', !e.target.checked);
         }
     }
 
-    logoutFromStorage(e) {
-        const storage = Storage[$(e.target).data('storage')];
+    logoutFromStorage(e: any): void {
+        const storageMap = Storage as unknown as Record<string, any>;
+        const storage = storageMap[$(e.target).data('storage')];
         if (storage) {
             storage.logout();
             $(e.target).remove();
         }
     }
 
-    showAdvancedSettings() {
+    showAdvancedSettings(): void {
         this.$el
             .find('.settings__general-show-advanced, .settings__general-advanced')
             .toggleClass('hide');
         this.scrollToBottom();
     }
 
-    openDevTools() {
+    openDevTools(): void {
         // Dev tools are only available through browser developer tools
     }
 
-    tryBeta() {
+    tryBeta(): void {
         if (this.appModel.files.hasUnsavedFiles()) {
-            Alerts.info({
-                header: Locale.setGenTryBetaWarning,
-                body: Locale.setGenTryBetaWarningBody
+            alerts.info({
+                header: loc.setGenTryBetaWarning,
+                body: loc.setGenTryBetaWarningBody
             });
         } else {
-            location.href = Links.BetaWebApp;
+            location.href = links.BetaWebApp as string;
         }
     }
 
-    showLogs() {
-        if (this.views.logView) {
-            this.views.logView.remove();
+    showLogs(): void {
+        const views = (this as any).views;
+        if (views.logView) {
+            views.logView.remove();
         }
-        this.views.logView = new SettingsLogsView();
-        this.views.logView.render();
+        views.logView = new (SettingsLogsView as any)();
+        views.logView.render();
         this.scrollToBottom();
     }
 
-    reloadApp() {
+    reloadApp(): void {
         location.reload();
     }
 
-    scrollToBottom() {
+    scrollToBottom(): void {
         this.$el.closest('.scroller').scrollTop(this.$el.height());
     }
 }
