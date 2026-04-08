@@ -1,19 +1,29 @@
-// @ts-nocheck
 import { Logger } from 'util/logger';
-import { ProtocolImpl } from './protocol-impl';
+import {
+    ProtocolImpl,
+    type ConnectionInfo,
+    type ProtocolRequest,
+    type ProtocolResponse,
+    type ClientPermissions
+} from './protocol-impl';
 import { Features } from 'util/features';
 
-const WebConnectionInfo = {
+const WebConnectionInfo: ConnectionInfo = {
     connectionId: 1,
     extensionName: 'KeeWeb Connect',
     supportsNotifications: true
 };
 
-const SupportedExtensions = [
+interface SupportedExtension {
+    alias: string;
+    name: string;
+}
+
+const SupportedExtensions: SupportedExtension[] = [
     { alias: 'KWC', name: 'KeeWeb Connect' },
     { alias: 'KPXC', name: 'KeePassXC-Browser' }
 ];
-const SupportedBrowsers = ['Chrome', 'Firefox', 'Edge', 'Other'];
+const SupportedBrowsers: string[] = ['Chrome', 'Firefox', 'Edge', 'Other'];
 if (Features.isMac) {
     SupportedBrowsers.unshift('Safari');
 }
@@ -23,15 +33,20 @@ if (!localStorage.debugBrowserExtension) {
     logger.level = Logger.Level.Info;
 }
 
-const connections = new Map();
-const pendingBrowserMessages = [];
+const connections = new Map<number, ConnectionInfo>();
+const pendingBrowserMessages: ProtocolRequest[] = [];
 let processingBrowserMessage = false;
+
+interface BrowserWindowMessageEventData {
+    kwConnect?: string;
+    [key: string]: unknown;
+}
 
 const BrowserExtensionConnector = {
     started: false,
     logger,
 
-    init(appModel) {
+    init(appModel: unknown): void {
         const sendEvent = this.sendEvent.bind(this);
         ProtocolImpl.init({ appModel, logger, sendEvent });
 
@@ -42,13 +57,13 @@ const BrowserExtensionConnector = {
         }
     },
 
-    start() {
+    start(): void {
         this.startWebMessageListener();
 
         this.started = true;
     },
 
-    stop() {
+    stop(): void {
         this.stopWebMessageListener();
 
         ProtocolImpl.cleanup();
@@ -57,7 +72,7 @@ const BrowserExtensionConnector = {
         this.started = false;
     },
 
-    appSettingsChanged() {
+    appSettingsChanged(): void {
         if (this.isEnabled()) {
             if (!this.started) {
                 this.start();
@@ -67,20 +82,20 @@ const BrowserExtensionConnector = {
         }
     },
 
-    isEnabled() {
+    isEnabled(): boolean {
         return true;
     },
 
-    startWebMessageListener() {
+    startWebMessageListener(): void {
         window.addEventListener('message', this.browserWindowMessage);
         logger.info('Started');
     },
 
-    stopWebMessageListener() {
+    stopWebMessageListener(): void {
         window.removeEventListener('message', this.browserWindowMessage);
     },
 
-    browserWindowMessage(e) {
+    browserWindowMessage(e: MessageEvent<BrowserWindowMessageEventData>): void {
         if (e.origin !== location.origin) {
             return;
         }
@@ -91,11 +106,11 @@ const BrowserExtensionConnector = {
             return;
         }
         logger.debug('Extension -> KeeWeb', e.data);
-        pendingBrowserMessages.push(e.data);
+        pendingBrowserMessages.push(e.data as unknown as ProtocolRequest);
         this.processBrowserMessages();
     },
 
-    async processBrowserMessages() {
+    async processBrowserMessages(): Promise<void> {
         if (!pendingBrowserMessages.length || processingBrowserMessage) {
             return;
         }
@@ -107,6 +122,10 @@ const BrowserExtensionConnector = {
         processingBrowserMessage = true;
 
         const request = pendingBrowserMessages.shift();
+        if (!request) {
+            processingBrowserMessage = false;
+            return;
+        }
 
         const response = await ProtocolImpl.handleRequest(request, WebConnectionInfo);
 
@@ -119,13 +138,13 @@ const BrowserExtensionConnector = {
         this.processBrowserMessages();
     },
 
-    sendWebResponse(response) {
+    sendWebResponse(response: ProtocolResponse): void {
         logger.debug('KeeWeb -> Extension', response);
         response.kwConnect = 'response';
         postMessage(response, window.location.origin);
     },
 
-    sendEvent(data) {
+    sendEvent(data: ProtocolResponse): void {
         if (!this.isEnabled() || !connections.size) {
             return;
         }
@@ -136,18 +155,19 @@ const BrowserExtensionConnector = {
         return ProtocolImpl.sessions;
     },
 
-    terminateConnection(connectionId) {
-        connectionId = +connectionId;
-        ProtocolImpl.deleteConnection(connectionId);
+    terminateConnection(connectionId: number | string): void {
+        const id = +connectionId;
+        ProtocolImpl.deleteConnection(id);
     },
 
-    getClientPermissions(clientId) {
+    getClientPermissions(clientId: string): ClientPermissions | undefined {
         return ProtocolImpl.getClientPermissions(clientId);
     },
 
-    setClientPermissions(clientId, permissions) {
+    setClientPermissions(clientId: string, permissions: Partial<ClientPermissions>): void {
         ProtocolImpl.setClientPermissions(clientId, permissions);
     }
 };
 
 export { BrowserExtensionConnector, SupportedExtensions, SupportedBrowsers };
+export type { SupportedExtension };

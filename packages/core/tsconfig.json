@@ -16,6 +16,7 @@
       "models/*": ["./app/scripts/models/*"],
       "framework/*": ["./app/scripts/framework/*"],
       "comp/*": ["./app/scripts/comp/*"],
+      "views/*": ["./app/scripts/views/*"],
       "collections/*": ["./app/scripts/collections/*"],
       "storage": ["./app/scripts/storage/index.ts"],
       "storage/*": ["./app/scripts/storage/*"],

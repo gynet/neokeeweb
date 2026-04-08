@@ -119,4 +119,5 @@ declare const $: (selector: string | Element, context?: Element | null) => any;
 // localStorage extended
 interface Storage {
     debugView?: string;
+    debugBrowserExtension?: string;
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as kdbxweb from 'kdbxweb';
 import { Events } from 'framework/events';
 import { box as tweetnaclBox } from 'tweetnacl';
@@ -17,6 +16,88 @@ import { Timeouts } from 'const/timeouts';
 import { SelectEntryView } from 'views/select/select-entry-view';
 import { SelectEntryFieldView } from 'views/select/select-entry-field-view';
 import { SelectEntryFilter } from 'comp/app/select-entry-filter';
+import type { Logger } from 'util/logger';
+
+// === Public types shared with browser-extension-connector ===
+
+export interface ConnectionInfo {
+    connectionId: number;
+    extensionName: string;
+    appName?: string;
+    supportsNotifications?: boolean;
+}
+
+export interface ProtocolRequest {
+    action: string;
+    clientID?: string;
+    nonce?: string;
+    message?: string;
+    publicKey?: string;
+    version?: string;
+    triggerUnlock?: boolean;
+    kwConnect?: string;
+    [key: string]: unknown;
+}
+
+export interface ProtocolResponse {
+    action?: string;
+    kwConnect?: string;
+    error?: string;
+    errorCode?: number | string;
+    [key: string]: unknown;
+}
+
+export interface SaveToConfig {
+    fileId: string;
+    groupId: string;
+}
+
+export interface ClientPermissions {
+    allFiles?: boolean;
+    files?: string[];
+    askGet?: string;
+    askSave?: string;
+    saveTo?: SaveToConfig;
+    [key: string]: unknown;
+}
+
+interface ClientStats {
+    connectedDate: Date;
+    passwordsRead: number;
+    passwordsWritten: number;
+}
+
+interface ClientState {
+    connection: ConnectionInfo;
+    publicKey: Uint8Array;
+    version?: string;
+    keys: { publicKey: Uint8Array; secretKey: Uint8Array };
+    stats: ClientStats;
+    permissions?: ClientPermissions;
+    permissionsDenied?: boolean;
+}
+
+interface ErrorDef {
+    message: string;
+    code: string;
+}
+
+// Error with optional protocol error code attached
+interface CodedError extends Error {
+    code?: string | number;
+}
+
+interface ProtocolInitVars {
+    appModel: unknown;
+    logger: Logger;
+    sendEvent: (data: ProtocolResponse) => void;
+}
+
+// Loose interfaces for the appModel shape consumed by this module.
+// Keeping these as unknown-ish records avoids tightly coupling to
+// AppModel's internals while still enabling @ts-nocheck removal.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyAppModel = any;
 
 const KeeWebAssociationId = 'KeeWeb';
 const KeeWebHash = '398d9c782ec76ae9e9877c2321cbda2b31fc6d18ccf0fed5ca4bd746bab4d64a'; // sha256('KeeWeb')
@@ -24,28 +105,30 @@ const ExtensionGroupIconId = 1;
 const DefaultExtensionGroupName = 'Browser';
 const ExtensionGroupNames = new Set(['KeePassXC-Browser Passwords', DefaultExtensionGroupName]);
 
-const Errors = {
+const loc = Locale as unknown as Record<string, string>;
+
+const Errors: Record<string, ErrorDef> = {
     noOpenFiles: {
-        message: Locale.extensionErrorNoOpenFiles,
+        message: loc['extensionErrorNoOpenFiles'],
         code: '1'
     },
     userRejected: {
-        message: Locale.extensionErrorUserRejected,
+        message: loc['extensionErrorUserRejected'],
         code: '6'
     },
     noMatches: {
-        message: Locale.extensionErrorNoMatches,
+        message: loc['extensionErrorNoMatches'],
         code: '15'
     }
 };
 
-const connectedClients = new Map();
+const connectedClients = new Map<string, ClientState>();
 
-let logger;
-let appModel;
-let sendEvent;
+let logger: Logger;
+let appModel: AnyAppModel;
+let sendEvent: (data: ProtocolResponse) => void;
 
-function setupListeners() {
+function setupListeners(): void {
     Events.on('file-opened', () => {
         sendEvent({ action: 'database-unlocked' });
     });
@@ -59,7 +142,7 @@ function setupListeners() {
     });
 }
 
-function incrementNonce(nonce) {
+function incrementNonce(nonce: Uint8Array): void {
     // from libsodium/utils.c, like it is in KeePassXC
     let i = 0;
     let c = 1;
@@ -70,7 +153,7 @@ function incrementNonce(nonce) {
     }
 }
 
-function getClient(request) {
+function getClient(request: ProtocolRequest): ClientState {
     if (!request.clientID) {
         throw new Error('Empty clientID');
     }
@@ -81,7 +164,7 @@ function getClient(request) {
     return client;
 }
 
-function decryptRequest(request) {
+function decryptRequest(request: ProtocolRequest): Record<string, unknown> {
     const client = getClient(request);
 
     if (!request.nonce) {
@@ -94,13 +177,18 @@ function decryptRequest(request) {
     const nonce = kdbxweb.ByteUtils.base64ToBytes(request.nonce);
     const message = kdbxweb.ByteUtils.base64ToBytes(request.message);
 
-    const data = tweetnaclBox.open(message, nonce, client.publicKey, client.keys.secretKey);
+    const data = tweetnaclBox.open(
+        new Uint8Array(message),
+        new Uint8Array(nonce),
+        client.publicKey,
+        client.keys.secretKey
+    );
     if (!data) {
         throw new Error('Failed to decrypt data');
     }
 
     const json = new TextDecoder().decode(data);
-    const payload = JSON.parse(json);
+    const payload = JSON.parse(json) as Record<string, unknown>;
 
     logger.debug('Extension -> KeeWeb -> (decrypted)', payload);
 
@@ -114,11 +202,17 @@ function decryptRequest(request) {
     return payload;
 }
 
-function encryptResponse(request, payload) {
+function encryptResponse(
+    request: ProtocolRequest,
+    payload: Record<string, unknown>
+): ProtocolResponse {
     logger.debug('KeeWeb -> Extension (decrypted)', payload);
 
+    if (!request.nonce) {
+        throw new Error('Empty nonce');
+    }
     const nonceBytes = kdbxweb.ByteUtils.base64ToBytes(request.nonce);
-    incrementNonce(nonceBytes);
+    incrementNonce(new Uint8Array(nonceBytes));
     const nonce = kdbxweb.ByteUtils.bytesToBase64(nonceBytes);
 
     const client = getClient(request);
@@ -128,7 +222,12 @@ function encryptResponse(request, payload) {
     const json = JSON.stringify(payload);
     const data = new TextEncoder().encode(json);
 
-    const encrypted = tweetnaclBox(data, nonceBytes, client.publicKey, client.keys.secretKey);
+    const encrypted = tweetnaclBox(
+        data,
+        new Uint8Array(nonceBytes),
+        client.publicKey,
+        client.keys.secretKey
+    );
 
     const message = kdbxweb.ByteUtils.bytesToBase64(encrypted);
 
@@ -139,21 +238,22 @@ function encryptResponse(request, payload) {
     };
 }
 
-function makeError(def) {
-    const e = new Error(def.message);
+function makeError(def: ErrorDef): CodedError {
+    const e: CodedError = new Error(def.message);
     e.code = def.code;
     return e;
 }
 
-function ensureAtLeastOneFileIsOpen() {
+function ensureAtLeastOneFileIsOpen(): void {
     if (!appModel.files.hasOpenFiles()) {
         throw makeError(Errors.noOpenFiles);
     }
 }
 
-async function checkContentRequestPermissions(request) {
+async function checkContentRequestPermissions(request: ProtocolRequest): Promise<void> {
     if (!appModel.files.hasOpenFiles()) {
-        if (AppSettingsModel.extensionFocusIfLocked) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((AppSettingsModel as any).extensionFocusIfLocked) {
             try {
                 focusKeeWeb();
                 await appModel.unlockAnyFile(
@@ -174,18 +274,21 @@ async function checkContentRequestPermissions(request) {
     }
 
     if (Alerts.alertDisplayed) {
-        throw new Error(Locale.extensionErrorAlertDisplayed);
+        throw new Error(loc['extensionErrorAlertDisplayed']);
     }
 
     focusKeeWeb();
 
-    const config = RuntimeDataModel.extensionConnectConfig;
-    const files = appModel.files.map((f) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = (RuntimeDataModel as any).extensionConnectConfig as
+        | { allFiles?: boolean; files?: string[]; askGet?: string }
+        | undefined;
+    const files = appModel.files.map((f: AnyAppModel) => ({
         id: f.id,
         name: f.name,
-        checked: !config || config.allFiles || config.files.includes(f.id)
+        checked: !config || config.allFiles || (config.files?.includes(f.id) ?? false)
     }));
-    if (!files.some((f) => f.checked)) {
+    if (!files.some((f: { checked: boolean }) => f.checked)) {
         for (const f of files) {
             f.checked = true;
         }
@@ -197,11 +300,11 @@ async function checkContentRequestPermissions(request) {
         files,
         allFiles: config?.allFiles ?? true,
         askGet: config?.askGet || 'multiple'
-    });
+    } as unknown as Record<string, unknown>) as AnyAppModel;
 
     try {
         await alertWithTimeout({
-            header: Locale.extensionConnectHeader,
+            header: loc['extensionConnectHeader'],
             icon: 'exchange-alt',
             buttons: [Alerts.buttons.allow, Alerts.buttons.deny],
             view: extensionConnectView,
@@ -214,45 +317,56 @@ async function checkContentRequestPermissions(request) {
         throw e;
     }
 
-    RuntimeDataModel.extensionConnectConfig = extensionConnectView.config;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (RuntimeDataModel as any).extensionConnectConfig = extensionConnectView.config;
     client.permissions = extensionConnectView.config;
     Events.emit('browser-extension-sessions-changed');
 }
 
-function alertWithTimeout(config) {
-    return new Promise((resolve, reject) => {
-        let inactivityTimer = 0;
+interface AlertWithTimeoutConfig {
+    header?: string;
+    icon?: string;
+    buttons?: Array<{ result: string; title: string }>;
+    view?: unknown;
+    wide?: boolean;
+    opaque?: boolean;
+}
+
+function alertWithTimeout(config: AlertWithTimeoutConfig): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        let inactivityTimer: ReturnType<typeof setTimeout> | 0 = 0;
 
         const alert = Alerts.alert({
             ...config,
             enter: 'yes',
             esc: '',
-            success: (res) => {
-                clearTimeout(inactivityTimer);
+            success: (res: string) => {
+                if (inactivityTimer) clearTimeout(inactivityTimer);
                 resolve(res);
             },
             cancel: () => {
-                clearTimeout(inactivityTimer);
+                if (inactivityTimer) clearTimeout(inactivityTimer);
                 reject(makeError(Errors.userRejected));
             }
-        });
+        }) as AnyAppModel;
 
         inactivityTimer = setTimeout(() => {
-            alert.closeWithResult('');
+            alert?.closeWithResult?.('');
         }, Timeouts.KeeWebConnectRequest);
     });
 }
 
-function getAvailableFiles(request) {
+function getAvailableFiles(request: ProtocolRequest): AnyAppModel[] | undefined {
     const client = getClient(request);
     if (!client.permissions) {
-        return;
+        return undefined;
     }
+    const perms = client.permissions;
 
     const files = appModel.files.filter(
-        (file) =>
+        (file: AnyAppModel) =>
             file.active &&
-            (client.permissions.allFiles || client.permissions.files.includes(file.id))
+            (perms.allFiles || (perms.files?.includes(file.id) ?? false))
     );
     if (!files.length) {
         throw makeError(Errors.noOpenFiles);
@@ -261,30 +375,34 @@ function getAvailableFiles(request) {
     return files;
 }
 
-function getVersion(request) {
+function getVersion(request: ProtocolRequest): string {
     return isKeePassXcBrowser(request) ? KnownAppVersions.KeePassXC : RuntimeInfo.version;
 }
 
-function isKeeWebConnect(request) {
+function isKeeWebConnect(request: ProtocolRequest): boolean {
     return getClient(request).connection.extensionName === 'KeeWeb Connect';
 }
 
-function isKeePassXcBrowser(request) {
+function isKeePassXcBrowser(request: ProtocolRequest): boolean {
     return getClient(request).connection.extensionName === 'KeePassXC-Browser';
 }
 
-function getHumanReadableExtensionName(client) {
+function getHumanReadableExtensionName(client: ClientState): string {
     return client.connection.appName
         ? `${client.connection.extensionName} (${client.connection.appName})`
         : client.connection.extensionName;
 }
 
-function focusKeeWeb() {
+function focusKeeWeb(): void {
     logger.debug('Focus KeeWeb');
     sendEvent({ action: 'attention-required' });
 }
 
-async function findEntry(request, returnIfOneMatch, filterOptions) {
+async function findEntry(
+    request: ProtocolRequest,
+    returnIfOneMatch: boolean,
+    filterOptions?: Record<string, unknown>
+): Promise<AnyAppModel> {
     const payload = decryptRequest(request);
     await checkContentRequestPermissions(request);
 
@@ -296,32 +414,38 @@ async function findEntry(request, returnIfOneMatch, filterOptions) {
     const client = getClient(request);
 
     const filter = new SelectEntryFilter(
-        { url: payload.url, title: payload.title },
+        { url: payload.url as string, title: payload.title as string },
         appModel,
         files,
-        filterOptions
-    );
+        filterOptions ?? {}
+    ) as AnyAppModel;
     filter.subdomains = false;
 
-    let entries = filter.getEntries();
+    let entries = filter.getEntries() as AnyAppModel[];
 
     filter.subdomains = true;
 
-    let entry;
+    let entry: AnyAppModel;
 
     if (entries.length) {
-        if (entries.length === 1 && returnIfOneMatch && client.permissions.askGet === 'multiple') {
+        if (
+            entries.length === 1 &&
+            returnIfOneMatch &&
+            client.permissions?.askGet === 'multiple'
+        ) {
             entry = entries[0];
         }
     } else {
-        entries = filter.getEntries();
+        entries = filter.getEntries() as AnyAppModel[];
 
         if (!entries.length) {
-            if (AppSettingsModel.extensionFocusIfEmpty) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((AppSettingsModel as any).extensionFocusIfEmpty) {
                 filter.useUrl = false;
-                if (filter.title && AppSettingsModel.autoTypeTitleFilterEnabled) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (filter.title && (AppSettingsModel as any).autoTypeTitleFilterEnabled) {
                     filter.useTitle = true;
-                    entries = filter.getEntries();
+                    entries = filter.getEntries() as AnyAppModel[];
                     if (!entries.length) {
                         filter.useTitle = false;
                     }
@@ -334,8 +458,11 @@ async function findEntry(request, returnIfOneMatch, filterOptions) {
 
     if (!entry) {
         const extName = getHumanReadableExtensionName(client);
-        const topMessage = Locale.extensionSelectPasswordFor.replace('{}', extName);
-        const selectEntryView = new SelectEntryView({ filter, topMessage });
+        const topMessage = loc['extensionSelectPasswordFor'].replace('{}', extName);
+        const selectEntryView = new SelectEntryView({
+            filter,
+            topMessage
+        } as unknown as Record<string, unknown>) as AnyAppModel;
 
         focusKeeWeb();
 
@@ -358,13 +485,25 @@ async function findEntry(request, returnIfOneMatch, filterOptions) {
     return entry;
 }
 
-const ProtocolHandlers = {
-    'ping'({ data }) {
+type ProtocolHandler = (
+    request: ProtocolRequest,
+    connection: ConnectionInfo
+) => ProtocolResponse | Promise<ProtocolResponse>;
+
+const ProtocolHandlers: Record<string, ProtocolHandler> = {
+    'ping'(request: ProtocolRequest): ProtocolResponse {
+        const data = (request as Record<string, unknown>).data;
         return { data };
     },
 
-    'change-public-keys'(request, connection) {
-        let { publicKey, version, clientID: clientId } = request;
+    'change-public-keys'(request: ProtocolRequest, connection: ConnectionInfo): ProtocolResponse {
+        const clientId = request.clientID;
+        const version = request.version;
+        let publicKeyStr = request.publicKey;
+
+        if (!clientId || !publicKeyStr) {
+            throw new Error('Missing clientID or publicKey');
+        }
 
         if (connectedClients.has(clientId)) {
             throw new Error('Changing keys is not allowed');
@@ -374,9 +513,9 @@ const ProtocolHandlers = {
         connectedClients.clear();
 
         const keys = tweetnaclBox.keyPair();
-        publicKey = kdbxweb.ByteUtils.base64ToBytes(publicKey);
+        const publicKey = new Uint8Array(kdbxweb.ByteUtils.base64ToBytes(publicKeyStr));
 
-        const stats = {
+        const stats: ClientStats = {
             connectedDate: new Date(),
             passwordsRead: 0,
             passwordsWritten: 0
@@ -388,7 +527,10 @@ const ProtocolHandlers = {
 
         logger.info('New client key created', clientId, version);
 
-        const nonceBytes = kdbxweb.ByteUtils.base64ToBytes(request.nonce);
+        if (!request.nonce) {
+            throw new Error('Empty nonce');
+        }
+        const nonceBytes = new Uint8Array(kdbxweb.ByteUtils.base64ToBytes(request.nonce));
         incrementNonce(nonceBytes);
         const nonce = kdbxweb.ByteUtils.bytesToBase64(nonceBytes);
 
@@ -402,7 +544,7 @@ const ProtocolHandlers = {
         };
     },
 
-    async 'get-databasehash'(request) {
+    async 'get-databasehash'(request: ProtocolRequest): Promise<ProtocolResponse> {
         decryptRequest(request);
 
         if (request.triggerUnlock) {
@@ -418,8 +560,10 @@ const ProtocolHandlers = {
         });
     },
 
-    'generate-password'(request) {
-        const password = PasswordGenerator.generate(GeneratorPresets.browserExtensionPreset);
+    'generate-password'(request: ProtocolRequest): ProtocolResponse {
+        const password = PasswordGenerator.generate(
+            (GeneratorPresets as AnyAppModel).browserExtensionPreset
+        );
 
         return encryptResponse(request, {
             version: getVersion(request),
@@ -428,7 +572,7 @@ const ProtocolHandlers = {
         });
     },
 
-    'lock-database'(request) {
+    'lock-database'(request: ProtocolRequest): ProtocolResponse {
         decryptRequest(request);
         ensureAtLeastOneFileIsOpen();
 
@@ -444,7 +588,7 @@ const ProtocolHandlers = {
         });
     },
 
-    'associate'(request) {
+    'associate'(request: ProtocolRequest): ProtocolResponse {
         decryptRequest(request);
         ensureAtLeastOneFileIsOpen();
 
@@ -456,7 +600,7 @@ const ProtocolHandlers = {
         });
     },
 
-    'test-associate'(request) {
+    'test-associate'(request: ProtocolRequest): ProtocolResponse {
         const payload = decryptRequest(request);
         // ensureAtLeastOneFileIsOpen();
 
@@ -468,11 +612,11 @@ const ProtocolHandlers = {
             success: 'true',
             version: getVersion(request),
             hash: KeeWebHash,
-            id: payload.id
+            id: payload.id as string
         });
     },
 
-    async 'get-logins'(request) {
+    async 'get-logins'(request: ProtocolRequest): Promise<ProtocolResponse> {
         const entry = await findEntry(request, true);
 
         return encryptResponse(request, {
@@ -495,7 +639,7 @@ const ProtocolHandlers = {
         });
     },
 
-    async 'get-totp-by-url'(request) {
+    async 'get-totp-by-url'(request: ProtocolRequest): Promise<ProtocolResponse> {
         const entry = await findEntry(request, true, { otp: true });
 
         entry.initOtpGenerator();
@@ -504,18 +648,18 @@ const ProtocolHandlers = {
             throw makeError(Errors.noMatches);
         }
 
-        let selectEntryFieldView;
+        let selectEntryFieldView: AnyAppModel;
         if (entry.needsTouch) {
             selectEntryFieldView = new SelectEntryFieldView({
                 needsTouch: true,
                 deviceShortName: entry.device.shortName
-            });
+            } as unknown as Record<string, unknown>);
             selectEntryFieldView.render();
         }
 
-        const otpPromise = new Promise((resolve, reject) => {
+        const otpPromise = new Promise<string>((resolve, reject) => {
             selectEntryFieldView?.on('result', () => reject(makeError(Errors.userRejected)));
-            entry.otpGenerator.next((err, otp) => {
+            entry.otpGenerator.next((err: unknown, otp: string) => {
                 if (otp) {
                     resolve(otp);
                 } else {
@@ -524,7 +668,7 @@ const ProtocolHandlers = {
             });
         });
 
-        let totp;
+        let totp: string;
         try {
             totp = await otpPromise;
         } finally {
@@ -538,12 +682,12 @@ const ProtocolHandlers = {
         });
     },
 
-    async 'get-any-field'(request) {
+    async 'get-any-field'(request: ProtocolRequest): Promise<ProtocolResponse> {
         const entry = await findEntry(request, false);
 
         const selectEntryFieldView = new SelectEntryFieldView({
             entry
-        });
+        } as unknown as Record<string, unknown>) as AnyAppModel;
         const inactivityTimer = setTimeout(() => {
             selectEntryFieldView.emit('result', undefined);
         }, Timeouts.KeeWebConnectRequest);
@@ -557,7 +701,7 @@ const ProtocolHandlers = {
         }
 
         let value = entry.getAllFields()[field];
-        if (value.isProtected) {
+        if (value instanceof kdbxweb.ProtectedValue) {
             value = value.getText();
         }
 
@@ -569,14 +713,14 @@ const ProtocolHandlers = {
         });
     },
 
-    async 'get-totp'(request) {
+    async 'get-totp'(request: ProtocolRequest): Promise<ProtocolResponse> {
         decryptRequest(request);
         await checkContentRequestPermissions(request);
 
         throw new Error('Not implemented');
     },
 
-    async 'set-login'(request) {
+    async 'set-login'(request: ProtocolRequest): Promise<ProtocolResponse> {
         const payload = decryptRequest(request);
         await checkContentRequestPermissions(request);
 
@@ -585,18 +729,21 @@ const ProtocolHandlers = {
         if (!payload.url) {
             throw new Error('Empty url');
         }
-        const url = new URL(payload.url);
+        const url = new URL(payload.url as string);
 
         const files = getAvailableFiles(request);
+        if (!files) {
+            throw makeError(Errors.noOpenFiles);
+        }
         const client = getClient(request);
 
-        let selectedGroup;
+        let selectedGroup: AnyAppModel | undefined;
 
-        let entryToUpdate;
+        let entryToUpdate: AnyAppModel | undefined;
         if (payload.uuid) {
             for (const file of files) {
                 const entryId = kdbxweb.ByteUtils.bytesToBase64(
-                    kdbxweb.ByteUtils.hexToBytes(payload.uuid)
+                    kdbxweb.ByteUtils.hexToBytes(payload.uuid as string)
                 );
                 const foundEntry = file.getEntry(file.subId(entryId));
                 if (foundEntry) {
@@ -613,23 +760,36 @@ const ProtocolHandlers = {
             }
         }
 
-        if (client.permissions.askSave === 'auto' && client.permissions.saveTo && !selectedGroup) {
-            const file = files.find((f) => f.id === client.permissions.saveTo.fileId);
-            selectedGroup = file?.getGroup(client.permissions.saveTo.groupId);
+        const perms = client.permissions;
+        if (perms?.askSave === 'auto' && perms.saveTo && !selectedGroup) {
+            const saveTo = perms.saveTo;
+            const file = files.find((f: AnyAppModel) => f.id === saveTo.fileId);
+            selectedGroup = file?.getGroup(saveTo.groupId);
         }
 
-        if (client.permissions.askSave !== 'auto' || !selectedGroup) {
-            if (!selectedGroup && RuntimeDataModel.extensionSaveConfig) {
+        if (perms?.askSave !== 'auto' || !selectedGroup) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const saveConfig = (RuntimeDataModel as any).extensionSaveConfig as
+                | { fileId: string; groupId: string; askSave?: string }
+                | undefined;
+            if (!selectedGroup && saveConfig) {
                 const file = files.find(
-                    (f) => f.id === RuntimeDataModel.extensionSaveConfig.fileId
+                    (f: AnyAppModel) => f.id === saveConfig.fileId
                 );
-                selectedGroup = file?.getGroup(RuntimeDataModel.extensionSaveConfig.groupId);
+                selectedGroup = file?.getGroup(saveConfig.groupId);
             }
 
-            const allGroups = [];
+            interface GroupListItem {
+                id: string;
+                fileId: string;
+                spaces: string[];
+                title: string;
+                selected: boolean;
+            }
+            const allGroups: GroupListItem[] = [];
             for (const file of files) {
-                file.forEachGroup((group) => {
-                    const spaces = [];
+                file.forEachGroup((group: AnyAppModel) => {
+                    const spaces: string[] = [];
                     for (let parent = group; parent.parentGroup; parent = parent.parentGroup) {
                         spaces.push(' ', ' ');
                     }
@@ -656,7 +816,7 @@ const ProtocolHandlers = {
                     id: '',
                     fileId: files[0].id,
                     spaces: [' ', ' '],
-                    title: `${DefaultExtensionGroupName} (${Locale.extensionSaveEntryNewGroup})`,
+                    title: `${DefaultExtensionGroupName} (${loc['extensionSaveEntryNewGroup']})`,
                     selected: true
                 });
             }
@@ -665,13 +825,13 @@ const ProtocolHandlers = {
                 extensionName: getHumanReadableExtensionName(client),
                 url: payload.url,
                 user: payload.login,
-                askSave: RuntimeDataModel.extensionSaveConfig?.askSave || 'always',
+                askSave: saveConfig?.askSave || 'always',
                 update: !!entryToUpdate,
                 allGroups
-            });
+            } as unknown as Record<string, unknown>) as AnyAppModel;
 
             await alertWithTimeout({
-                header: Locale.extensionSaveEntryHeader,
+                header: loc['extensionSaveEntryHeader'],
                 icon: 'plus',
                 buttons: [Alerts.buttons.allow, Alerts.buttons.deny],
                 view: saveEntryView
@@ -680,8 +840,8 @@ const ProtocolHandlers = {
             const config = { ...saveEntryView.config };
             if (!entryToUpdate) {
                 if (config.groupId) {
-                    const file = files.find((f) => f.id === config.fileId);
-                    selectedGroup = file.getGroup(config.groupId);
+                    const file = files.find((f: AnyAppModel) => f.id === config.fileId);
+                    selectedGroup = file?.getGroup(config.groupId);
                 } else {
                     selectedGroup = appModel.createNewGroupWithName(
                         files[0].groups[0],
@@ -692,18 +852,26 @@ const ProtocolHandlers = {
                     config.groupId = selectedGroup.id;
                 }
 
-                RuntimeDataModel.extensionSaveConfig = config;
-                client.permissions.saveTo = { fileId: config.fileId, groupId: config.groupId };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (RuntimeDataModel as any).extensionSaveConfig = config;
+                if (client.permissions) {
+                    client.permissions.saveTo = {
+                        fileId: config.fileId,
+                        groupId: config.groupId
+                    };
+                }
             }
 
-            client.permissions.askSave = config.askSave;
+            if (client.permissions) {
+                client.permissions.askSave = config.askSave;
+            }
         }
 
-        const entryFields = {
+        const entryFields: Record<string, string | kdbxweb.ProtectedValue> = {
             Title: url.hostname,
-            UserName: payload.login,
-            Password: kdbxweb.ProtectedValue.fromString(payload.password || ''),
-            URL: payload.url
+            UserName: (payload.login as string) || '',
+            Password: kdbxweb.ProtectedValue.fromString((payload.password as string) || ''),
+            URL: payload.url as string
         };
 
         if (entryToUpdate) {
@@ -730,12 +898,18 @@ const ProtocolHandlers = {
         });
     },
 
-    async 'get-database-groups'(request) {
+    async 'get-database-groups'(request: ProtocolRequest): Promise<ProtocolResponse> {
         decryptRequest(request);
         await checkContentRequestPermissions(request);
 
-        const makeGroups = (group) => {
-            const res = {
+        interface GroupTreeNode {
+            name: string;
+            uuid: string;
+            children: GroupTreeNode[];
+        }
+
+        const makeGroups = (group: AnyAppModel): GroupTreeNode => {
+            const res: GroupTreeNode = {
                 name: group.title,
                 uuid: kdbxweb.ByteUtils.bytesToHex(group.group.uuid.bytes),
                 children: []
@@ -748,10 +922,13 @@ const ProtocolHandlers = {
             return res;
         };
 
-        const groups = [];
-        for (const file of getAvailableFiles(request)) {
-            for (const group of file.groups) {
-                groups.push(makeGroups(group));
+        const groups: GroupTreeNode[] = [];
+        const availableFiles = getAvailableFiles(request);
+        if (availableFiles) {
+            for (const file of availableFiles) {
+                for (const group of file.groups) {
+                    groups.push(makeGroups(group));
+                }
             }
         }
 
@@ -762,7 +939,7 @@ const ProtocolHandlers = {
         });
     },
 
-    async 'create-new-group'(request) {
+    async 'create-new-group'(request: ProtocolRequest): Promise<ProtocolResponse> {
         const payload = decryptRequest(request);
         await checkContentRequestPermissions(request);
 
@@ -770,24 +947,27 @@ const ProtocolHandlers = {
             throw new Error('No groupName');
         }
 
-        const groupNames = payload.groupName
+        const groupNames = (payload.groupName as string)
             .split('/')
-            .map((g) => g.trim())
-            .filter((g) => g);
+            .map((g: string) => g.trim())
+            .filter((g: string) => g);
 
         if (!groupNames.length) {
             throw new Error('Empty group path');
         }
 
         const files = getAvailableFiles(request);
+        if (!files) {
+            throw makeError(Errors.noOpenFiles);
+        }
 
         for (const file of files) {
             for (const rootGroup of file.groups) {
-                let foundGroup = rootGroup;
+                let foundGroup: AnyAppModel | undefined = rootGroup;
                 const pendingGroups = [...groupNames];
                 while (pendingGroups.length && foundGroup) {
                     const title = pendingGroups.shift();
-                    foundGroup = foundGroup.items.find((g) => g.title === title);
+                    foundGroup = foundGroup.items.find((g: AnyAppModel) => g.title === title);
                 }
                 if (foundGroup) {
                     return encryptResponse(request, {
@@ -804,24 +984,33 @@ const ProtocolHandlers = {
         const createGroupView = new ExtensionCreateGroupView({
             extensionName: getHumanReadableExtensionName(client),
             groupPath: groupNames.join(' / '),
-            files: files.map((f, ix) => ({ id: f.id, name: f.name, selected: ix === 0 }))
-        });
+            files: files.map((f: AnyAppModel, ix: number) => ({
+                id: f.id,
+                name: f.name,
+                selected: ix === 0
+            }))
+        } as unknown as Record<string, unknown>) as AnyAppModel;
 
         await alertWithTimeout({
-            header: Locale.extensionNewGroupHeader,
+            header: loc['extensionNewGroupHeader'],
             icon: 'folder-plus',
             buttons: [Alerts.buttons.allow, Alerts.buttons.deny],
             view: createGroupView
         });
 
-        const selectedFile = files.find((f) => f.id === createGroupView.selectedFile);
+        const selectedFile = files.find(
+            (f: AnyAppModel) => f.id === createGroupView.selectedFile
+        );
+        if (!selectedFile) {
+            throw new Error('Selected file not found');
+        }
 
-        let newGroup = selectedFile.groups[0];
+        let newGroup: AnyAppModel = selectedFile.groups[0];
         const pendingGroups = [...groupNames];
 
         while (pendingGroups.length) {
             const title = pendingGroups.shift();
-            const item = newGroup.items.find((g) => g.title === title);
+            const item = newGroup.items.find((g: AnyAppModel) => g.title === title);
             if (item) {
                 newGroup = item;
             } else {
@@ -839,7 +1028,7 @@ const ProtocolHandlers = {
 };
 
 const ProtocolImpl = {
-    init(vars) {
+    init(vars: ProtocolInitVars): void {
         appModel = vars.appModel;
         logger = vars.logger;
         sendEvent = vars.sendEvent;
@@ -847,7 +1036,7 @@ const ProtocolImpl = {
         setupListeners();
     },
 
-    cleanup() {
+    cleanup(): void {
         const wasNotEmpty = connectedClients.size;
 
         connectedClients.clear();
@@ -857,7 +1046,7 @@ const ProtocolImpl = {
         }
     },
 
-    deleteConnection(connectionId) {
+    deleteConnection(connectionId: number): void {
         for (const [clientId, client] of connectedClients.entries()) {
             if (client.connection.connectionId === connectionId) {
                 connectedClients.delete(clientId);
@@ -866,18 +1055,18 @@ const ProtocolImpl = {
         Events.emit('browser-extension-sessions-changed');
     },
 
-    getClientPermissions(clientId) {
+    getClientPermissions(clientId: string): ClientPermissions | undefined {
         return connectedClients.get(clientId)?.permissions;
     },
 
-    setClientPermissions(clientId, permissions) {
+    setClientPermissions(clientId: string, permissions: Partial<ClientPermissions>): void {
         const client = connectedClients.get(clientId);
         if (client?.permissions) {
             client.permissions = { ...client.permissions, ...permissions };
         }
     },
 
-    errorToResponse(e, request) {
+    errorToResponse(e: CodedError, request: ProtocolRequest | undefined): ProtocolResponse {
         return {
             action: request?.action,
             error: e.message || 'Unknown error',
@@ -885,8 +1074,11 @@ const ProtocolImpl = {
         };
     },
 
-    async handleRequest(request, connectionInfo) {
-        let result;
+    async handleRequest(
+        request: ProtocolRequest,
+        connectionInfo: ConnectionInfo
+    ): Promise<ProtocolResponse> {
+        let result: ProtocolResponse;
         try {
             const handler = ProtocolHandlers[request.action];
             if (!handler) {
@@ -897,10 +1089,11 @@ const ProtocolImpl = {
                 throw new Error(`Handler returned an empty result: ${request.action}`);
             }
         } catch (e) {
-            if (!e.code) {
+            const err = e as CodedError;
+            if (!err.code) {
                 logger.error(`Error in handler ${request.action}`, e);
             }
-            result = this.errorToResponse(e, request);
+            result = this.errorToResponse(err, request);
         }
 
         return result;
@@ -919,7 +1112,7 @@ const ProtocolImpl = {
                 permissions: client.permissions,
                 permissionsDenied: client.permissionsDenied
             }))
-            .sort((x, y) => y.connectedDate - x.connectedDate);
+            .sort((x, y) => y.connectedDate.getTime() - x.connectedDate.getTime());
     }
 };
 
