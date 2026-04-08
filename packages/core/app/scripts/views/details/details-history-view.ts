@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View } from 'framework/views/view';
 import { Alerts } from 'comp/ui/alerts';
 import { Keys } from 'const/keys';
@@ -11,10 +11,30 @@ import { FieldViewReadOnlyRaw } from 'views/fields/field-view-read-only-raw';
 import { escape } from 'util/fn';
 import template from 'templates/details/details-history.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const alerts = Alerts as unknown as { yesno(opts: any): void };
+
+interface HistoryFormat {
+    name: string;
+    round: number;
+    format(d: Date): string;
+}
+
+interface TimelineEntry {
+    pos: number;
+    rec: any;
+}
+
+interface LabelEntry {
+    pos: number;
+    val: number;
+    text: string;
+}
+
 class DetailsHistoryView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .details__subview-close': 'closeHistory',
         'click .details__history-timeline-item': 'timelineItemClick',
         'click .details__history-arrow-prev': 'timelinePrevClick',
@@ -24,63 +44,71 @@ class DetailsHistoryView extends View {
         'click .details__history-button-discard': 'discardClick'
     };
 
-    formats = [
+    formats: HistoryFormat[] = [
         {
             name: 'ms',
             round: 1,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dtStr(d);
             }
         },
         {
             name: 'sec',
             round: 1000,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dtStr(d);
             }
         },
         {
             name: 'min',
             round: 1000 * 60,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dtStr(d).replace(':00 ', ' ');
             }
         },
         {
             name: 'hour',
             round: 1000 * 60 * 60,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dtStr(d).replace(':00', '');
             }
         },
         {
             name: 'day',
             round: 1000 * 60 * 60 * 24,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dStr(d);
             }
         },
         {
             name: 'month',
             round: 1000 * 60 * 60 * 24 * 31,
-            format(d) {
+            format(d: Date) {
                 return DateFormat.dStr(d);
             }
         },
         {
             name: 'year',
             round: 1000 * 60 * 60 * 24 * 365,
-            format(d) {
-                return d.getFullYear();
+            format(d: Date) {
+                return String(d.getFullYear());
             }
         }
     ];
 
-    fieldViews = [];
+    fieldViews: any[] = [];
+    visibleRecord: number | undefined = undefined;
+    history: any;
+    timeline: TimelineEntry[] = [];
+    labels: LabelEntry[] = [];
+    timelineEl: any;
+    bodyEl: any;
+    activeIx = 0;
+    record: any;
 
-    visibleRecord = undefined;
+    fieldCopied!: (e: any) => void;
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
         this.onKey(Keys.DOM_VK_ESCAPE, this.closeHistory);
         this.once('remove', () => {
@@ -88,39 +116,40 @@ class DetailsHistoryView extends View {
         });
     }
 
-    render() {
+    render(): this | undefined {
         super.render();
         this.history = this.model.getHistory();
         this.buildTimeline();
         this.timelineEl = this.$el.find('.details__history-timeline');
         this.bodyEl = this.$el.find('.details__history-body');
-        this.timeline.forEach(function (item, ix) {
+        this.timeline.forEach((item, ix) => {
             $('<i/>')
                 .addClass('fa fa-circle details__history-timeline-item')
                 .css('left', item.pos * 100 + '%')
                 .attr('data-id', ix)
                 .appendTo(this.timelineEl);
-        }, this);
-        this.labels.forEach(function (label) {
+        });
+        this.labels.forEach((label) => {
             $('<div/>')
                 .addClass('details__history-timeline-label')
                 .css('left', label.pos * 100 + '%')
                 .text(label.text)
                 .appendTo(this.timelineEl);
-        }, this);
+        });
         let visibleRecord = this.visibleRecord;
         if (visibleRecord === undefined) {
             visibleRecord = this.history.length - 1;
         }
-        this.showRecord(visibleRecord);
+        this.showRecord(visibleRecord ?? 0);
+        return this;
     }
 
-    removeFieldViews() {
+    removeFieldViews(): void {
         this.fieldViews.forEach((fieldView) => fieldView.remove());
         this.fieldViews = [];
     }
 
-    showRecord(ix) {
+    showRecord(ix: number): void {
         this.activeIx = ix;
         this.record = this.timeline[ix].rec;
         this.timelineEl
@@ -133,84 +162,93 @@ class DetailsHistoryView extends View {
         this.bodyEl.empty();
         const colorCls = this.record.color ? this.record.color + '-color' : '';
         this.fieldViews.push(
-            new FieldViewReadOnly({ name: 'Rev', title: Locale.detHistoryVersion, value: ix + 1 })
+            new FieldViewReadOnly({
+                name: 'Rev',
+                title: loc.detHistoryVersion as string,
+                value: ix + 1
+            })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: 'Updated',
-                title: Locale.detHistorySaved,
+                title: loc.detHistorySaved as string,
                 value:
                     DateFormat.dtStr(this.record.updated) +
-                    (this.record.unsaved ? ' (' + Locale.detHistoryCurUnsavedState + ')' : '') +
+                    (this.record.unsaved
+                        ? ' (' + (loc.detHistoryCurUnsavedState as string) + ')'
+                        : '') +
                     (ix === this.history.length - 1 && !this.record.unsaved
-                        ? ' (' + Locale.detHistoryCurState + ')'
+                        ? ' (' + (loc.detHistoryCurState as string) + ')'
                         : '')
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnlyRaw({
                 name: '$Title',
-                title: StringFormat.capFirst(Locale.title),
+                title: StringFormat.capFirst(loc.title as string),
                 value:
                     '<i class="fa fa-' +
                         this.record.icon +
                         ' ' +
                         colorCls +
                         '"></i> ' +
-                        escape(this.record.title) || '(' + Locale.detHistoryNoTitle + ')'
+                        escape(this.record.title) ||
+                    '(' + (loc.detHistoryNoTitle as string) + ')'
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: '$UserName',
-                title: StringFormat.capFirst(Locale.user),
+                title: StringFormat.capFirst(loc.user as string),
                 value: this.record.user
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: '$Password',
-                title: StringFormat.capFirst(Locale.password),
+                title: StringFormat.capFirst(loc.password as string),
                 value: this.record.password
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: '$URL',
-                title: StringFormat.capFirst(Locale.website),
+                title: StringFormat.capFirst(loc.website as string),
                 value: this.record.url
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: '$Notes',
-                title: StringFormat.capFirst(Locale.notes),
+                title: StringFormat.capFirst(loc.notes as string),
                 value: this.record.notes
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: 'Tags',
-                title: StringFormat.capFirst(Locale.tags),
+                title: StringFormat.capFirst(loc.tags as string),
                 value: this.record.tags.join(', ')
             })
         );
         this.fieldViews.push(
             new FieldViewReadOnly({
                 name: 'Expires',
-                title: Locale.detExpires,
+                title: loc.detExpires as string,
                 value: this.record.expires ? DateFormat.dtStr(this.record.expires) : ''
             })
         );
-        for (const [field, value] of Object.entries(this.record.fields)) {
-            this.fieldViews.push(new FieldViewReadOnly({ name: '$' + field, title: field, value }));
+        for (const [field, value] of Object.entries(this.record.fields as Record<string, any>)) {
+            this.fieldViews.push(
+                new FieldViewReadOnly({ name: '$' + field, title: field, value })
+            );
         }
         if (this.record.attachments.length) {
             this.fieldViews.push(
                 new FieldViewReadOnly({
                     name: 'Attachments',
-                    title: Locale.detAttachments,
-                    value: this.record.attachments.map((att) => att.title).join(', ')
+                    title: loc.detAttachments as string,
+                    value: this.record.attachments.map((att: any) => att.title).join(', ')
                 })
             );
         }
@@ -232,27 +270,27 @@ class DetailsHistoryView extends View {
             );
     }
 
-    timelineItemClick(e) {
+    timelineItemClick(e: Event): void {
         const id = $(e.target).closest('.details__history-timeline-item').data('id');
         this.showRecord(id);
     }
 
-    timelinePrevClick() {
+    timelinePrevClick(): void {
         if (this.activeIx > 0) {
             this.showRecord(this.activeIx - 1);
         }
     }
 
-    timelineNextClick() {
+    timelineNextClick(): void {
         if (this.activeIx < this.timeline.length - 1) {
             this.showRecord(this.activeIx + 1);
         }
     }
 
-    buildTimeline() {
+    buildTimeline(): void {
         const firstRec = this.history[0];
         const lastRec = this.history[this.history.length - 1];
-        this.timeline = this.history.map((rec) => ({
+        this.timeline = this.history.map((rec: any) => ({
             pos: (rec.updated - firstRec.updated) / (lastRec.updated - firstRec.updated),
             rec
         }));
@@ -269,7 +307,7 @@ class DetailsHistoryView extends View {
         }));
     }
 
-    getDateFormat(period) {
+    getDateFormat(period: number): HistoryFormat {
         for (let i = 0; i < this.formats.length; i++) {
             if (period < this.formats[i].round * 1.2) {
                 return this.formats[i > 0 ? i - 1 : 0];
@@ -278,12 +316,12 @@ class DetailsHistoryView extends View {
         return this.formats[this.formats.length - 1];
     }
 
-    getLabels(first, last, round) {
+    getLabels(first: number, last: number, round: number): number[] {
         const count = Math.floor((last - first) / round);
         if (count > 2) {
             round *= Math.ceil(count / 2);
         }
-        const labels = [];
+        const labels: number[] = [];
         let label = Math.ceil(first / round) * round;
         while (label < last) {
             labels.push(label);
@@ -295,14 +333,14 @@ class DetailsHistoryView extends View {
         return labels;
     }
 
-    closeHistory(updated) {
+    closeHistory(updated?: boolean): void {
         this.emit('close', { updated });
     }
 
-    revertClick() {
-        Alerts.yesno({
-            header: Locale.detHistoryRevertAlert,
-            body: Locale.detHistoryRevertAlertBody,
+    revertClick(): void {
+        alerts.yesno({
+            header: loc.detHistoryRevertAlert as string,
+            body: loc.detHistoryRevertAlertBody as string,
             success: () => {
                 this.model.revertToHistoryState(this.record.entry);
                 this.closeHistory(true);
@@ -310,10 +348,10 @@ class DetailsHistoryView extends View {
         });
     }
 
-    deleteClick() {
-        Alerts.yesno({
-            header: Locale.detHistoryDeleteAlert,
-            body: Locale.detHistoryDeleteAlertBody,
+    deleteClick(): void {
+        alerts.yesno({
+            header: loc.detHistoryDeleteAlert as string,
+            body: loc.detHistoryDeleteAlertBody as string,
             success: () => {
                 this.model.deleteHistory(this.record.entry);
                 this.visibleRecord = this.activeIx;
@@ -322,10 +360,10 @@ class DetailsHistoryView extends View {
         });
     }
 
-    discardClick() {
-        Alerts.yesno({
-            header: Locale.detHistoryDiscardChangesAlert,
-            body: Locale.detHistoryDiscardChangesAlertBody,
+    discardClick(): void {
+        alerts.yesno({
+            header: loc.detHistoryDiscardChangesAlert as string,
+            body: loc.detHistoryDiscardChangesAlertBody as string,
             success: () => {
                 this.model.discardUnsaved();
                 this.closeHistory(true);

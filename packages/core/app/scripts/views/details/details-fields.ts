@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Locale } from 'util/locale';
 import { StringFormat } from 'util/formatting/string-format';
 import { DateFormat } from 'comp/i18n/date-format';
@@ -15,24 +15,32 @@ import { FieldViewHistory } from 'views/fields/field-view-history';
 import { FieldViewCustom } from 'views/fields/field-view-custom';
 import { ExtraUrlFieldName } from 'models/entry-model';
 
-function createDetailsFields(detailsView) {
+const loc = Locale as unknown as Record<string, any>;
+const appModel = AppModel as unknown as { instance: any };
+
+interface DetailsFieldsResult {
+    fieldViews: any[];
+    fieldViewsAside: any[];
+}
+
+function createDetailsFields(detailsView: any): DetailsFieldsResult {
     const model = detailsView.model;
 
-    const fieldViews = [];
-    const fieldViewsAside = [];
+    const fieldViews: any[] = [];
+    const fieldViewsAside: any[] = [];
 
     {
-        const writeableFiles = AppModel.instance.files.filter(
-            (file) => file.active && !file.readOnly
+        const writeableFiles = appModel.instance.files.filter(
+            (file: any) => file.active && !file.readOnly
         );
         if (model.isJustCreated && writeableFiles.length > 1) {
-            const fileNames = writeableFiles.map((file) => {
+            const fileNames = writeableFiles.map((file: any) => {
                 return { id: file.id, value: file.name, selected: file === model.file };
             });
             fieldViews.push(
                 new FieldViewSelect({
                     name: '$File',
-                    title: StringFormat.capFirst(Locale.file),
+                    title: StringFormat.capFirst(loc.file as string),
                     value() {
                         return fileNames;
                     }
@@ -43,7 +51,7 @@ function createDetailsFields(detailsView) {
                 fieldViewsAside.push(
                     new FieldViewReadOnly({
                         name: 'Storage',
-                        title: StringFormat.capFirst(Locale.storage),
+                        title: StringFormat.capFirst(loc.storage as string),
                         value() {
                             return model.fileName;
                         }
@@ -53,7 +61,7 @@ function createDetailsFields(detailsView) {
                 fieldViewsAside.push(
                     new FieldViewReadOnly({
                         name: 'File',
-                        title: StringFormat.capFirst(Locale.file),
+                        title: StringFormat.capFirst(loc.file as string),
                         value() {
                             return model.fileName;
                         }
@@ -64,7 +72,7 @@ function createDetailsFields(detailsView) {
         fieldViews.push(
             new FieldViewAutocomplete({
                 name: '$UserName',
-                title: StringFormat.capFirst(Locale.user),
+                title: StringFormat.capFirst(loc.user as string),
                 value() {
                     return model.user;
                 },
@@ -75,7 +83,7 @@ function createDetailsFields(detailsView) {
         fieldViews.push(
             new FieldViewText({
                 name: '$Password',
-                title: StringFormat.capFirst(Locale.password),
+                title: StringFormat.capFirst(loc.password as string),
                 canGen: true,
                 value() {
                     return model.password;
@@ -86,7 +94,7 @@ function createDetailsFields(detailsView) {
         fieldViews.push(
             new FieldViewUrl({
                 name: '$URL',
-                title: StringFormat.capFirst(Locale.website),
+                title: StringFormat.capFirst(loc.website as string),
                 value() {
                     return model.url;
                 },
@@ -96,7 +104,7 @@ function createDetailsFields(detailsView) {
         fieldViews.push(
             new FieldViewText({
                 name: '$Notes',
-                title: StringFormat.capFirst(Locale.notes),
+                title: StringFormat.capFirst(loc.notes as string),
                 multiline: 'true',
                 markdown: true,
                 value() {
@@ -109,8 +117,8 @@ function createDetailsFields(detailsView) {
             fieldViews.push(
                 new FieldViewTags({
                     name: 'Tags',
-                    title: StringFormat.capFirst(Locale.tags),
-                    tags: AppModel.instance.tags,
+                    title: StringFormat.capFirst(loc.tags as string),
+                    tags: appModel.instance.tags,
                     value() {
                         return model.tags;
                     }
@@ -121,8 +129,8 @@ function createDetailsFields(detailsView) {
             fieldViews.push(
                 new FieldViewDate({
                     name: 'Expires',
-                    title: Locale.detExpires,
-                    lessThanNow: '(' + Locale.detExpired + ')',
+                    title: loc.detExpires as string,
+                    lessThanNow: '(' + (loc.detExpired as string) + ')',
                     value() {
                         return model.expires;
                     }
@@ -132,7 +140,7 @@ function createDetailsFields(detailsView) {
         fieldViewsAside.push(
             new FieldViewReadOnly({
                 name: 'Group',
-                title: Locale.detGroup,
+                title: loc.detGroup as string,
                 value() {
                     return model.groupName;
                 },
@@ -145,7 +153,7 @@ function createDetailsFields(detailsView) {
             fieldViewsAside.push(
                 new FieldViewReadOnly({
                     name: 'Created',
-                    title: Locale.detCreated,
+                    title: loc.detCreated as string,
                     value() {
                         return DateFormat.dtStr(model.created);
                     }
@@ -156,7 +164,7 @@ function createDetailsFields(detailsView) {
             fieldViewsAside.push(
                 new FieldViewReadOnly({
                     name: 'Updated',
-                    title: Locale.detUpdated,
+                    title: loc.detUpdated as string,
                     value() {
                         return DateFormat.dtStr(model.updated);
                     }
@@ -166,7 +174,7 @@ function createDetailsFields(detailsView) {
         fieldViewsAside.push(
             new FieldViewHistory({
                 name: 'History',
-                title: StringFormat.capFirst(Locale.history),
+                title: StringFormat.capFirst(loc.history as string),
                 value() {
                     return { length: model.historyLength, unsaved: model.unsaved };
                 }
@@ -177,7 +185,7 @@ function createDetailsFields(detailsView) {
                 fieldViews.push(
                     new FieldViewOtp({
                         name: '$' + field,
-                        title: Locale.detOtpField,
+                        title: loc.detOtpField as string,
                         value() {
                             return model.otpGenerator;
                         },
@@ -190,7 +198,7 @@ function createDetailsFields(detailsView) {
                     fieldViews.push(
                         new FieldViewUrl({
                             name: '$' + field,
-                            title: StringFormat.capFirst(Locale.website),
+                            title: StringFormat.capFirst(loc.website as string),
                             isExtraUrl: true,
                             value() {
                                 return model.fields[field];
@@ -218,14 +226,18 @@ function createDetailsFields(detailsView) {
     return { fieldViews, fieldViewsAside };
 }
 
-function createNewCustomField(newFieldTitle, newFieldOptions, model) {
+function createNewCustomField(
+    newFieldTitle: string,
+    newFieldOptions: any,
+    model: any
+): FieldViewUrl | FieldViewCustom {
     const isUrl = newFieldTitle.startsWith(ExtraUrlFieldName);
 
     if (isUrl) {
         return new FieldViewUrl(
             {
                 name: '$' + newFieldTitle,
-                title: StringFormat.capFirst(Locale.website),
+                title: StringFormat.capFirst(loc.website as string),
                 newField: newFieldTitle,
                 isExtraUrl: true,
                 value: () => model.fields[newFieldTitle]
