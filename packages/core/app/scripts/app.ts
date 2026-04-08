@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import '../styles/main.scss';
 import { Events } from 'framework/events';
 import { StartProfiler } from 'comp/app/start-profiler';
@@ -24,13 +24,31 @@ import { AppView } from 'views/app-view';
 import 'hbs-helpers';
 import { Storage } from './storage';
 
-StartProfiler.milestone('loading modules');
+const loc = Locale as unknown as Record<string, string>;
+const features = Features as unknown as { isFrame: boolean };
+const alerts = Alerts as unknown as { error(opts: any): void };
+const settingsManager = SettingsManager as unknown as {
+    init(): void;
+    setBySettings(): void;
+};
+const idleTracker = IdleTracker as unknown as { init(): void };
+const browserExt = BrowserExtensionConnector as unknown as { init(model: any): void };
+const focusDetector = FocusDetector as unknown as { init(): void };
+const themeWatcher = ThemeWatcher as unknown as { init(): void };
+const featureTester = FeatureTester as unknown as { test(): Promise<void> };
+const kdbxwebInit = KdbxwebInit as unknown as { init(): void };
+const startProfiler = StartProfiler as unknown as {
+    milestone(name: string): void;
+    report(): void;
+};
+
+startProfiler.milestone('loading modules');
 
 $(() => {
-    StartProfiler.milestone('document ready');
+    startProfiler.milestone('document ready');
 
-    const appModel = new AppModel();
-    StartProfiler.milestone('creating app model');
+    const appModel: any = new (AppModel as any)();
+    startProfiler.milestone('creating app model');
 
     Promise.resolve()
         .then(loadConfigs)
@@ -40,21 +58,22 @@ $(() => {
         .then(initStorage)
         .then(showApp)
         .then(postInit)
-        .catch((e) => {
+        .catch((e: any) => {
             appModel.appLogger.error('Error starting app', e);
         });
 
-    function ensureCanRun() {
-        if (Features.isFrame && !appModel.settings.allowIframes) {
+    function ensureCanRun(): Promise<void> {
+        if (features.isFrame && !appModel.settings.allowIframes) {
             return Promise.reject(
                 'Running in iframe is not allowed (this can be changed in the app config).'
             );
         }
-        return FeatureTester.test()
-            .catch((e) => {
-                Alerts.error({
-                    header: Locale.appSettingsError,
-                    body: Locale.appNotSupportedError,
+        return featureTester
+            .test()
+            .catch((e: any) => {
+                alerts.error({
+                    header: loc.appSettingsError,
+                    body: loc.appNotSupportedError,
                     pre: e,
                     buttons: [],
                     esc: false,
@@ -64,35 +83,35 @@ $(() => {
                 throw 'Feature testing failed: ' + e;
             })
             .then(() => {
-                StartProfiler.milestone('checking features');
+                startProfiler.milestone('checking features');
             });
     }
 
-    function loadConfigs() {
+    function loadConfigs(): Promise<void> {
         return Promise.all([
-            AppSettingsModel.load(),
-            UpdateModel.load(),
-            RuntimeDataModel.load(),
-            FileInfoCollection.load()
+            (AppSettingsModel as any).load(),
+            (UpdateModel as any).load(),
+            (RuntimeDataModel as any).load(),
+            (FileInfoCollection as any).load()
         ]).then(() => {
-            StartProfiler.milestone('loading configs');
+            startProfiler.milestone('loading configs');
         });
     }
 
-    function initModules() {
-        KeyHandler.init();
-        KdbxwebInit.init();
-        FocusDetector.init();
-        ThemeWatcher.init();
-        SettingsManager.init();
-        window.kw = ExportApi;
-        StartProfiler.milestone('initializing modules');
+    function initModules(): void {
+        (KeyHandler as any).init();
+        kdbxwebInit.init();
+        focusDetector.init();
+        themeWatcher.init();
+        settingsManager.init();
+        (window as any).kw = ExportApi;
+        startProfiler.milestone('initializing modules');
     }
 
-    function showSettingsLoadError() {
-        Alerts.error({
-            header: Locale.appSettingsError,
-            body: Locale.appSettingsErrorBody,
+    function showSettingsLoadError(): void {
+        alerts.error({
+            header: loc.appSettingsError,
+            body: loc.appSettingsErrorBody,
             buttons: [],
             esc: false,
             enter: false,
@@ -100,53 +119,54 @@ $(() => {
         });
     }
 
-    function loadRemoteConfig() {
+    function loadRemoteConfig(): Promise<void> {
         return Promise.resolve()
             .then(() => {
-                SettingsManager.setBySettings();
+                settingsManager.setBySettings();
                 const configParam = getConfigParam();
                 if (configParam) {
                     return appModel
                         .loadConfig(configParam)
                         .then(() => {
-                            SettingsManager.setBySettings();
+                            settingsManager.setBySettings();
                         })
-                        .catch((e) => {
+                        .catch((e: any) => {
                             if (!appModel.settings.cacheConfigSettings) {
                                 showSettingsLoadError();
                                 throw e;
                             }
                         });
                 }
+                return undefined;
             })
             .then(() => {
-                StartProfiler.milestone('loading remote config');
+                startProfiler.milestone('loading remote config');
             });
     }
 
-    function initStorage() {
-        for (const prv of Object.values(Storage)) {
+    function initStorage(): void {
+        for (const prv of Object.values(Storage as unknown as Record<string, any>)) {
             prv.init();
         }
-        StartProfiler.milestone('initializing storage');
+        startProfiler.milestone('initializing storage');
     }
 
-    function showApp() {
+    function showApp(): Promise<void> {
         return Promise.resolve().then(() => {
             const skipHttpsWarning =
-                localStorage.skipHttpsWarning || appModel.settings.skipHttpsWarning;
+                (localStorage as any).skipHttpsWarning || appModel.settings.skipHttpsWarning;
             const protocolIsInsecure = ['https:', 'file:', 'app:'].indexOf(location.protocol) < 0;
             const hostIsInsecure = location.hostname !== 'localhost';
             if (protocolIsInsecure && hostIsInsecure && !skipHttpsWarning) {
-                return new Promise((resolve) => {
-                    Alerts.error({
-                        header: Locale.appSecWarn,
+                return new Promise<void>((resolve) => {
+                    alerts.error({
+                        header: loc.appSecWarn,
                         icon: 'user-secret',
                         esc: false,
                         enter: false,
                         click: false,
-                        body: Locale.appSecWarnBody1 + '\n\n' + Locale.appSecWarnBody2,
-                        buttons: [{ result: '', title: Locale.appSecWarnBtn, error: true }],
+                        body: loc.appSecWarnBody1 + '\n\n' + loc.appSecWarnBody2,
+                        buttons: [{ result: '', title: loc.appSecWarnBtn, error: true }],
                         complete: () => {
                             showView();
                             resolve();
@@ -155,30 +175,32 @@ $(() => {
                 });
             } else {
                 showView();
-                return new Promise((resolve) => requestAnimationFrame(resolve));
+                return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
             }
         });
     }
 
-    function postInit() {
+    function postInit(): void {
         setTimeout(() => {
-            IdleTracker.init();
-            BrowserExtensionConnector.init(appModel);
-        }, Timeouts.AutoUpdatePluginsAfterStart);
+            idleTracker.init();
+            browserExt.init(appModel);
+        }, (Timeouts as any).AutoUpdatePluginsAfterStart);
     }
 
-    function showView() {
-        new AppView(appModel).render();
-        StartProfiler.milestone('first view rendering');
+    function showView(): void {
+        new (AppView as any)(appModel).render();
+        startProfiler.milestone('first view rendering');
 
         Events.emit('app-ready');
-        StartProfiler.milestone('app ready event');
+        startProfiler.milestone('app ready event');
 
-        StartProfiler.report();
+        startProfiler.report();
     }
 
-    function getConfigParam() {
-        const metaConfig = document.head.querySelector('meta[name=kw-config]');
+    function getConfigParam(): string | undefined {
+        const metaConfig = document.head.querySelector(
+            'meta[name=kw-config]'
+        ) as HTMLMetaElement | null;
         if (metaConfig && metaConfig.content && metaConfig.content[0] !== '(') {
             return metaConfig.content;
         }
@@ -186,5 +208,6 @@ $(() => {
         if (match && match[1]) {
             return match[1];
         }
+        return undefined;
     }
 });
