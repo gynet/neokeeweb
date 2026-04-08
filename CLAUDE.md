@@ -48,7 +48,7 @@ packages/
 
 ## Development Rules
 
-- Commit directly to `main`. PRs only when explicitly requested.
+- Commit directly to `master`. PRs only when explicitly requested.
 - Always run tests before committing.
 - Never add npm packages without checking if Bun built-ins or existing deps cover it.
 - All new code must be TypeScript with strict mode.
@@ -66,6 +66,6 @@ See milestone: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Playwright E2E framework (config + spec stubs)
 - [x] keepass-rs interop tests (607 tests passing)
 - [x] Remove dead desktop/plugin/YubiKey code (33 files, -1500 lines)
-- [ ] Remove legacy deps (#6 — jquery, lodash, baron, pikaday, bourbon still in package.json)
-- [ ] TypeScript migration for packages/core (#2 — Phase A done: 21 files, 5 models migrated)
-- [ ] E2E test scenarios (#4 — database open tests added, more needed)
+- [x] Legacy deps cleaned (#6 — lodash + bourbon removed; baron + pikaday kept as feature-backing; jquery kept)
+- [x] TypeScript migration for packages/core (#2 — 58 → 0 @ts-nocheck files)
+- [ ] E2E test scenarios (#4 — roundtrip + clipboard + import + NaCl + OTP done; UI-only scenarios remaining)
