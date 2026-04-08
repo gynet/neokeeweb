@@ -23,7 +23,6 @@
         "jquery": "3.6.0",
         "jsqrcode": "antelle/jsqrcode",
         "kdbxweb": "^2.1.1",
-        "lodash": "^4.17.21",
         "marked": "^2.1.3",
         "morphdom": "^2.6.1",
         "normalize.css": "^8.0.1",

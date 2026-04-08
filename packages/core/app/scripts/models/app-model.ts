@@ -17,8 +17,7 @@ import { UrlFormat } from 'util/formatting/url-format';
 import { IdGenerator } from 'util/generators/id-generator';
 import { Locale } from 'util/locale';
 import { Logger } from 'util/logger';
-import { noop } from 'util/fn';
-import debounce from 'lodash/debounce';
+import { debounce, noop } from 'util/fn';
 import 'util/kdbxweb/protected-value-ex';
 
 interface FileUnlockPromise {

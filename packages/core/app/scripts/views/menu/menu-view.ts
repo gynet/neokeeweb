@@ -6,7 +6,7 @@ import { AppSettingsModel } from 'models/app-settings-model';
 import { Resizable } from 'framework/views/resizable';
 import { DragView } from 'views/drag-view';
 import { MenuSectionView } from 'views/menu/menu-section-view';
-import throttle from 'lodash/throttle';
+import { throttle } from 'util/fn';
 import template from 'templates/menu/menu.hbs';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

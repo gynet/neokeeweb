@@ -12,7 +12,7 @@ import { Resizable } from 'framework/views/resizable';
 import { Scrollable } from 'framework/views/scrollable';
 import { DropdownView } from 'views/dropdown-view';
 import { ListSearchView } from 'views/list-search-view';
-import throttle from 'lodash/throttle';
+import { throttle } from 'util/fn';
 import template from 'templates/list.hbs';
 import emptyTemplate from 'templates/list-empty.hbs';
 

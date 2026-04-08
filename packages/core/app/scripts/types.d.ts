@@ -36,26 +36,6 @@ declare module 'morphdom' {
     export default morphdom;
 }
 
-// lodash/throttle — used by menu views
-declare module 'lodash/throttle' {
-    function throttle<T extends (...args: any[]) => any>(
-        fn: T,
-        wait: number,
-        options?: { leading?: boolean; trailing?: boolean }
-    ): T;
-    export default throttle;
-}
-
-// lodash/debounce
-declare module 'lodash/debounce' {
-    function debounce<T extends (...args: any[]) => any>(
-        fn: T,
-        wait: number,
-        options?: { leading?: boolean; trailing?: boolean; maxWait?: number }
-    ): T;
-    export default debounce;
-}
-
 // baron scrollbar library
 declare module 'baron' {
     interface BaronInstance {

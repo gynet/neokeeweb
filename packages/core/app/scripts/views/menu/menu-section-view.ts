@@ -3,7 +3,7 @@ import { AppSettingsModel } from 'models/app-settings-model';
 import { Resizable } from 'framework/views/resizable';
 import { Scrollable } from 'framework/views/scrollable';
 import { MenuItemView } from 'views/menu/menu-item-view';
-import throttle from 'lodash/throttle';
+import { throttle } from 'util/fn';
 import template from 'templates/menu/menu-section.hbs';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -93,3 +93,59 @@ export function isEqual(a: unknown, b: unknown): boolean {
 export function minmax(val: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, val));
 }
+
+/**
+ * Trailing-edge throttle. Invokes `fn` at most once every `wait` ms.
+ * The most recent arguments within the window are used for the trailing call.
+ */
+export function throttle<A extends unknown[]>(
+    fn: (...args: A) => void,
+    wait: number
+): (...args: A) => void {
+    let lastCall = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastArgs: A | null = null;
+    return function (this: unknown, ...args: A): void {
+        const now = Date.now();
+        const remaining = wait - (now - lastCall);
+        lastArgs = args;
+        if (remaining <= 0) {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+            lastCall = now;
+            fn.apply(this, args);
+            lastArgs = null;
+        } else if (!timer) {
+            timer = setTimeout(() => {
+                lastCall = Date.now();
+                timer = null;
+                if (lastArgs) {
+                    fn.apply(this, lastArgs);
+                    lastArgs = null;
+                }
+            }, remaining);
+        }
+    };
+}
+
+/**
+ * Trailing-edge debounce. Delays invoking `fn` until `wait` ms have elapsed
+ * since the last call.
+ */
+export function debounce<A extends unknown[]>(
+    fn: (...args: A) => void,
+    wait: number
+): (...args: A) => void {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return function (this: unknown, ...args: A): void {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(() => {
+            timer = null;
+            fn.apply(this, args);
+        }, wait);
+    };
+}
