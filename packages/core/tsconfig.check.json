@@ -63,6 +63,7 @@
     "app/scripts/views/settings/settings-help-view.ts",
     "app/scripts/views/settings/settings-prv-view.ts",
     "app/scripts/views/settings/settings-logs-view.ts",
-    "app/scripts/views/settings/settings-shortcuts-view.ts"
+    "app/scripts/views/settings/settings-shortcuts-view.ts",
+    "app/scripts/views/settings/settings-browser-view.ts"
   ]
 }

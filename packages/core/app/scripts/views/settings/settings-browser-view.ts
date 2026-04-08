@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
 import template from 'templates/settings/settings-browser.hbs';
@@ -15,10 +15,31 @@ import {
 import { Alerts } from 'comp/ui/alerts';
 import { DateFormat } from 'comp/i18n/date-format';
 
+const loc = Locale as unknown as Record<string, any>;
+const links = Links as unknown as Record<string, string | undefined>;
+const features = Features as unknown as {
+    isDesktop: boolean;
+    browserIcon: string;
+    extensionBrowserFamily: string;
+};
+const settings = AppSettingsModel as unknown as Record<string, any>;
+const runtimeData = RuntimeDataModel as unknown as Record<string, any>;
+const alerts = Alerts as unknown as { yesno(opts: any): void };
+const browserExt = BrowserExtensionConnector as unknown as {
+    sessions: any[];
+    isEnabled(): boolean;
+    enable(browser: string, extension: string, enabled: boolean): void;
+    setClientPermissions(clientId: string, perms: any): void;
+    getClientPermissions(clientId: string): any;
+    terminateConnection(connectionId: string): void;
+};
+
 class SettingsBrowserView extends View {
     template = template;
 
-    events = {
+    appModel: any;
+
+    events: Record<string, string> = {
         'change .check-enable-for-browser': 'changeEnableForBrowser',
         'change .settings__browser-focus-if-locked': 'changeFocusIfLocked',
         'change .settings__browser-focus-if-empty': 'changeFocusIfEmpty',
@@ -28,57 +49,59 @@ class SettingsBrowserView extends View {
         'click .settings__browser-btn-terminate-session': 'terminateSession'
     };
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
 
         this.listenTo(Events, 'browser-extension-sessions-changed', this.render);
     }
 
-    render() {
-        const data = {
-            desktop: Features.isDesktop,
-            icon: Features.browserIcon,
-            focusIfLocked: AppSettingsModel.extensionFocusIfLocked,
-            focusIfEmpty: AppSettingsModel.extensionFocusIfEmpty,
-            sessions: BrowserExtensionConnector.sessions.map((session) => {
+    render(): this | undefined {
+        const data: any = {
+            desktop: features.isDesktop,
+            icon: features.browserIcon,
+            focusIfLocked: settings.extensionFocusIfLocked,
+            focusIfEmpty: settings.extensionFocusIfEmpty,
+            sessions: browserExt.sessions.map((session) => {
                 const fileAccess = this.getSessionFileAccess(session);
                 return {
                     ...session,
                     fileAccess,
-                    noFileAccess: fileAccess && !fileAccess.some((f) => f.checked),
+                    noFileAccess: fileAccess && !fileAccess.some((f: any) => f.checked),
                     showAskSave: session.permissions?.askSave !== undefined,
                     connectedDate: DateFormat.dtStr(session.connectedDate)
                 };
             })
         };
-        if (Features.isDesktop) {
+        if (features.isDesktop) {
             data.extensionNames = ['KeeWeb Connect', 'KeePassXC-Browser'];
             data.settingsPerBrowser = this.getSettingsPerBrowser();
-            data.anyBrowserIsEnabled = BrowserExtensionConnector.isEnabled();
+            data.anyBrowserIsEnabled = browserExt.isEnabled();
         } else {
-            const extensionBrowserFamily = Features.extensionBrowserFamily;
-            data.extensionBrowserFamily = Features.extensionBrowserFamily;
-            data.extensionDownloadLink = Links[`KWCFor${extensionBrowserFamily}`];
+            const extensionBrowserFamily = features.extensionBrowserFamily;
+            data.extensionBrowserFamily = features.extensionBrowserFamily;
+            data.extensionDownloadLink = links[`KWCFor${extensionBrowserFamily}`];
         }
         super.render(data);
+        return this;
     }
 
-    getSettingsPerBrowser() {
-        return SupportedBrowsers.map((browser) => {
-            const browserName = browser === 'Other' ? Locale.setBrowserOtherBrowsers : browser;
-            const extensions = SupportedExtensions.map((ext) => {
+    getSettingsPerBrowser(): any[] {
+        return SupportedBrowsers.map((browser: string) => {
+            const browserName =
+                browser === 'Other' ? (loc.setBrowserOtherBrowsers as string) : browser;
+            const extensions = SupportedExtensions.map((ext: any) => {
                 ext = {
                     ...ext,
                     supported: true,
-                    enabled: !!AppSettingsModel[`extensionEnabled${ext.alias}${browser}`],
-                    installUrl: Links[`${ext.alias}For${browser}`]
+                    enabled: !!settings[`extensionEnabled${ext.alias}${browser}`],
+                    installUrl: links[`${ext.alias}For${browser}`]
                 };
                 if (ext.alias === 'KPXC') {
-                    ext.manualUrl = Links.ExtensionHelpForKPXC;
+                    ext.manualUrl = links.ExtensionHelpForKPXC;
                 }
                 if (!ext.installUrl) {
                     if (browser === 'Other') {
-                        ext.helpUrl = Links.ExtensionHelpForOtherBrowsers;
+                        ext.helpUrl = links.ExtensionHelpForOtherBrowsers;
                     } else {
                         ext.supported = false;
                     }
@@ -89,12 +112,12 @@ class SettingsBrowserView extends View {
         });
     }
 
-    getSessionFileAccess(session) {
+    getSessionFileAccess(session: any): any[] | undefined {
         if (!session.permissions) {
             return undefined;
         }
 
-        const files = this.appModel.files.map((file) => ({
+        const files = this.appModel.files.map((file: any) => ({
             id: file.id,
             name: file.name,
             checked: session.permissions.files.includes(file.id) || session.permissions.allFiles
@@ -112,31 +135,31 @@ class SettingsBrowserView extends View {
         files.push({
             id: 'all',
             name: files.length
-                ? Locale.extensionConnectAllOtherFiles
-                : Locale.extensionConnectAllFiles,
+                ? (loc.extensionConnectAllOtherFiles as string)
+                : (loc.extensionConnectAllFiles as string),
             checked: session.permissions.allFiles
         });
 
         return files;
     }
 
-    changeEnableForBrowser(e) {
+    changeEnableForBrowser(e: any): void {
         const enabled = e.target.checked;
         const browser = e.target.dataset.browser;
         const extension = e.target.dataset.extension;
 
-        if (enabled && extension === 'KPXC' && !RuntimeDataModel.kpxcExtensionWarningShown) {
+        if (enabled && extension === 'KPXC' && !runtimeData.kpxcExtensionWarningShown) {
             e.target.checked = false;
 
-            Alerts.yesno({
+            alerts.yesno({
                 icon: 'exclamation-triangle',
-                header: Locale.setBrowserExtensionKPXCWarnHeader.replace('{}', 'KeePassXC'),
+                header: (loc.setBrowserExtensionKPXCWarnHeader as string).replace('{}', 'KeePassXC'),
                 body:
-                    Locale.setBrowserExtensionKPXCWarnBody1.replace(/{}/g, 'KeePassXC') +
+                    (loc.setBrowserExtensionKPXCWarnBody1 as string).replace(/{}/g, 'KeePassXC') +
                     '\n' +
-                    Locale.setBrowserExtensionKPXCWarnBody2,
+                    (loc.setBrowserExtensionKPXCWarnBody2 as string),
                 success: () => {
-                    RuntimeDataModel.kpxcExtensionWarningShown = true;
+                    runtimeData.kpxcExtensionWarningShown = true;
                     this.enableForBrowser(enabled, browser, extension);
                 }
             });
@@ -145,75 +168,75 @@ class SettingsBrowserView extends View {
         }
     }
 
-    enableForBrowser(enabled, browser, extension) {
+    enableForBrowser(enabled: boolean, browser: string, extension: string): void {
         const setting = `extensionEnabled${extension}${browser}`;
         if (setting) {
-            AppSettingsModel[setting] = enabled;
+            settings[setting] = enabled;
         } else {
-            delete AppSettingsModel[setting];
+            delete settings[setting];
         }
 
-        BrowserExtensionConnector.enable(browser, extension, enabled);
+        browserExt.enable(browser, extension, enabled);
 
         this.render();
     }
 
-    changeFocusIfLocked(e) {
-        AppSettingsModel.extensionFocusIfLocked = e.target.checked;
+    changeFocusIfLocked(e: any): void {
+        settings.extensionFocusIfLocked = e.target.checked;
         this.render();
     }
 
-    changeFocusIfEmpty(e) {
-        AppSettingsModel.extensionFocusIfEmpty = e.target.checked;
+    changeFocusIfEmpty(e: any): void {
+        settings.extensionFocusIfEmpty = e.target.checked;
         this.render();
     }
 
-    changeSessionAskGet(e) {
+    changeSessionAskGet(e: any): void {
         const clientId = e.target.dataset.clientId;
         const askGet = e.target.value;
 
-        BrowserExtensionConnector.setClientPermissions(clientId, { askGet });
+        browserExt.setClientPermissions(clientId, { askGet });
     }
 
-    changeSessionAskSave(e) {
+    changeSessionAskSave(e: any): void {
         const clientId = e.target.dataset.clientId;
         const askSave = e.target.value;
 
-        BrowserExtensionConnector.setClientPermissions(clientId, { askSave });
+        browserExt.setClientPermissions(clientId, { askSave });
     }
 
-    changeSessionFileAccess(e) {
+    changeSessionFileAccess(e: any): void {
         const clientId = e.target.dataset.clientId;
         const fileId = e.target.dataset.fileId;
         const enabled = e.target.checked;
 
         if (fileId === 'all') {
             const allFiles = enabled;
-            const permChanges = { allFiles };
+            const permChanges: { allFiles: boolean; files?: string[] } = { allFiles };
             if (allFiles) {
-                permChanges.files = this.appModel.files.map((f) => f.id);
+                permChanges.files = this.appModel.files.map((f: any) => f.id);
             }
-            BrowserExtensionConnector.setClientPermissions(clientId, permChanges);
+            browserExt.setClientPermissions(clientId, permChanges);
         } else {
-            const permissions = BrowserExtensionConnector.getClientPermissions(clientId);
+            const permissions = browserExt.getClientPermissions(clientId);
             let files;
             if (enabled) {
                 files = permissions.files.concat(fileId);
             } else {
-                files = permissions.files.filter((f) => f !== fileId);
+                files = permissions.files.filter((f: string) => f !== fileId);
             }
-            const permChanges = { files };
+            const permChanges: { files: string[]; allFiles?: boolean } = { files };
             if (!enabled) {
                 permChanges.allFiles = false;
             }
-            BrowserExtensionConnector.setClientPermissions(clientId, permChanges);
+            browserExt.setClientPermissions(clientId, permChanges);
         }
         this.render();
     }
 
-    terminateSession(e) {
+    terminateSession(e: any): void {
         const connectionId = e.target.dataset.connectionId;
-        BrowserExtensionConnector.terminateConnection(connectionId);
+        browserExt.terminateConnection(connectionId);
     }
 }
 
