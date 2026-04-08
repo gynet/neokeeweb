@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { Shortcuts } from 'comp/app/shortcuts';
@@ -11,12 +11,44 @@ import { Locale } from 'util/locale';
 import { DropdownView } from 'views/dropdown-view';
 import template from 'templates/list-search.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const features = Features as unknown as { isMobile: boolean };
+const shortcuts = Shortcuts as unknown as { altShortcutSymbol(short: boolean): string };
+
+interface SortOption {
+    value: string;
+    icon: string;
+    loc: () => string;
+    text?: string;
+    active?: boolean;
+}
+
+interface CreateOption {
+    value: string;
+    icon: string;
+    text: string;
+    hint?: string | null;
+}
+
+interface AdvancedSearch {
+    user: boolean;
+    other: boolean;
+    url: boolean;
+    protect: boolean;
+    notes: boolean;
+    pass: boolean;
+    cs: boolean;
+    regex: boolean;
+    history: boolean;
+    title: boolean;
+}
+
 class ListSearchView extends View {
     parent = '.list__header';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'keydown .list__search-field': 'inputKeyDown',
         'keypress .list__search-field': 'inputKeyPress',
         'input .list__search-field': 'inputChange',
@@ -29,76 +61,103 @@ class ListSearchView extends View {
         'change .list__search-adv input[type=checkbox]': 'toggleAdvCheck'
     };
 
-    inputEl = null;
-    sortOptions = null;
-    sortIcons = null;
-    createOptions = null;
+    inputEl: any = null;
+    sortOptions: SortOption[] = [];
+    sortIcons: Record<string, string> = {};
+    createOptions: CreateOption[] = [];
     advancedSearchEnabled = false;
-    advancedSearch = null;
+    advancedSearch: AdvancedSearch;
+    entryTemplates: Record<string, any> = {};
 
-    constructor(model) {
+    constructor(model: any) {
         super(model);
         this.sortOptions = [
             {
                 value: 'title',
                 icon: 'sort-alpha-down',
                 loc: () =>
-                    StringFormat.capFirst(Locale.title) + ' ' + this.addArrow(Locale.searchAZ)
+                    StringFormat.capFirst(loc.title as string) +
+                    ' ' +
+                    this.addArrow(loc.searchAZ as string)
             },
             {
                 value: '-title',
                 icon: 'sort-alpha-down-alt',
                 loc: () =>
-                    StringFormat.capFirst(Locale.title) + ' ' + this.addArrow(Locale.searchZA)
+                    StringFormat.capFirst(loc.title as string) +
+                    ' ' +
+                    this.addArrow(loc.searchZA as string)
             },
             {
                 value: 'website',
                 icon: 'sort-alpha-down',
                 loc: () =>
-                    StringFormat.capFirst(Locale.website) + ' ' + this.addArrow(Locale.searchAZ)
+                    StringFormat.capFirst(loc.website as string) +
+                    ' ' +
+                    this.addArrow(loc.searchAZ as string)
             },
             {
                 value: '-website',
                 icon: 'sort-alpha-down-alt',
                 loc: () =>
-                    StringFormat.capFirst(Locale.website) + ' ' + this.addArrow(Locale.searchZA)
+                    StringFormat.capFirst(loc.website as string) +
+                    ' ' +
+                    this.addArrow(loc.searchZA as string)
             },
             {
                 value: 'user',
                 icon: 'sort-alpha-down',
-                loc: () => StringFormat.capFirst(Locale.user) + ' ' + this.addArrow(Locale.searchAZ)
+                loc: () =>
+                    StringFormat.capFirst(loc.user as string) +
+                    ' ' +
+                    this.addArrow(loc.searchAZ as string)
             },
             {
                 value: '-user',
                 icon: 'sort-alpha-down-alt',
-                loc: () => StringFormat.capFirst(Locale.user) + ' ' + this.addArrow(Locale.searchZA)
+                loc: () =>
+                    StringFormat.capFirst(loc.user as string) +
+                    ' ' +
+                    this.addArrow(loc.searchZA as string)
             },
             {
                 value: 'created',
                 icon: 'sort-numeric-down',
-                loc: () => Locale.searchCreated + ' ' + this.addArrow(Locale.searchON)
+                loc: () =>
+                    (loc.searchCreated as string) +
+                    ' ' +
+                    this.addArrow(loc.searchON as string)
             },
             {
                 value: '-created',
                 icon: 'sort-numeric-down-alt',
-                loc: () => Locale.searchCreated + ' ' + this.addArrow(Locale.searchNO)
+                loc: () =>
+                    (loc.searchCreated as string) +
+                    ' ' +
+                    this.addArrow(loc.searchNO as string)
             },
             {
                 value: 'updated',
                 icon: 'sort-numeric-down',
-                loc: () => Locale.searchUpdated + ' ' + this.addArrow(Locale.searchON)
+                loc: () =>
+                    (loc.searchUpdated as string) +
+                    ' ' +
+                    this.addArrow(loc.searchON as string)
             },
             {
                 value: '-updated',
                 icon: 'sort-numeric-down-alt',
-                loc: () => Locale.searchUpdated + ' ' + this.addArrow(Locale.searchNO)
+                loc: () =>
+                    (loc.searchUpdated as string) +
+                    ' ' +
+                    this.addArrow(loc.searchNO as string)
             },
             {
                 value: '-attachments',
                 icon: 'sort-amount-down',
-                loc: () => Locale.searchAttachments
+                loc: () => loc.searchAttachments as string
             },
-            { value: '-rank', icon: 'sort-amount-down', loc: () => Locale.searchRank }
+            { value: '-rank', icon: 'sort-amount-down', loc: () => loc.searchRank as string }
         ];
         this.sortIcons = {};
         this.sortOptions.forEach((opt) => {
@@ -136,7 +195,7 @@ class ListSearchView extends View {
         });
     }
 
-    setLocale() {
+    setLocale(): void {
         this.sortOptions.forEach((opt) => {
             opt.text = opt.loc();
         });
@@ -144,35 +203,41 @@ class ListSearchView extends View {
             {
                 value: 'entry',
                 icon: 'key',
-                text: StringFormat.capFirst(Locale.entry),
-                hint: Features.isMobile
+                text: StringFormat.capFirst(loc.entry as string),
+                hint: features.isMobile
                     ? null
-                    : `(${Locale.searchShiftClickOr} ${Shortcuts.altShortcutSymbol(true)})`
+                    : `(${loc.searchShiftClickOr as string} ${shortcuts.altShortcutSymbol(true)})`
             },
-            { value: 'group', icon: 'folder', text: StringFormat.capFirst(Locale.group) }
+            {
+                value: 'group',
+                icon: 'folder',
+                text: StringFormat.capFirst(loc.group as string)
+            }
         ];
         if (this.el) {
             this.render();
         }
     }
 
-    pageBlur() {
+    pageBlur(): void {
         this.inputEl.blur();
     }
 
-    removeKeypressHandler() {}
+    removeKeypressHandler(): void {
+        /* replaced inside viewShown */
+    }
 
-    viewShown() {
-        const keypressHandler = (e) => this.documentKeyPress(e);
+    viewShown(): void {
+        const keypressHandler = (e: any) => this.documentKeyPress(e);
         Events.on('keypress', keypressHandler);
         this.removeKeypressHandler = () => Events.off('keypress', keypressHandler);
     }
 
-    viewHidden() {
+    viewHidden(): void {
         this.removeKeypressHandler();
     }
 
-    render() {
+    render(): this | undefined {
         let searchVal;
         if (this.inputEl) {
             searchVal = this.inputEl.val();
@@ -186,9 +251,10 @@ class ListSearchView extends View {
         if (searchVal) {
             this.inputEl.val(searchVal);
         }
+        return this;
     }
 
-    inputKeyDown(e) {
+    inputKeyDown(e: any): void {
         switch (e.which) {
             case Keys.DOM_VK_UP:
             case Keys.DOM_VK_DOWN:
@@ -209,21 +275,21 @@ class ListSearchView extends View {
         e.preventDefault();
     }
 
-    inputKeyPress(e) {
+    inputKeyPress(e: Event): void {
         e.stopPropagation();
     }
 
-    inputChange() {
+    inputChange(): void {
         const text = this.inputEl.val();
         this.inputEl[0].parentElement.classList.toggle('list__search-field-wrap--text', text);
         Events.emit('add-filter', { text });
     }
 
-    inputFocus(e) {
+    inputFocus(e: Event): void {
         $(e.target).select();
     }
 
-    documentKeyPress(e) {
+    documentKeyPress(e: any): void {
         if (this.hidden) {
             return;
         }
@@ -238,7 +304,7 @@ class ListSearchView extends View {
         e.preventDefault();
     }
 
-    findKeyPress(e) {
+    findKeyPress(e: Event): void {
         if (!this.hidden) {
             e.preventDefault();
             this.hideSearchOptions();
@@ -246,7 +312,7 @@ class ListSearchView extends View {
         }
     }
 
-    newKeyPress(e) {
+    newKeyPress(e: Event): void {
         if (!this.hidden) {
             e.preventDefault();
             this.hideSearchOptions();
@@ -254,19 +320,19 @@ class ListSearchView extends View {
         }
     }
 
-    downKeyPress(e) {
+    downKeyPress(e: Event): void {
         e.preventDefault();
         this.hideSearchOptions();
         this.emit('select-next');
     }
 
-    upKeyPress(e) {
+    upKeyPress(e: Event): void {
         e.preventDefault();
         this.hideSearchOptions();
         this.emit('select-prev');
     }
 
-    filterChanged(filter) {
+    filterChanged(filter: any): void {
         this.hideSearchOptions();
         if (filter.filter.text !== this.inputEl.val()) {
             this.inputEl.val(filter.text || '');
@@ -283,7 +349,7 @@ class ListSearchView extends View {
         }
     }
 
-    createOptionsClick(e) {
+    createOptionsClick(e: any): void {
         e.stopImmediatePropagation();
         if (e.shiftKey) {
             this.hideSearchOptions();
@@ -293,15 +359,15 @@ class ListSearchView extends View {
         this.toggleCreateOptions();
     }
 
-    sortOptionsClick(e) {
+    sortOptionsClick(e: Event): void {
         this.toggleSortOptions();
         e.stopImmediatePropagation();
     }
 
-    advancedSearchClick() {
+    advancedSearchClick(): void {
         this.advancedSearchEnabled = !this.advancedSearchEnabled;
         this.$el.find('.list__search-adv').toggleClass('hide', !this.advancedSearchEnabled);
-        let advanced = false;
+        let advanced: AdvancedSearch | boolean = false;
         if (this.advancedSearchEnabled) {
             advanced = this.advancedSearch;
         } else if (this.model.advancedSearch) {
@@ -310,40 +376,40 @@ class ListSearchView extends View {
         Events.emit('add-filter', { advanced });
     }
 
-    toggleMenu() {
+    toggleMenu(): void {
         Events.emit('toggle-menu');
     }
 
-    toggleAdvCheck(e) {
-        const setting = $(e.target).data('id');
+    toggleAdvCheck(e: any): void {
+        const setting = $(e.target).data('id') as keyof AdvancedSearch;
         this.advancedSearch[setting] = e.target.checked;
         Events.emit('add-filter', { advanced: this.advancedSearch });
     }
 
-    hideSearchOptions() {
+    hideSearchOptions(): void {
         if (this.views.searchDropdown) {
-            this.views.searchDropdown.remove();
-            this.views.searchDropdown = null;
+            (this.views.searchDropdown as View).remove();
+            this.views.searchDropdown = null as any;
             this.$el
                 .find('.list__search-btn-sort,.list__search-btn-new')
                 .removeClass('sel--active');
         }
     }
 
-    toggleSortOptions() {
-        if (this.views.searchDropdown && this.views.searchDropdown.isSort) {
+    toggleSortOptions(): void {
+        if (this.views.searchDropdown && (this.views.searchDropdown as any).isSort) {
             this.hideSearchOptions();
             return;
         }
         this.hideSearchOptions();
         this.$el.find('.list__search-btn-sort').addClass('sel--active');
         const view = new DropdownView();
-        view.isSort = true;
+        (view as any).isSort = true;
         this.listenTo(view, 'cancel', this.hideSearchOptions);
         this.listenTo(view, 'select', this.sortDropdownSelect);
-        this.sortOptions.forEach(function (opt) {
+        this.sortOptions.forEach((opt) => {
             opt.active = this.model.sort === opt.value;
-        }, this);
+        });
         view.render({
             position: {
                 top: this.$el.find('.list__search-btn-sort')[0].getBoundingClientRect().bottom,
@@ -351,11 +417,11 @@ class ListSearchView extends View {
             },
             options: this.sortOptions
         });
-        this.views.searchDropdown = view;
+        this.views.searchDropdown = view as unknown as View;
     }
 
-    toggleCreateOptions() {
-        if (this.views.searchDropdown && this.views.searchDropdown.isCreate) {
+    toggleCreateOptions(): void {
+        if (this.views.searchDropdown && (this.views.searchDropdown as any).isCreate) {
             this.hideSearchOptions();
             return;
         }
@@ -363,7 +429,7 @@ class ListSearchView extends View {
         this.hideSearchOptions();
         this.$el.find('.list__search-btn-new').addClass('sel--active');
         const view = new DropdownView();
-        view.isCreate = true;
+        (view as any).isCreate = true;
         this.listenTo(view, 'cancel', this.hideSearchOptions);
         this.listenTo(view, 'select', this.createDropdownSelect);
         view.render({
@@ -371,17 +437,17 @@ class ListSearchView extends View {
                 top: this.$el.find('.list__search-btn-new')[0].getBoundingClientRect().bottom,
                 right: this.$el[0].getBoundingClientRect().right + 1
             },
-            options: this.createOptions.concat(this.getCreateEntryTemplateOptions())
+            options: this.createOptions.concat(this.getCreateEntryTemplateOptions() as any)
         });
-        this.views.searchDropdown = view;
+        this.views.searchDropdown = view as unknown as View;
     }
 
-    getCreateEntryTemplateOptions() {
+    getCreateEntryTemplateOptions(): Array<{ value: string; icon: string; text: string }> {
         const entryTemplates = this.model.getEntryTemplates();
         const hasMultipleFiles = this.model.files.length > 1;
         this.entryTemplates = {};
-        const options = [];
-        entryTemplates.forEach((tmpl) => {
+        const options: Array<{ value: string; icon: string; text: string }> = [];
+        entryTemplates.forEach((tmpl: any) => {
             const id = 'tmpl:' + tmpl.entry.id;
             options.push({
                 value: id,
@@ -396,17 +462,17 @@ class ListSearchView extends View {
         options.push({
             value: 'tmpl',
             icon: 'sticky-note-o',
-            text: StringFormat.capFirst(Locale.template)
+            text: StringFormat.capFirst(loc.template as string)
         });
         return options;
     }
 
-    sortDropdownSelect(e) {
+    sortDropdownSelect(e: { item: string }): void {
         this.hideSearchOptions();
         Events.emit('set-sort', e.item);
     }
 
-    createDropdownSelect(e) {
+    createDropdownSelect(e: { item: string }): void {
         this.hideSearchOptions();
         switch (e.item) {
             case 'entry':
@@ -425,15 +491,15 @@ class ListSearchView extends View {
         }
     }
 
-    addArrow(str) {
-        return str.replace('{}', '→');
+    addArrow(str: string): string {
+        return str.replace('{}', '\u2192');
     }
 
-    fileListUpdated() {
+    fileListUpdated(): void {
         this.render();
     }
 
-    clickClear() {
+    clickClear(): void {
         this.inputEl.val('');
         this.inputChange();
     }
