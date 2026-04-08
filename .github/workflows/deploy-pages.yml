@@ -21,8 +21,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      - name: Build core
-        run: cd packages/core && bun run build
+      - name: Build all packages (db first, then core — core's kdbxweb alias points at packages/db/dist)
+        run: bun run build
+      - name: Verify static assets present in dist
+        run: |
+          set -e
+          cd packages/core/dist
+          test -f manifest.json
+          test -f browserconfig.xml
+          test -f icons/favicon-32x32.png
+          test -f icons/apple-touch-icon.png
+          test -f icons/safari-pinned-tab.svg
+          echo "All required static assets present."
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
