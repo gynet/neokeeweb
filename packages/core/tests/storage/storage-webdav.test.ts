@@ -1,6 +1,13 @@
-import { describe, test, expect, mock, beforeEach } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, afterAll } from 'bun:test';
+import {
+    installMockedModule,
+    restoreAllMockedModules,
+} from '../helpers/mock-isolation';
 
-// Mock dependencies
+// Path-based mocks (relative specs) — these only affect the immediate
+// import graph of this test file, so they cannot pollute other test
+// files in the same Bun run. We keep them on the synchronous
+// mock.module API for clarity.
 mock.module('../../app/scripts/models/app-settings-model', () => ({
     AppSettingsModel: {
         webdav: true,
@@ -28,14 +35,23 @@ mock.module('../../app/scripts/util/locale', () => ({
     }
 }));
 
-mock.module('kdbxweb', () => ({
+// `kdbxweb` is a published bare-specifier shared across multiple test
+// files (notably `tests/comp/extension/protocol-impl.test.ts`). A raw
+// `mock.module('kdbxweb', ...)` here leaks into every later file in
+// the same run. We use `installMockedModule` so the helper captures a
+// real-module snapshot first; the `afterAll(restoreAllMockedModules)`
+// hook below puts the real exports back when this file finishes. See
+// `tests/helpers/mock-isolation.ts` for the full rationale.
+await installMockedModule('kdbxweb', () => ({
     CryptoEngine: {
-        sha256: (data: ArrayBuffer) => Promise.resolve(new ArrayBuffer(32))
+        sha256: (_data: ArrayBuffer) => Promise.resolve(new ArrayBuffer(32))
     },
     ByteUtils: {
         bytesToHex: () => 'abcdef0123456789ab'
     }
 }));
+
+afterAll(restoreAllMockedModules);
 
 const { StorageWebDav } = await import('../../app/scripts/storage/impl/storage-webdav');
 

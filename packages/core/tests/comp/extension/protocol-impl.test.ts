@@ -25,38 +25,13 @@ import { box as naclBox } from 'tweetnacl';
  *   - lock-database (emits a framework event + crypto)
  */
 
-// --- Ensure `kdbxweb` has real ByteUtils for this test file.
-// Another test file (tests/storage/storage-webdav.test.ts) installs a
-// partial mock of 'kdbxweb' globally via Bun's mock.module; when that
-// file runs first, its mock persists and its ByteUtils is missing
-// bytesToBase64/base64ToBytes which both protocol-impl.ts and this test
-// need. Override with a synthetic kdbxweb namespace that pulls the real
-// ByteUtils implementations directly from @neokeeweb/db's source file
-// (which is not intercepted by the 'kdbxweb' specifier mock).
-const byteUtils = await import('../../../../db/lib/utils/byte-utils');
-const syntheticKdbxweb = {
-    CryptoEngine: {
-        sha256: (_data: ArrayBuffer) => Promise.resolve(new ArrayBuffer(32))
-    },
-    ByteUtils: {
-        bytesToHex: byteUtils.bytesToHex,
-        hexToBytes: byteUtils.hexToBytes,
-        bytesToBase64: byteUtils.bytesToBase64,
-        base64ToBytes: byteUtils.base64ToBytes,
-        stringToBytes: byteUtils.stringToBytes,
-        bytesToString: byteUtils.bytesToString
-    },
-    ProtectedValue: class ProtectedValueStub {
-        static fromString(s: string): ProtectedValueStub {
-            return new ProtectedValueStub(s);
-        }
-        constructor(private _s: string) {}
-        getText(): string {
-            return this._s;
-        }
-    }
-};
-mock.module('kdbxweb', () => syntheticKdbxweb);
+// `kdbxweb` is intentionally NOT mocked here. The polluter
+// (`tests/storage/storage-webdav.test.ts`) installs its mock via the
+// `installMockedModule` helper from `tests/helpers/mock-isolation.ts`,
+// which captures a snapshot of the real module first and registers an
+// `afterAll(restoreAllMockedModules)` cleanup. By the time this test
+// file runs, the real `kdbxweb` namespace is back in place and we can
+// rely on it directly via the bare specifier import below.
 
 // --- Mock heavy UI/view/model dependencies so protocol-impl loads cleanly ---
 mock.module('views/extension/extension-connect-view', () => ({
@@ -130,10 +105,10 @@ const protocolModule = await import(
 );
 const { ProtocolImpl } = protocolModule;
 
-// Use the same synthetic kdbxweb namespace in the test code as the
-// mocked `kdbxweb` module, so protocol-impl.ts and this file share
-// exactly the same byte-utils implementations.
-const kdbxweb = syntheticKdbxweb;
+// Real kdbxweb. The mock-isolation helper used by storage-webdav.test.ts
+// guarantees that any partial mock installed earlier in the run has
+// been restored before this file imports `kdbxweb` here.
+const kdbxweb = await import('kdbxweb');
 
 // Known hash exported by the module: sha256('KeeWeb'), hex.
 const KEEWEB_HASH = '398d9c782ec76ae9e9877c2321cbda2b31fc6d18ccf0fed5ca4bd746bab4d64a';
