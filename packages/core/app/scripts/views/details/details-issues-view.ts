@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import template from 'templates/details/details-issues.hbs';
@@ -10,45 +9,54 @@ import { AppSettingsModel } from 'models/app-settings-model';
 import { Links } from 'const/links';
 import { checkIfPasswordIsExposedOnline } from 'comp/app/online-password-checker';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loc = Locale as unknown as Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const alerts = Alerts as unknown as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const settings = AppSettingsModel as unknown as any;
+
 class DetailsIssuesView extends View {
     parent = '.details__issues-container';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .details__issues-close-btn': 'closeIssuesClick'
     };
 
-    passwordIssue = null;
+    passwordIssue: string | null = null;
 
-    constructor(model) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any) {
         super(model);
         this.listenTo(AppSettingsModel, 'change', this.settingsChanged);
-        if (AppSettingsModel.auditPasswords) {
+        if (settings.auditPasswords) {
             this.checkPasswordIssues();
         }
     }
 
-    render(options) {
-        if (!AppSettingsModel.auditPasswords) {
+    render(options?: { fadeIn?: boolean }): this | undefined {
+        if (!settings.auditPasswords) {
             super.render();
-            return;
+            return this;
         }
         super.render({
             hibpLink: Links.HaveIBeenPwned,
             passwordIssue: this.passwordIssue,
             fadeIn: options?.fadeIn
         });
+        return this;
     }
 
-    settingsChanged() {
-        if (AppSettingsModel.auditPasswords) {
+    settingsChanged(): void {
+        if (settings.auditPasswords) {
             this.checkPasswordIssues();
         }
         this.render();
     }
 
-    passwordChanged() {
+    passwordChanged(): void {
         const oldPasswordIssue = this.passwordIssue;
         this.checkPasswordIssues();
         if (oldPasswordIssue !== this.passwordIssue) {
@@ -62,7 +70,7 @@ class DetailsIssuesView extends View {
         }
     }
 
-    checkPasswordIssues() {
+    checkPasswordIssues(): void {
         if (!this.model.canCheckPasswordIssues()) {
             this.passwordIssue = null;
             return;
@@ -72,15 +80,20 @@ class DetailsIssuesView extends View {
             this.passwordIssue = null;
             return;
         }
-        const auditEntropy = AppSettingsModel.auditPasswordEntropy;
-        const strength = passwordStrength(password);
-        if (AppSettingsModel.excludePinsFromAudit && strength.onlyDigits && strength.length <= 6) {
+        const auditEntropy = settings.auditPasswordEntropy;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const strength: any = passwordStrength(password);
+        if (
+            settings.excludePinsFromAudit &&
+            strength.onlyDigits &&
+            strength.length <= 6
+        ) {
             this.passwordIssue = null;
         } else if (auditEntropy && strength.level < PasswordStrengthLevel.Low) {
             this.passwordIssue = 'poor';
         } else if (auditEntropy && strength.level < PasswordStrengthLevel.Good) {
             this.passwordIssue = 'weak';
-        } else if (AppSettingsModel.auditPasswordAge && this.isOld()) {
+        } else if (settings.auditPasswordAge && this.isOld()) {
             this.passwordIssue = 'old';
         } else {
             this.passwordIssue = null;
@@ -88,29 +101,31 @@ class DetailsIssuesView extends View {
         }
     }
 
-    isOld() {
+    isOld(): boolean {
         if (!this.model.updated) {
             return false;
         }
         const dt = new Date(this.model.updated);
-        dt.setFullYear(dt.getFullYear() + AppSettingsModel.auditPasswordAge);
-        return dt < Date.now();
+        dt.setFullYear(dt.getFullYear() + settings.auditPasswordAge);
+        return dt.getTime() < Date.now();
     }
 
-    checkOnHIBP() {
-        if (!AppSettingsModel.checkPasswordsOnHIBP) {
+    checkOnHIBP(): void {
+        if (!settings.checkPasswordsOnHIBP) {
             return;
         }
-        const isExposed = checkIfPasswordIsExposedOnline(this.model.password);
+        const isExposed = checkIfPasswordIsExposedOnline(this.model.password) as
+            | boolean
+            | Promise<boolean | undefined>;
         if (typeof isExposed === 'boolean') {
             this.passwordIssue = isExposed ? 'pwned' : null;
         } else {
             const iconEl = this.el?.querySelector('.details__issues-icon');
             iconEl?.classList.add('details__issues-icon--loading');
-            isExposed.then((isExposed) => {
-                if (isExposed) {
+            isExposed.then((exposed) => {
+                if (exposed) {
                     this.passwordIssue = 'pwned';
-                } else if (isExposed === false) {
+                } else if (exposed === false) {
                     if (this.passwordIssue === 'pwned') {
                         this.passwordIssue = null;
                     }
@@ -122,19 +137,23 @@ class DetailsIssuesView extends View {
         }
     }
 
-    closeIssuesClick() {
-        Alerts.alert({
-            header: Locale.detIssueCloseAlertHeader,
-            body: Locale.detIssueCloseAlertBody,
+    closeIssuesClick(): void {
+        alerts.alert({
+            header: loc.detIssueCloseAlertHeader,
+            body: loc.detIssueCloseAlertBody,
             icon: 'exclamation-triangle',
             buttons: [
-                { result: 'entry', title: Locale.detIssueCloseAlertEntry, silent: true },
-                { result: 'settings', title: Locale.detIssueCloseAlertSettings, silent: true },
-                Alerts.buttons.cancel
+                { result: 'entry', title: loc.detIssueCloseAlertEntry, silent: true },
+                {
+                    result: 'settings',
+                    title: loc.detIssueCloseAlertSettings,
+                    silent: true
+                },
+                alerts.buttons.cancel
             ],
             esc: '',
             click: '',
-            success: (result) => {
+            success: (result: string) => {
                 switch (result) {
                     case 'entry':
                         this.disableAuditForEntry();
@@ -147,13 +166,13 @@ class DetailsIssuesView extends View {
         });
     }
 
-    disableAuditForEntry() {
+    disableAuditForEntry(): void {
         this.model.setIgnorePasswordIssues();
         this.checkPasswordIssues();
         this.render();
     }
 
-    openAuditSettings() {
+    openAuditSettings(): void {
         Events.emit('toggle-settings', 'general', 'audit');
     }
 }

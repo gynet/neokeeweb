@@ -35,6 +35,9 @@
     "app/scripts/views/menu/menu-item-view.ts",
     "app/scripts/views/extension/extension-create-group-view.ts",
     "app/scripts/views/extension/extension-save-entry-view.ts",
-    "app/scripts/views/extension/extension-connect-view.ts"
+    "app/scripts/views/extension/extension-connect-view.ts",
+    "app/scripts/views/details/details-add-field-view.ts",
+    "app/scripts/views/details/details-attachment-view.ts",
+    "app/scripts/views/details/details-issues-view.ts"
   ]
 }

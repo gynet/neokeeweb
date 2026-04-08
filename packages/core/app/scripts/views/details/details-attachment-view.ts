@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { Shortcuts } from 'comp/app/shortcuts';
 import { Features } from 'util/features';
@@ -7,14 +6,15 @@ import template from 'templates/details/details-attachment.hbs';
 class DetailsAttachmentView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .details__subview-close': 'closeAttachment',
         'click .details__attachment-preview-download-btn': 'downloadAttachment'
     };
 
-    render(complete) {
+    render(complete?: () => void): this | undefined {
         super.render({
-            isMobile: Features.isMobile
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            isMobile: (Features as any).isMobile
         });
         const shortcut = this.$el.find('.details__attachment-preview-download-text-shortcut');
         shortcut.text(Shortcuts.actionShortcutSymbol());
@@ -24,27 +24,32 @@ class DetailsAttachmentView extends View {
             case 'text': {
                 const reader = new FileReader();
                 reader.addEventListener('loadend', () => {
-                    $('<pre/>').text(reader.result).appendTo(dataEl);
-                    complete();
+                    $('<pre/>')
+                        .text(reader.result as string)
+                        .appendTo(dataEl);
+                    complete?.();
                 });
                 reader.readAsText(blob);
-                return;
+                return this;
             }
             case 'image':
                 $('<img/>').attr('src', URL.createObjectURL(blob)).appendTo(dataEl);
-                complete();
-                return;
+                complete?.();
+                return this;
         }
         this.$el.addClass('details__attachment-preview--empty');
-        this.$el.find('.details__attachment-preview-icon').addClass('fa-' + this.model.icon);
-        complete();
+        this.$el
+            .find('.details__attachment-preview-icon')
+            .addClass('fa-' + this.model.icon);
+        complete?.();
+        return this;
     }
 
-    downloadAttachment() {
+    downloadAttachment(): void {
         this.emit('download');
     }
 
-    closeAttachment() {
+    closeAttachment(): void {
         this.emit('close');
     }
 }
