@@ -14,16 +14,21 @@ export default defineConfig({
     screenshot: 'on',
     trace: 'on-first-retry',
     video: 'on',
-    // Grant clipboard read/write so navigator.clipboard.* works without prompts.
-    // Chromium honours these names; Firefox ignores them and falls back to its
-    // own permission policy (clipboard tests are gated to chromium).
-    permissions: ['clipboard-read', 'clipboard-write'],
   },
 
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Chromium-only: grant clipboard read/write so
+        // `navigator.clipboard.*` works without prompts. Putting this
+        // here (not in top-level `use`) avoids Firefox's
+        // `Unknown permission: clipboard-read` failure on context
+        // creation. Clipboard tests gate themselves to chromium too,
+        // see e2e/core/clipboard.spec.ts.
+        permissions: ['clipboard-read', 'clipboard-write'],
+      },
     },
     {
       name: 'firefox',
