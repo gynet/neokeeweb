@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
@@ -29,12 +29,42 @@ import template from 'templates/details/details.hbs';
 import emptyTemplate from 'templates/details/details-empty.hbs';
 import groupTemplate from 'templates/details/details-group.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const features = Features as unknown as { isMobile: boolean };
+const settings = AppSettingsModel as unknown as Record<string, any>;
+const otpQrReader = OtpQrReader as unknown as { read(): void };
+const copyPaste = CopyPaste as unknown as {
+    simpleCopy: boolean;
+    createHiddenInput(text: string): void;
+    copy(text: string): any;
+    copyHtml(html: string): void;
+};
+const alerts = Alerts as unknown as { yesno(opts: any): void };
+
 class DetailsView extends View {
     parent = '.app__details';
-    fieldViews = [];
-    fieldCopyTip = null;
+    fieldViews: any[] = [];
+    fieldCopyTip: any = null;
 
-    events = {
+    appModel: any;
+    moreView: any;
+    helpTipCopyShown?: boolean;
+    dragging?: boolean;
+    dragTimeout?: ReturnType<typeof setTimeout>;
+    scroller: any;
+
+    // Provided by Scrollable mixin
+    initScroll!: () => void;
+    removeScroll!: () => void;
+    createScroll!: (opts: any) => void;
+    pageResized!: () => void;
+    removeInnerViews!: () => void;
+
+    // Provided by Copyable mixin
+    hideFieldCopyTip!: () => void;
+    fieldCopied!: (e: any) => void;
+
+    events: Record<string, string> = {
         'click .details__colors-popup-item': 'selectColor',
         'click .details__header-icon': 'toggleIcons',
         'click .details__attachment': 'toggleAttachment',
@@ -51,7 +81,7 @@ class DetailsView extends View {
         'contextmenu .details': 'contextMenu'
     };
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
         this.initScroll();
         this.listenTo(Events, 'entry-selected', this.showEntry);
@@ -93,26 +123,26 @@ class DetailsView extends View {
         });
     }
 
-    removeFieldViews() {
-        this.fieldViews.forEach((fieldView) => fieldView.remove());
+    removeFieldViews(): void {
+        this.fieldViews.forEach((fieldView: any) => fieldView.remove());
         this.fieldViews = [];
         this.hideFieldCopyTip();
     }
 
-    render() {
-        Tip.destroyTips(this.$el);
+    render(): this | undefined {
+        (Tip as any).destroyTips(this.$el);
         this.removeScroll();
         this.removeFieldViews();
         this.removeInnerViews();
         if (!this.model) {
             this.template = emptyTemplate;
             super.render();
-            return;
+            return this;
         }
-        if (this.model instanceof GroupModel) {
+        if (this.model instanceof (GroupModel as any)) {
             this.template = groupTemplate;
             super.render();
-            return;
+            return this;
         }
         const model = {
             deleted: this.appModel.filter.trash,
@@ -138,25 +168,26 @@ class DetailsView extends View {
         }
         this.pageResized();
         this.showCopyTip();
+        return this;
     }
 
-    getFieldView(name) {
-        return this.fieldViews.find((fv) => fv.model.name === name);
+    getFieldView(name: string): any {
+        return this.fieldViews.find((fv: any) => fv.model.name === name);
     }
 
-    addFieldViews() {
-        const { fieldViews, fieldViewsAside } = createDetailsFields(this);
+    addFieldViews(): void {
+        const { fieldViews, fieldViewsAside } = createDetailsFields(this) as any;
 
-        const hideEmptyFields = AppSettingsModel.hideEmptyFields;
+        const hideEmptyFields = settings.hideEmptyFields;
 
         const fieldsMainEl = this.$el.find('.details__body-fields');
         const fieldsAsideEl = this.$el.find('.details__body-aside');
         for (const views of [fieldViews, fieldViewsAside]) {
-            for (const fieldView of views) {
+            for (const fieldView of views as any[]) {
                 fieldView.parent = views === fieldViews ? fieldsMainEl[0] : fieldsAsideEl[0];
                 fieldView.render();
                 fieldView.on('change', this.fieldChanged.bind(this));
-                fieldView.on('copy', (e) => this.copyFieldValue(e));
+                fieldView.on('copy', (e: any) => this.copyFieldValue(e));
                 // auto-type removed in web-only fork
                 if (hideEmptyFields) {
                     const value = fieldView.model.value();
@@ -181,20 +212,20 @@ class DetailsView extends View {
             }
         }
 
-        this.fieldViews = fieldViews.concat(fieldViewsAside);
+        this.fieldViews = (fieldViews as any[]).concat(fieldViewsAside as any[]);
 
         if (!this.model.backend) {
-            this.moreView = new DetailsAddFieldView();
+            this.moreView = new (DetailsAddFieldView as any)();
             this.moreView.render();
             this.moreView.on('add-field', this.addNewField.bind(this));
             this.moreView.on('more-click', this.toggleMoreOptions.bind(this));
         }
     }
 
-    addNewField(title) {
+    addNewField(title?: string): void {
         this.moreView.remove();
         this.moreView = null;
-        let newFieldTitle = title || Locale.detNetField;
+        let newFieldTitle = title || loc.detNetField;
         if (this.model.fields[newFieldTitle]) {
             for (let i = 1; ; i++) {
                 const newFieldTitleVariant = newFieldTitle + i;
@@ -219,83 +250,85 @@ class DetailsView extends View {
         this.fieldViews.push(fieldView);
     }
 
-    toggleMoreOptions() {
-        if (this.views.dropdownView) {
-            this.views.dropdownView.remove();
-            this.views.dropdownView = null;
+    toggleMoreOptions(): void {
+        const views = (this as any).views;
+        if (views.dropdownView) {
+            views.dropdownView.remove();
+            views.dropdownView = null;
         } else {
             setTimeout(() => {
-                const dropdownView = new DropdownView();
+                const dropdownView: any = new (DropdownView as any)();
                 this.listenTo(dropdownView, 'cancel', this.toggleMoreOptions);
                 this.listenTo(dropdownView, 'select', this.moreOptionsSelect);
-                const hideEmptyFields = AppSettingsModel.hideEmptyFields;
-                const moreOptions = [];
+                const hideEmptyFields = settings.hideEmptyFields;
+                const moreOptions: any[] = [];
                 if (hideEmptyFields) {
-                    this.fieldViews.forEach((fieldView) => {
+                    this.fieldViews.forEach(function (this: DetailsView, fieldView: any) {
                         if (fieldView.isHidden()) {
                             moreOptions.push({
                                 value: 'add:' + fieldView.model.name,
                                 icon: 'pencil-alt',
-                                text: Locale.detMenuAddField.replace('{}', fieldView.model.title)
+                                text: loc.detMenuAddField.replace('{}', fieldView.model.title)
                             });
                         }
                     }, this);
                     moreOptions.push({
                         value: 'add-new',
                         icon: 'plus',
-                        text: Locale.detMenuAddNewField
+                        text: loc.detMenuAddNewField
                     });
                     if (this.model.url) {
                         moreOptions.push({
                             value: 'add-website',
                             icon: 'plus',
-                            text: Locale.detMenuAddNewWebsite
+                            text: loc.detMenuAddNewWebsite
                         });
                     }
                     moreOptions.push({
                         value: 'toggle-empty',
                         icon: 'eye',
-                        text: Locale.detMenuShowEmpty
+                        text: loc.detMenuShowEmpty
                     });
                 } else {
                     moreOptions.push({
                         value: 'add-new',
                         icon: 'plus',
-                        text: Locale.detMenuAddNewField
+                        text: loc.detMenuAddNewField
                     });
                     if (this.model.url) {
                         moreOptions.push({
                             value: 'add-website',
                             icon: 'plus',
-                            text: Locale.detMenuAddNewWebsite
+                            text: loc.detMenuAddNewWebsite
                         });
                     }
                     moreOptions.push({
                         value: 'toggle-empty',
                         icon: 'eye-slash',
-                        text: Locale.detMenuHideEmpty
+                        text: loc.detMenuHideEmpty
                     });
                 }
-                moreOptions.push({ value: 'otp', icon: 'clock', text: Locale.detSetupOtp });
-                moreOptions.push({ value: 'clone', icon: 'clone', text: Locale.detClone });
+                moreOptions.push({ value: 'otp', icon: 'clock', text: loc.detSetupOtp });
+                moreOptions.push({ value: 'clone', icon: 'clone', text: loc.detClone });
                 moreOptions.push({
                     value: 'copy-to-clipboard',
                     icon: 'copy',
-                    text: Locale.detCopyEntryToClipboard
+                    text: loc.detCopyEntryToClipboard
                 });
                 const rect = this.moreView.labelEl[0].getBoundingClientRect();
                 dropdownView.render({
                     position: { top: rect.bottom, left: rect.left },
                     options: moreOptions
                 });
-                this.views.dropdownView = dropdownView;
+                views.dropdownView = dropdownView;
             });
         }
     }
 
-    moreOptionsSelect(e) {
-        this.views.dropdownView.remove();
-        this.views.dropdownView = null;
+    moreOptionsSelect(e: any): void {
+        const views = (this as any).views;
+        views.dropdownView.remove();
+        views.dropdownView = null;
         switch (e.item) {
             case 'add-new':
                 this.addNewField();
@@ -304,8 +337,8 @@ class DetailsView extends View {
                 this.addNewField(this.model.getNextUrlFieldName());
                 break;
             case 'toggle-empty': {
-                const hideEmptyFields = AppSettingsModel.hideEmptyFields;
-                AppSettingsModel.hideEmptyFields = !hideEmptyFields;
+                const hideEmptyFields = settings.hideEmptyFields;
+                settings.hideEmptyFields = !hideEmptyFields;
                 this.render();
                 break;
             }
@@ -321,18 +354,18 @@ class DetailsView extends View {
             default:
                 if (e.item.lastIndexOf('add:', 0) === 0) {
                     const fieldName = e.item.substr(4);
-                    const fieldView = this.fieldViews.find((f) => f.model.name === fieldName);
+                    const fieldView = this.fieldViews.find((f: any) => f.model.name === fieldName);
                     fieldView.show();
                     fieldView.edit();
                 }
         }
     }
 
-    getUserNameCompletions(part) {
+    getUserNameCompletions(part: string): string[] {
         return this.appModel.completeUserNames(part);
     }
 
-    setSelectedColor(color) {
+    setSelectedColor(color: string | null): void {
         this.$el
             .find('.details__colors-popup > .details__colors-popup-item')
             .removeClass('details__colors-popup-item--active');
@@ -350,7 +383,7 @@ class DetailsView extends View {
         }
     }
 
-    selectColor(e) {
+    selectColor(e: any): void {
         let color = $(e.target).closest('.details__colors-popup-item').data('color');
         if (!color) {
             return;
@@ -362,16 +395,17 @@ class DetailsView extends View {
         this.entryUpdated();
     }
 
-    toggleIcons() {
+    toggleIcons(): void {
         if (this.model.backend) {
             return;
         }
-        if (this.views.sub && this.views.sub instanceof IconSelectView) {
+        const views = (this as any).views;
+        if (views.sub && views.sub instanceof (IconSelectView as any)) {
             this.render();
             return;
         }
         this.removeSubView();
-        const subView = new IconSelectView(
+        const subView: any = new (IconSelectView as any)(
             {
                 iconId: this.model.customIconId || this.model.iconId,
                 url: this.model.url,
@@ -385,10 +419,10 @@ class DetailsView extends View {
         this.listenTo(subView, 'select', this.iconSelected);
         subView.render();
         this.pageResized();
-        this.views.sub = subView;
+        views.sub = subView;
     }
 
-    toggleAttachment(e) {
+    toggleAttachment(e: any): void {
         const attBtn = $(e.target).closest('.details__attachment');
         const id = attBtn.data('id');
         const attachment = this.model.attachments[id];
@@ -396,12 +430,13 @@ class DetailsView extends View {
             this.downloadAttachment(attachment);
             return;
         }
-        if (this.views.sub && this.views.sub.attId === id) {
+        const views = (this as any).views;
+        if (views.sub && views.sub.attId === id) {
             this.render();
             return;
         }
         this.removeSubView();
-        const subView = new DetailsAttachmentView(attachment, {
+        const subView: any = new (DetailsAttachmentView as any)(attachment, {
             parent: this.scroller[0],
             replace: true
         });
@@ -409,19 +444,20 @@ class DetailsView extends View {
         subView.render(this.pageResized.bind(this));
         subView.on('download', () => this.downloadAttachment(attachment));
         this.listenTo(subView, 'close', this.render.bind(this));
-        this.views.sub = subView;
+        views.sub = subView;
         attBtn.addClass('details__attachment--active');
     }
 
-    removeSubView() {
+    removeSubView(): void {
         this.$el.find('.details__attachment').removeClass('details__attachment--active');
-        if (this.views.sub) {
-            this.views.sub.remove();
-            delete this.views.sub;
+        const views = (this as any).views;
+        if (views.sub) {
+            views.sub.remove();
+            delete views.sub;
         }
     }
 
-    downloadAttachment(attachment) {
+    downloadAttachment(attachment: any): void {
         const data = attachment.getBinary();
         if (!data) {
             return;
@@ -431,7 +467,7 @@ class DetailsView extends View {
         FileSaver.saveAs(blob, attachment.title);
     }
 
-    iconSelected(sel) {
+    iconSelected(sel: any): void {
         if (sel.custom) {
             if (sel.id !== this.model.customIconId) {
                 this.model.setCustomIcon(sel.id);
@@ -447,7 +483,7 @@ class DetailsView extends View {
         }
     }
 
-    showEntry(entry) {
+    showEntry(entry: any): void {
         this.model = entry;
         this.initOtp();
         this.render();
@@ -456,7 +492,7 @@ class DetailsView extends View {
         }
     }
 
-    initOtp() {
+    initOtp(): void {
         if (!this.model) {
             return;
         }
@@ -464,19 +500,19 @@ class DetailsView extends View {
         this.model.initOtpGenerator?.();
     }
 
-    copyKeyPress(editView) {
+    copyKeyPress(editView: any): boolean | undefined {
         if (!editView || this.isHidden()) {
             return false;
         }
-        if (!window.getSelection().toString()) {
+        if (!window.getSelection()?.toString()) {
             const fieldText = editView.getTextValue();
             if (!fieldText) {
-                return;
+                return undefined;
             }
-            if (!CopyPaste.simpleCopy) {
-                CopyPaste.createHiddenInput(fieldText);
+            if (!copyPaste.simpleCopy) {
+                copyPaste.createHiddenInput(fieldText);
             }
-            const copyRes = CopyPaste.copy(fieldText);
+            const copyRes = copyPaste.copy(fieldText);
             this.copyFieldValue({ source: editView, copyRes });
 
             return true;
@@ -484,7 +520,7 @@ class DetailsView extends View {
         return false;
     }
 
-    copyPasswordFromShortcut(e) {
+    copyPasswordFromShortcut(e: any): void {
         if (!this.model) {
             return;
         }
@@ -494,47 +530,50 @@ class DetailsView extends View {
         }
     }
 
-    copyPassword() {
+    copyPassword(): void {
         this.copyKeyPress(this.getFieldView('$Password'));
     }
 
-    copyUserName() {
+    copyUserName(): void {
         this.copyKeyPress(this.getFieldView('$UserName'));
     }
 
-    copyUrl() {
+    copyUrl(): void {
         this.copyKeyPress(this.getFieldView('$URL'));
     }
 
-    copyOtp() {
+    copyOtp(): void {
         const otpField = this.getFieldView('$otp');
         this.copyKeyPress(otpField);
     }
 
-    showCopyTip() {
+    showCopyTip(): void {
         if (this.helpTipCopyShown) {
             return;
         }
-        this.helpTipCopyShown = AppSettingsModel.helpTipCopyShown;
+        this.helpTipCopyShown = settings.helpTipCopyShown;
         if (this.helpTipCopyShown) {
             return;
         }
-        AppSettingsModel.helpTipCopyShown = true;
+        settings.helpTipCopyShown = true;
         this.helpTipCopyShown = true;
+        if (!this.moreView) {
+            return;
+        }
         const label = this.moreView.labelEl;
-        const tip = new Tip(label, { title: Locale.detCopyHint, placement: 'right' });
+        const tip: any = new (Tip as any)(label, { title: loc.detCopyHint, placement: 'right' });
         tip.show();
         this.fieldCopyTip = tip;
         setTimeout(() => {
             tip.hide();
-        }, Timeouts.AutoHideHint);
+        }, (Timeouts as any).AutoHideHint);
     }
 
-    settingsToggled() {
+    settingsToggled(): void {
         this.hideFieldCopyTip();
     }
 
-    fieldChanged(e) {
+    fieldChanged(e: any): void {
         if (e.field) {
             if (e.field[0] === '$') {
                 let fieldName = e.field.substr(1);
@@ -567,8 +606,9 @@ class DetailsView extends View {
                 } else if (fieldName) {
                     this.model.setField(fieldName, e.val);
                 }
-                if (fieldName === 'Password' && this.views.issues) {
-                    this.views.issues.passwordChanged();
+                const views = (this as any).views;
+                if (fieldName === 'Password' && views.issues) {
+                    views.issues.passwordChanged();
                 }
             } else if (e.field === 'Tags') {
                 this.model.setTags(e.val);
@@ -580,10 +620,10 @@ class DetailsView extends View {
                 }
             }
             this.entryUpdated(true);
-            this.fieldViews.forEach(function (fieldView, ix) {
+            this.fieldViews.forEach(function (this: DetailsView, fieldView: any, ix: number) {
                 // TODO: render the view instead
                 if (
-                    (fieldView instanceof FieldViewCustom &&
+                    (fieldView instanceof (FieldViewCustom as any) &&
                         !fieldView.model.newField &&
                         !this.model.hasField(fieldView.model.title)) ||
                     (fieldView.model.isExtraUrl &&
@@ -605,8 +645,8 @@ class DetailsView extends View {
         }
     }
 
-    otpFieldChanged(value) {
-        let oldValue = this.model.fields.otp;
+    otpFieldChanged(value: any): boolean {
+        let oldValue: any = this.model.fields.otp;
         if (oldValue && oldValue.isProtected) {
             oldValue = oldValue.getText();
         }
@@ -621,7 +661,7 @@ class DetailsView extends View {
         return true;
     }
 
-    dragover(e) {
+    dragover(e: any): void {
         e.preventDefault();
         e.stopPropagation();
         const dt = e.dataTransfer;
@@ -652,7 +692,7 @@ class DetailsView extends View {
         }, 100);
     }
 
-    drop(e) {
+    drop(e: any): void {
         e.preventDefault();
         if (!this.model) {
             return;
@@ -666,15 +706,15 @@ class DetailsView extends View {
         this.addAttachedFiles(files);
     }
 
-    attachmentBtnClick() {
+    attachmentBtnClick(): void {
         this.$el.find('.details__attachment-input-file')[0].click();
     }
 
-    attachmentFileChange(e) {
+    attachmentFileChange(e: any): void {
         this.addAttachedFiles(e.target.files);
     }
 
-    addAttachedFiles(files) {
+    addAttachedFiles(files: any): void {
         for (const file of files) {
             const reader = new FileReader();
             reader.onload = () => {
@@ -684,46 +724,50 @@ class DetailsView extends View {
         }
     }
 
-    addAttachment(name, data) {
+    addAttachment(name: string, data: any): void {
         this.model.addAttachment(name, data).then(() => {
             this.entryUpdated();
         });
     }
 
-    deleteKeyPress(e) {
-        if (this.views.sub && this.views.sub.attId !== undefined) {
+    deleteKeyPress(e: any): void {
+        const views = (this as any).views;
+        if (views.sub && views.sub.attId !== undefined) {
             e.preventDefault();
-            const attachment = this.model.attachments[this.views.sub.attId];
+            const attachment = this.model.attachments[views.sub.attId];
             this.model.removeAttachment(attachment.title);
             this.render();
         }
     }
 
-    editTitle() {
+    editTitle(): void {
         const input = $('<input/>')
             .addClass('details__header-title-input')
             .attr({ autocomplete: 'off', spellcheck: 'false', placeholder: 'Title' })
             .val(this.model.title);
         input.bind({
-            blur: this.titleInputBlur.bind(this),
-            input: this.titleInputInput.bind(this),
-            keydown: this.titleInputKeydown.bind(this),
-            keypress: this.titleInputInput.bind(this)
+            blur: this.titleInputBlur.bind(this) as any,
+            input: this.titleInputInput.bind(this) as any,
+            keydown: this.titleInputKeydown.bind(this) as any,
+            keypress: this.titleInputInput.bind(this) as any
         });
         $('.details__header-title').replaceWith(input);
-        input.focus()[0].setSelectionRange(this.model.title.length, this.model.title.length);
+        (input.focus()[0] as HTMLInputElement).setSelectionRange(
+            this.model.title.length,
+            this.model.title.length
+        );
     }
 
-    titleInputBlur(e) {
+    titleInputBlur(e: any): void {
         this.setTitle(e.target.value);
     }
 
-    titleInputInput(e) {
+    titleInputInput(e: any): void {
         e.stopPropagation();
     }
 
-    titleInputKeydown(e) {
-        KeyHandler.reg();
+    titleInputKeydown(e: any): void {
+        (KeyHandler as any).reg();
         e.stopPropagation();
         const code = e.keyCode || e.which;
         if (code === Keys.DOM_VK_RETURN) {
@@ -747,7 +791,7 @@ class DetailsView extends View {
         }
     }
 
-    setTitle(title) {
+    setTitle(title: any): void {
         if (this.model.title instanceof kdbxweb.ProtectedValue) {
             title = kdbxweb.ProtectedValue.fromString(title);
         }
@@ -759,7 +803,7 @@ class DetailsView extends View {
         this.$el.find('.details__header-title-input').replaceWith(newTitle);
     }
 
-    entryUpdated(skipRender) {
+    entryUpdated(skipRender?: boolean): void {
         Events.emit('entry-updated', { entry: this.model });
         this.initOtp();
         if (!skipRender) {
@@ -767,9 +811,9 @@ class DetailsView extends View {
         }
     }
 
-    focusNextField(config) {
-        let found = false,
-            nextFieldView;
+    focusNextField(config: any): void {
+        let found = false;
+        let nextFieldView: any;
         if (config.field === '$Title' && !config.prev) {
             found = true;
         }
@@ -790,19 +834,19 @@ class DetailsView extends View {
         }
     }
 
-    showHistory() {
+    showHistory(): void {
         this.removeSubView();
-        const subView = new DetailsHistoryView(this.model, {
+        const subView = new (DetailsHistoryView as any)(this.model, {
             parent: this.scroller[0],
             replace: true
         });
         this.listenTo(subView, 'close', this.historyClosed.bind(this));
         subView.render();
         this.pageResized();
-        this.views.sub = subView;
+        (this as any).views.sub = subView;
     }
 
-    historyClosed(e) {
+    historyClosed(e: any): void {
         if (e.updated) {
             this.entryUpdated();
         } else {
@@ -810,15 +854,15 @@ class DetailsView extends View {
         }
     }
 
-    moveToTrash() {
+    moveToTrash(): void {
         const doMove = () => {
             this.model.moveToTrash();
             Events.emit('refresh');
         };
-        if (Features.isMobile) {
-            Alerts.yesno({
-                header: Locale.detDelToTrash,
-                body: Locale.detDelToTrashBody,
+        if (features.isMobile) {
+            alerts.yesno({
+                header: loc.detDelToTrash,
+                body: loc.detDelToTrashBody,
                 icon: 'trash-alt',
                 success: doMove
             });
@@ -827,20 +871,20 @@ class DetailsView extends View {
         }
     }
 
-    clone() {
-        const newEntry = this.model.cloneEntry(' ' + Locale.detClonedName);
+    clone(): void {
+        const newEntry = this.model.cloneEntry(' ' + loc.detClonedName);
         Events.emit('select-entry', newEntry);
     }
 
-    copyToClipboard() {
-        CopyPaste.copyHtml(this.model.getHtml());
+    copyToClipboard(): void {
+        copyPaste.copyHtml(this.model.getHtml());
     }
 
-    deleteFromTrash() {
-        Alerts.yesno({
-            header: Locale.detDelFromTrash,
-            body: Locale.detDelFromTrashBody,
-            hint: Locale.detDelFromTrashBodyHint,
+    deleteFromTrash(): void {
+        alerts.yesno({
+            header: loc.detDelFromTrash,
+            body: loc.detDelFromTrashBody,
+            hint: loc.detDelFromTrashBodyHint,
             icon: 'minus-circle',
             success: () => {
                 this.model.deleteFromTrash();
@@ -849,38 +893,38 @@ class DetailsView extends View {
         });
     }
 
-    backClick() {
+    backClick(): void {
         Events.emit('toggle-details', false);
     }
 
-    contextMenu(e) {
+    contextMenu(e: any): void {
         const canCopy = document.queryCommandSupported('copy');
-        const options = [];
+        const options: any[] = [];
         if (canCopy) {
             options.push({
                 value: 'det-copy-password',
                 icon: 'copy',
-                text: Locale.detMenuCopyPassword
+                text: loc.detMenuCopyPassword
             });
             options.push({
                 value: 'det-copy-user',
                 icon: 'copy',
-                text: Locale.detMenuCopyUser
+                text: loc.detMenuCopyUser
             });
         }
-        options.push({ value: 'det-add-new', icon: 'plus', text: Locale.detMenuAddNewField });
-        options.push({ value: 'det-clone', icon: 'clone', text: Locale.detClone });
+        options.push({ value: 'det-add-new', icon: 'plus', text: loc.detMenuAddNewField });
+        options.push({ value: 'det-clone', icon: 'clone', text: loc.detClone });
         if (canCopy) {
             options.push({
                 value: 'copy-to-clipboard',
                 icon: 'clipboard',
-                text: Locale.detCopyEntryToClipboard
+                text: loc.detCopyEntryToClipboard
             });
         }
         Events.emit('show-context-menu', Object.assign(e, { options }));
     }
 
-    contextMenuSelect(e) {
+    contextMenuSelect(e: any): void {
         switch (e.item) {
             case 'det-copy-password':
                 this.copyPassword();
@@ -900,25 +944,25 @@ class DetailsView extends View {
         }
     }
 
-    setupOtp() {
-        OtpQrReader.read();
+    setupOtp(): void {
+        otpQrReader.read();
     }
 
-    otpCodeRead(otp) {
+    otpCodeRead(otp: any): void {
         this.model.setOtp(otp);
         this.entryUpdated();
     }
 
-    otpEnterManually() {
+    otpEnterManually(): void {
         if (this.model.fields.otp) {
-            const otpField = this.fieldViews.find((f) => f.model.name === '$otp');
+            const otpField = this.fieldViews.find((f: any) => f.model.name === '$otp');
             if (otpField) {
                 otpField.edit();
             }
         } else {
             this.moreView.remove();
             this.moreView = null;
-            const fieldView = new FieldViewCustom(
+            const fieldView = new (FieldViewCustom as any)(
                 {
                     name: '$otp',
                     title: 'otp',
@@ -936,18 +980,18 @@ class DetailsView extends View {
         }
     }
 
-    toggleAutoType() {
+    toggleAutoType(): void {
         // No-op: auto-type removed in web-only fork
     }
 
-    checkPasswordIssues() {
+    checkPasswordIssues(): void {
         if (!this.model.readOnly) {
-            this.views.issues = new DetailsIssuesView(this.model);
-            this.views.issues.render();
+            (this as any).views.issues = new (DetailsIssuesView as any)(this.model);
+            (this as any).views.issues.render();
         }
     }
 
-    copyFieldValue(e) {
+    copyFieldValue(e: any): void {
         this.fieldCopied(e);
     }
 }
