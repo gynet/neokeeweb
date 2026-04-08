@@ -32,6 +32,9 @@
     "app/scripts/views/import-csv-view.ts",
     "app/scripts/views/menu/menu-view.ts",
     "app/scripts/views/menu/menu-section-view.ts",
-    "app/scripts/views/menu/menu-item-view.ts"
+    "app/scripts/views/menu/menu-item-view.ts",
+    "app/scripts/views/extension/extension-create-group-view.ts",
+    "app/scripts/views/extension/extension-save-entry-view.ts",
+    "app/scripts/views/extension/extension-connect-view.ts"
   ]
 }

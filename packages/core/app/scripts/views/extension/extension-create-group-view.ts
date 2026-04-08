@@ -1,26 +1,36 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import template from 'templates/extension/extension-create-group.hbs';
+
+interface ExtensionFile {
+    id: string;
+    selected?: boolean;
+}
 
 class ExtensionCreateGroupView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'change #extension-create-group__file': 'fileChanged'
     };
 
-    constructor(model) {
+    selectedFile: string;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any) {
         super(model);
 
-        this.selectedFile = model.files.find((f) => f.selected).id;
+        const files = model.files as ExtensionFile[];
+        const selected = files.find((f) => f.selected);
+        this.selectedFile = selected ? selected.id : '';
     }
 
-    render() {
+    render(): this | undefined {
         super.render(this.model);
+        return this;
     }
 
-    fileChanged(e) {
-        this.selectedFile = e.target.value;
+    fileChanged(e: Event): void {
+        this.selectedFile = (e.target as HTMLSelectElement).value;
     }
 }
 

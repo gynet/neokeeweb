@@ -1,44 +1,62 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import template from 'templates/extension/extension-connect.hbs';
+
+interface ConnectFile {
+    id: string;
+    name: string;
+    checked?: boolean;
+}
+
+interface ConnectConfig {
+    askGet: unknown;
+    allFiles: boolean;
+    files: string[];
+}
 
 class ExtensionConnectView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'change #extension-connect__ask-get': 'askGetChanged',
         'change .extension-connect__file-check': 'fileChecked'
     };
 
-    constructor(model) {
+    config: ConnectConfig;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any) {
         super(model);
         this.config = {
             askGet: this.model.askGet,
-            allFiles: this.model.allFiles,
-            files: this.model.files.filter((f) => f.checked).map((f) => f.id)
+            allFiles: !!this.model.allFiles,
+            files: (this.model.files as ConnectFile[])
+                .filter((f) => f.checked)
+                .map((f) => f.id)
         };
     }
 
-    render() {
+    render(): this | undefined {
         super.render({
             ...this.model,
             ...this.config,
-            files: this.model.files.map((f) => ({
+            files: (this.model.files as ConnectFile[]).map((f) => ({
                 id: f.id,
                 name: f.name,
                 checked: this.config.files.includes(f.id)
             }))
         });
+        return this;
     }
 
-    fileChecked(e) {
-        const fileId = e.target.dataset.file;
-        const checked = e.target.checked;
+    fileChecked(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        const fileId = target.dataset.file;
+        const checked = target.checked;
 
         if (fileId === 'all') {
             this.config.allFiles = checked;
-            this.config.files = this.model.files.map((f) => f.id);
-        } else {
+            this.config.files = (this.model.files as ConnectFile[]).map((f) => f.id);
+        } else if (fileId) {
             if (checked) {
                 this.config.files.push(fileId);
             } else {
@@ -49,14 +67,17 @@ class ExtensionConnectView extends View {
 
         this.render();
 
-        const atLeastOneFileSelected = this.config.files.length > 0 || this.config.allFiles;
+        const atLeastOneFileSelected =
+            this.config.files.length > 0 || this.config.allFiles;
 
-        const allowButton = document.querySelector('.modal button[data-result=yes]');
-        allowButton.classList.toggle('hide', !atLeastOneFileSelected);
+        const allowButton = document.querySelector(
+            '.modal button[data-result=yes]'
+        ) as HTMLElement | null;
+        allowButton?.classList.toggle('hide', !atLeastOneFileSelected);
     }
 
-    askGetChanged(e) {
-        this.config.askGet = e.target.value;
+    askGetChanged(e: Event): void {
+        this.config.askGet = (e.target as HTMLInputElement).value;
     }
 }
 
