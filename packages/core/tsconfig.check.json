@@ -51,6 +51,8 @@
     "app/scripts/views/fields/field-view-date.ts",
     "app/scripts/views/fields/field-view-custom.ts",
     "app/scripts/views/fields/field-view-autocomplete.ts",
-    "app/scripts/views/fields/field-view-otp.ts"
+    "app/scripts/views/fields/field-view-otp.ts",
+    "app/scripts/views/select/select-entry-field-view.ts",
+    "app/scripts/views/select/select-entry-view.ts"
   ]
 }
