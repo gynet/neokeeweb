@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { SecureInput } from 'comp/browser/secure-input';
 import { Alerts } from 'comp/ui/alerts';
@@ -7,12 +6,15 @@ import { Locale } from 'util/locale';
 import { InputFx } from 'util/ui/input-fx';
 import template from 'templates/key-change.hbs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loc = Locale as unknown as Record<string, any>;
+
 class KeyChangeView extends View {
     parent = '.app__body';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'keydown .key-change__pass': 'inputKeydown',
         'keydown .key-change__pass-repeat': 'inputKeydown',
         'click .key-change__keyfile': 'keyFileClicked',
@@ -21,26 +23,36 @@ class KeyChangeView extends View {
         'click .key-change__btn-cancel': 'cancel'
     };
 
-    passwordInput = null;
-    passwordRepeatInput = null;
-    inputEl = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    passwordInput: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    passwordRepeatInput: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    inputEl: any = null;
+    keyFileName: string | null = null;
+    keyFileData: ArrayBuffer | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    keyFile: any = null;
 
-    constructor(model) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any) {
         super(model);
         this.passwordInput = new SecureInput();
     }
 
-    render() {
+    render(): this | undefined {
         this.keyFileName = this.model.file.keyFileName || null;
         this.keyFileData = null;
         const repeat = this.model.expired;
         super.render({
             fileName: this.model.file.name,
             keyFileName: this.model.file.keyFileName,
-            title: this.model.expired ? Locale.keyChangeTitleExpired : Locale.keyChangeTitleRemote,
+            title: this.model.expired
+                ? loc.keyChangeTitleExpired
+                : loc.keyChangeTitleRemote,
             message: this.model.expired
-                ? Locale.keyChangeMessageExpired
-                : Locale.keyChangeMessageRemote,
+                ? loc.keyChangeMessageExpired
+                : loc.keyChangeMessageRemote,
             repeat
         });
         this.$el
@@ -53,17 +65,20 @@ class KeyChangeView extends View {
         if (repeat) {
             this.passwordRepeatInput = new SecureInput();
             this.passwordRepeatInput.reset();
-            this.passwordRepeatInput.setElement(this.$el.find('.key-change__pass-repeat'));
+            this.passwordRepeatInput.setElement(
+                this.$el.find('.key-change__pass-repeat')
+            );
         }
+        return this;
     }
 
-    inputKeydown(e) {
-        if (e.which === Keys.DOM_VK_RETURN) {
+    inputKeydown(e: KeyboardEvent): void {
+        if ((e as unknown as { which: number }).which === Keys.DOM_VK_RETURN) {
             this.accept();
         }
     }
 
-    keyFileClicked() {
+    keyFileClicked(): void {
         if (this.keyFileName) {
             this.keyFileName = null;
             this.keyFile = null;
@@ -73,17 +88,21 @@ class KeyChangeView extends View {
         this.inputEl.focus();
     }
 
-    keyFileSelected(e) {
-        const file = e.target.files[0];
+    keyFileSelected(e: Event): void {
+        const input = e.target as HTMLInputElement;
+        const file = input.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = (ev) => {
                 this.keyFileName = file.name;
-                this.keyFileData = e.target.result;
-                this.$el.find('.key-change__keyfile-name').text(': ' + this.keyFileName);
+                this.keyFileData = ev.target?.result as ArrayBuffer;
+                this.$el
+                    .find('.key-change__keyfile-name')
+                    .text(': ' + this.keyFileName);
             };
             reader.onerror = () => {
-                Alerts.error({ header: Locale.openFailedRead });
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (Alerts as any).error({ header: loc.openFailedRead });
             };
             reader.readAsArrayBuffer(file);
         } else {
@@ -92,10 +111,10 @@ class KeyChangeView extends View {
         this.inputEl.focus();
     }
 
-    accept() {
+    accept(): void {
         if (!this.passwordInput.value.byteLength) {
             this.passwordInput.el.focus();
-            this.passwordRepeatInput.el.addClass('input--error');
+            this.passwordRepeatInput?.el.addClass('input--error');
             InputFx.shake(this.passwordInput.el);
             return;
         } else {
@@ -118,7 +137,7 @@ class KeyChangeView extends View {
         });
     }
 
-    cancel() {
+    cancel(): void {
         this.emit('cancel');
     }
 }

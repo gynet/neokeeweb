@@ -23,6 +23,9 @@
     "app/scripts/views/titlebar-view.ts",
     "app/scripts/views/storage-file-list-view.ts",
     "app/scripts/views/open-config-view.ts",
-    "app/scripts/views/modal-view.ts"
+    "app/scripts/views/modal-view.ts",
+    "app/scripts/views/grp-view.ts",
+    "app/scripts/views/icon-select-view.ts",
+    "app/scripts/views/key-change-view.ts"
   ]
 }

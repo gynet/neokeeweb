@@ -1,16 +1,20 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { Scrollable } from 'framework/views/scrollable';
 import { IconSelectView } from 'views/icon-select-view';
 import template from 'templates/grp.hbs';
 
+interface IconSelection {
+    id: string;
+    custom?: boolean;
+}
+
 class GrpView extends View {
     parent = '.app__panel';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .grp__icon': 'showIconsSelect',
         'click .grp__buttons-trash': 'moveToTrash',
         'click .back-button': 'returnToApp',
@@ -21,7 +25,11 @@ class GrpView extends View {
         'change #grp__check-auto-type': 'setEnableAutoType'
     };
 
-    render() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createScroll!: (config: any) => void;
+    pageResized!: () => void;
+
+    render(): this | undefined {
         this.removeSubView();
         super.render({
             title: this.model.title,
@@ -43,17 +51,18 @@ class GrpView extends View {
             bar: this.$el.find('.scroller__bar')[0]
         });
         this.pageResized();
+        return this;
     }
 
-    removeSubView() {
+    removeSubView(): void {
         if (this.views.sub) {
-            this.views.sub.remove();
+            (this.views.sub as View).remove();
             delete this.views.sub;
         }
     }
 
-    changeTitle(e) {
-        const title = $.trim(e.target.value);
+    changeTitle(e: Event): void {
+        const title = $.trim((e.target as HTMLInputElement).value);
         if (title) {
             if (!this.model.top && title !== this.model.title) {
                 this.model.setName(title);
@@ -66,12 +75,12 @@ class GrpView extends View {
         }
     }
 
-    changeAutoTypeSeq(e) {
-        const seq = $.trim(e.target.value);
+    changeAutoTypeSeq(e: Event): void {
+        const seq = $.trim((e.target as HTMLInputElement).value);
         this.model.setAutoTypeSeq(seq);
     }
 
-    showIconsSelect() {
+    showIconsSelect(): void {
         if (this.views.sub) {
             this.removeSubView();
         } else {
@@ -86,12 +95,12 @@ class GrpView extends View {
             );
             this.listenTo(subView, 'select', this.iconSelected);
             subView.render();
-            this.views.sub = subView;
+            this.views.sub = subView as unknown as View;
         }
         this.pageResized();
     }
 
-    iconSelected(sel) {
+    iconSelected(sel: IconSelection): void {
         if (sel.custom) {
             if (sel.id !== this.model.customIconId) {
                 this.model.setCustomIcon(sel.id);
@@ -102,22 +111,22 @@ class GrpView extends View {
         this.render();
     }
 
-    moveToTrash() {
+    moveToTrash(): void {
         this.model.moveToTrash();
         Events.emit('select-all');
     }
 
-    setEnableSearching(e) {
-        const enabled = e.target.checked;
+    setEnableSearching(e: Event): void {
+        const enabled = (e.target as HTMLInputElement).checked;
         this.model.setEnableSearching(enabled);
     }
 
-    setEnableAutoType(e) {
-        const enabled = e.target.checked;
+    setEnableAutoType(e: Event): void {
+        const enabled = (e.target as HTMLInputElement).checked;
         this.model.setEnableAutoType(enabled);
     }
 
-    returnToApp() {
+    returnToApp(): void {
         Events.emit('edit-group');
     }
 }
