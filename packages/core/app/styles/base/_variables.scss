@@ -72,6 +72,8 @@ $slow-transition-in: $base-duration * 2 ease-in;
 $slow-transition-out: $base-duration ease-out;
 $fast-transition-in: $fast-duration ease-in;
 $fast-transition-out: $fast-duration ease-out;
+// Cubic-bezier copied from bourbon's _timing-functions.scss ($ease-in-expo)
+$ease-in-expo: cubic-bezier(0.95, 0.05, 0.795, 0.035);
 $tip-transition-in: 500ms $ease-in-expo;
 $tip-transition-out: $slow-transition-out;
 
