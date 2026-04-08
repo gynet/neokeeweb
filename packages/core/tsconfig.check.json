@@ -18,6 +18,11 @@
     "app/scripts/views/tag-view.ts",
     "app/scripts/views/drag-view.ts",
     "app/scripts/views/dropdown-view.ts",
-    "app/scripts/views/footer-view.ts"
+    "app/scripts/views/footer-view.ts",
+    "app/scripts/views/list-wrap-view.ts",
+    "app/scripts/views/titlebar-view.ts",
+    "app/scripts/views/storage-file-list-view.ts",
+    "app/scripts/views/open-config-view.ts",
+    "app/scripts/views/modal-view.ts"
   ]
 }

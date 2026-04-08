@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { KeeWebLogo } from 'const/inline-images';
@@ -9,9 +8,11 @@ class TitlebarView extends View {
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .titlebar__close': 'clickClose'
     };
+
+    maximized = false;
 
     constructor() {
         super();
@@ -22,23 +23,24 @@ class TitlebarView extends View {
         this.listenTo(Events, 'app-unmaximized', this.appUnmaximized);
     }
 
-    render() {
+    render(): this | undefined {
         super.render({
             maximized: this.maximized,
             iconSrc: KeeWebLogo
         });
+        return this;
     }
 
-    clickClose() {
+    clickClose(): void {
         window.close();
     }
 
-    appMaximized() {
+    appMaximized(): void {
         this.maximized = true;
         this.render();
     }
 
-    appUnmaximized() {
+    appUnmaximized(): void {
         this.maximized = false;
         this.render();
     }

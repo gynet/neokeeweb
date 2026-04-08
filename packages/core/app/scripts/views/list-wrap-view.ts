@@ -1,24 +1,25 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 
 class ListWrapView extends View {
     parent = '.app__list-wrap';
 
-    template = () => '';
+    template = (): string => '';
 
-    events = {};
+    events: Record<string, string> = {};
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options?: Record<string, unknown>) {
         super(model, options);
         this.listenTo(this.model.settings, 'change:tableView', this.setListLayout);
     }
 
-    render() {
+    render(): this | undefined {
         super.render();
         this.setListLayout();
+        return this;
     }
 
-    setListLayout() {
+    setListLayout(): void {
         const tableView = !!this.model.settings.tableView;
         this.el.classList.toggle('app__list-wrap--table', tableView);
     }
