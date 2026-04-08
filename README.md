@@ -136,10 +136,10 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [x] Bun + Webpack (strip Grunt/Babel)
 - [x] WebDAV + IndexedDB only (strip OAuth providers)
 - [x] CI/CD (GitHub Actions + Pages demo)
-- [x] 100% TypeScript (163 .ts files, 60 need @ts-nocheck cleanup)
+- [x] 100% TypeScript (163 .ts files, 58 need @ts-nocheck cleanup)
 - [x] 860 tests (509 db + 223 core + 128 extension)
 - [x] 21 Playwright E2E tests (smoke, database open/create, search, details, generator, edit, delete, keyboard)
-- [ ] Remove @ts-nocheck from comp/ (5 files, #23) and views/ (55 files, #24)
+- [ ] Remove @ts-nocheck from comp/ (2 files, #23) and views/ (55 files, #24)
 - [ ] Remove legacy deps: jquery, lodash, baron (#6)
 - [ ] Core feature E2E: OTP, autofill (#4)
 
