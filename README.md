@@ -144,7 +144,7 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [ ] Core feature E2E: OTP, autofill (#4)
 
 ### Phase 2: Quick Unlock + Passkey
-**Goal**: Convenience. Catch up with 1Password/Bitwarden.
+**Goal**: Modern authentication UX.
 - Quick unlock: tap YubiKey / Face ID / fingerprint instead of typing password (#9)
 - How it works: passkey encrypts master password via PRF, retrieves it on tap
 - Store website passkeys in KDBX entries (act as passkey authenticator)
@@ -153,7 +153,7 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 **Storage**: file-based. Use your existing sync (iCloud Drive, Syncthing, WebDAV, etc.) — KDBX is already encrypted, safe to store anywhere. NeoKeeWeb opens the file, edits, saves. Sync is not our job.
 
 ### Phase 3: Per-Entry Hardware Encryption
-**Goal**: True hardware-backed per-entry crypto. No competitor has this.
+**Goal**: True hardware-backed per-entry crypto.
 - Mark sensitive entries for YubiKey-required decryption (#25)
 - Entry key derived directly from YubiKey PRF — no master password involved
 - Even master password compromise can't read hardware-encrypted entries
