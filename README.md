@@ -137,10 +137,10 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 - [x] WebDAV + IndexedDB only (strip OAuth providers)
 - [x] CI/CD (GitHub Actions + Pages demo)
 - [x] 100% TypeScript migration complete (0 @ts-nocheck files remaining)
-- [x] 860 tests (509 db + 223 core + 128 extension)
-- [x] 21 Playwright E2E tests (smoke, database open/create, search, details, generator, edit, delete, keyboard)
-- [ ] Remove legacy deps: jquery, lodash, baron (#6)
-- [ ] Core feature E2E: OTP, autofill (#4)
+- [x] 899 tests (509 db + 262 core + 128 extension)
+- [x] 23 Playwright E2E tests (smoke, database open/create, search, details, generator, edit, delete, keyboard, **OTP/TOTP**)
+- [ ] Remove legacy deps: lodash, baron, pikaday, bourbon (#6) — jquery stays, still used by view layer
+- [ ] Core feature E2E: database round-trip, autofill protocol (#4)
 
 ### Phase 2: Quick Unlock + Passkey
 **Goal**: Modern authentication UX.
