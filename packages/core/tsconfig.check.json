@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "app/scripts/types.d.ts",
+    "app/scripts/const/**/*.ts",
+    "app/scripts/util/**/*.ts",
+    "app/scripts/models/**/*.ts",
+    "app/scripts/framework/**/*.ts",
+    "app/scripts/collections/**/*.ts",
+    "app/scripts/storage/**/*.ts",
+    "app/scripts/hbs-helpers/**/*.ts",
+    "app/scripts/presenters/**/*.ts",
+    "app/scripts/comp/format/kdbx-to-html.ts",
+    "app/scripts/comp/format/otp-qr-reader.ts",
+    "app/scripts/comp/app/shortcuts.ts",
+    "app/scripts/comp/extension/protocol-impl.ts",
+    "app/scripts/comp/extension/browser-extension-connector.ts",
+    "app/scripts/views/tag-view.ts",
+    "app/scripts/views/drag-view.ts",
+    "app/scripts/views/dropdown-view.ts",
+    "app/scripts/views/footer-view.ts"
+  ]
+}

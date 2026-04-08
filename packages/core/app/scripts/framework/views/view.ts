@@ -239,7 +239,8 @@ class View extends EventEmitter {
         }
     }
 
-    listenTo(model: any, event: string, callback: (...args: unknown[]) => void): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    listenTo(model: any, event: string, callback: (...args: any[]) => any): void {
         const boundCallback = callback.bind(this);
         model.on(event, boundCallback);
         this.once('remove', () => model.off(event, boundCallback));
@@ -294,14 +295,15 @@ class View extends EventEmitter {
     }
 
     onKey(
-        key: string,
-        handler: (...args: unknown[]) => void,
-        shortcut?: string,
+        key: number,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: (...args: any[]) => any,
+        shortcut?: number,
         modal?: string,
         noPrevent?: boolean
     ): void {
-        KeyHandler.onKey(key, handler, this, shortcut, modal, noPrevent);
-        this.once('remove', () => KeyHandler.offKey(key, handler, this));
+        (KeyHandler as any).onKey(key, handler, this, shortcut, modal, noPrevent);
+        this.once('remove', () => (KeyHandler as any).offKey(key, handler, this));
     }
 
     off(event: string, listener?: (...args: unknown[]) => void): this {

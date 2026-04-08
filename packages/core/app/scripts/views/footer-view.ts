@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { KeyHandler } from 'comp/browser/key-handler';
@@ -12,7 +11,7 @@ class FooterView extends View {
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .footer__db-item': 'showFile',
         'click .footer__db-open': 'openFile',
         'click .footer__btn-help': 'toggleHelp',
@@ -21,10 +20,11 @@ class FooterView extends View {
         'click .footer__btn-lock': 'lockWorkspace'
     };
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options?: Record<string, unknown>) {
         super(model, options);
 
-        this.onKey(Keys.DOM_VK_L, this.lockWorkspace, KeyHandler.SHORTCUT_ACTION, false, true);
+        this.onKey(Keys.DOM_VK_L, this.lockWorkspace, KeyHandler.SHORTCUT_ACTION, undefined, true);
         this.onKey(Keys.DOM_VK_G, this.genPass, KeyHandler.SHORTCUT_ACTION);
         this.onKey(Keys.DOM_VK_O, this.openFile, KeyHandler.SHORTCUT_ACTION);
         this.onKey(Keys.DOM_VK_S, this.saveAll, KeyHandler.SHORTCUT_ACTION);
@@ -37,31 +37,34 @@ class FooterView extends View {
         this.listenTo(UpdateModel, 'change:updateStatus', this.render);
     }
 
-    render() {
+    render(): this | undefined {
         super.render({
             files: this.model.files,
-            updateAvailable: ['ready', 'found'].indexOf(UpdateModel.updateStatus) >= 0
+            updateAvailable:
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ['ready', 'found'].indexOf((UpdateModel as any).updateStatus) >= 0
         });
+        return this;
     }
 
-    viewHidden() {
+    viewHidden(): void {
         if (this.views.gen) {
-            this.views.gen.remove();
+            (this.views.gen as View).remove();
             delete this.views.gen;
         }
     }
 
-    lockWorkspace(e) {
+    lockWorkspace(e: Event): void {
         if (this.model.files.hasOpenFiles()) {
             e.preventDefault();
             Events.emit('lock-workspace');
         }
     }
 
-    genPass(e) {
+    genPass(e: Event): void {
         e.stopPropagation();
         if (this.views.gen) {
-            this.views.gen.remove();
+            (this.views.gen as View).remove();
             return;
         }
         const el = this.$el.find('.footer__btn-generate');
@@ -74,29 +77,29 @@ class FooterView extends View {
         generator.once('remove', () => {
             delete this.views.gen;
         });
-        this.views.gen = generator;
+        this.views.gen = generator as unknown as View;
     }
 
-    showFile(e) {
-        const fileId = $(e.target).closest('.footer__db-item').data('file-id');
+    showFile(e: Event): void {
+        const fileId = $(e.target as Element).closest('.footer__db-item').data('file-id');
         if (fileId) {
             Events.emit('show-file', { fileId });
         }
     }
 
-    openFile() {
+    openFile(): void {
         Events.emit('open-file');
     }
 
-    saveAll() {
+    saveAll(): void {
         Events.emit('save-all');
     }
 
-    toggleHelp() {
+    toggleHelp(): void {
         Events.emit('toggle-settings', 'help');
     }
 
-    toggleSettings() {
+    toggleSettings(): void {
         Events.emit('toggle-settings', 'general');
     }
 }

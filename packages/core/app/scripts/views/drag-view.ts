@@ -1,31 +1,41 @@
-// @ts-nocheck
 import { View } from 'framework/views/view';
 import template from 'templates/drag.hbs';
+
+type DragCoord = 'x' | 'y';
 
 class DragView extends View {
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'mousedown': 'mousedown'
     };
 
-    constructor(coord, options) {
+    coord!: DragCoord;
+    offsetProp!: 'pageX' | 'pageY';
+    mouseDownTime = -1;
+    mouseDownCount = 0;
+    initialOffset = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dragMask: any;
+
+    constructor(coord: DragCoord, options?: Record<string, unknown>) {
         super(coord, options);
         this.setCoord(coord);
         this.mouseDownTime = -1;
         this.mouseDownCount = 0;
     }
 
-    render() {
+    render(): this | undefined {
         super.render({ coord: this.model });
+        return this;
     }
 
-    setCoord(coord) {
+    setCoord(coord: DragCoord): void {
         this.coord = coord;
-        this.offsetProp = 'page' + coord.toUpperCase();
+        this.offsetProp = ('page' + coord.toUpperCase()) as 'pageX' | 'pageY';
     }
 
-    mousedown(e) {
+    mousedown(e: MouseEvent): void {
         if (e.which === 1) {
             const now = Date.now();
             if (now - this.mouseDownTime < 500) {
@@ -51,7 +61,7 @@ class DragView extends View {
         }
     }
 
-    mousemove(e) {
+    mousemove(e: MouseEvent): void {
         if (e.which === 0) {
             this.mouseup();
         } else {
@@ -59,7 +69,7 @@ class DragView extends View {
         }
     }
 
-    mouseup() {
+    mouseup(): void {
         this.dragMask.remove();
         this.$el.removeClass('dragging');
     }

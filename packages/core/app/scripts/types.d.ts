@@ -55,20 +55,37 @@ declare module 'jsqrcode' {
     export default QrCode;
 }
 
+// Handlebars templates loaded via webpack handlebars-loader.
+// Each `import tpl from 'templates/...hbs'` yields a compiled
+// template function that accepts template data + options and
+// returns the rendered HTML string.
+declare module '*.hbs' {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const template: (data?: any, options?: any) => string;
+    export default template;
+}
+
 // util/ui/tip — now a real TS module (migrated from JS)
 
-// comp/browser/key-handler — JS module not yet migrated
+// comp/browser/key-handler — TS module; keep ambient broader so views
+// that still rely on number|string key codes type-check without fuss.
 declare module 'comp/browser/key-handler' {
     const KeyHandler: {
+        SHORTCUT_ACTION: number;
+        SHORTCUT_OPT: number;
+        SHORTCUT_SHIFT: number;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onKey(
-            key: string,
-            handler: (...args: unknown[]) => void,
+            key: number,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: (...args: any[]) => void,
             view: unknown,
-            shortcut?: string,
-            modal?: string,
+            shortcut?: number,
+            modal?: unknown,
             noPrevent?: boolean
         ): void;
-        offKey(key: string, handler: (...args: unknown[]) => void, view: unknown): void;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        offKey(key: number, handler: (...args: any[]) => void, view: unknown): void;
     };
     export { KeyHandler };
 }
@@ -112,9 +129,14 @@ declare module 'hbs' {
     export default Handlebars;
 }
 
-// jQuery global
+// jQuery global — intentionally loose (legacy code uses many shapes)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const $: (selector: string | Element, context?: Element | null) => any;
+declare const $: ((...args: any[]) => any) & {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    trim(str: any): string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+};
 
 // localStorage extended
 interface Storage {
