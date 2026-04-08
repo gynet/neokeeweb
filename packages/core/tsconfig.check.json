@@ -26,6 +26,9 @@
     "app/scripts/views/modal-view.ts",
     "app/scripts/views/grp-view.ts",
     "app/scripts/views/icon-select-view.ts",
-    "app/scripts/views/key-change-view.ts"
+    "app/scripts/views/key-change-view.ts",
+    "app/scripts/views/generator-presets-view.ts",
+    "app/scripts/views/generator-view.ts",
+    "app/scripts/views/import-csv-view.ts"
   ]
 }

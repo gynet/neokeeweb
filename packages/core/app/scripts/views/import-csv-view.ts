@@ -1,16 +1,33 @@
-// @ts-nocheck
 import * as kdbxweb from 'kdbxweb';
 import { View } from 'framework/views/view';
 import { Scrollable } from 'framework/views/scrollable';
 import template from 'templates/import-csv.hbs';
 import { EntryModel } from 'models/entry-model';
 
+interface KnownField {
+    field: string;
+    re: RegExp;
+}
+
+interface FieldMapping {
+    type?: 'ignore' | 'builtin' | 'custom';
+    mapping?: string;
+    field?: string;
+}
+
+interface GroupEntry {
+    id: string;
+    fileId: string;
+    spaces: string[];
+    title: string;
+}
+
 class ImportCsvView extends View {
     parent = '.app__body';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .back-button': 'returnToApp',
         'click .import-csv__button-cancel': 'returnToApp',
         'click .import-csv__button-run': 'runImport',
@@ -18,7 +35,7 @@ class ImportCsvView extends View {
         'change .import-csv__target-select': 'changeGroup'
     };
 
-    knownFields = [
+    knownFields: KnownField[] = [
         { field: 'Title', re: /title|\bname|account/i },
         { field: 'UserName', re: /user|login/i },
         { field: 'Password', re: /pass/i },
@@ -26,19 +43,34 @@ class ImportCsvView extends View {
         { field: 'Notes', re: /notes|comment|extra/i }
     ];
 
-    fieldMapping = [];
-    targetGroup = undefined;
+    fieldMapping: FieldMapping[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    targetGroup: any = undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    appModel: any;
+    fileName = '';
+    groups: GroupEntry[] = [];
 
-    constructor(model, options) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createScroll!: (config: any) => void;
+    pageResized!: () => void;
+    initScroll!: () => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    scroll!: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    scroller!: any;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(model: any, options: Record<string, any>) {
         super(model, options);
         this.appModel = options.appModel;
-        this.fileName = options.fileName;
+        this.fileName = options.fileName as string;
         this.guessFieldMapping();
         this.fillGroups();
         this.initScroll();
     }
 
-    render() {
+    render(): this | undefined {
         super.render({
             headers: this.model.headers,
             rows: this.model.rows,
@@ -48,27 +80,31 @@ class ImportCsvView extends View {
         this.createScroll({
             root: this.$el.find('.import-csv__body')[0],
             scroller: this.$el.find('.import-csv__body > .scroller')[0],
-            bar: this.$el.find('.import-csv__body > .scroller__bar-wrapper > .scroller__bar')[0]
+            bar: this.$el.find(
+                '.import-csv__body > .scroller__bar-wrapper > .scroller__bar'
+            )[0]
         });
         this.pageResized();
         if (!this.scroll._update) {
             this.scroll._update = this.scroll.update;
             this.scroll.update = this.scrollUpdate.bind(this);
         }
+        return this;
     }
 
-    scrollUpdate() {
+    scrollUpdate(): void {
         this.scroller.css({ width: 'auto', minWidth: 'auto', maxWidth: 'auto' });
         this.scroll._update();
     }
 
-    returnToApp() {
+    returnToApp(): void {
         this.emit('cancel');
     }
 
-    changeMapping(e) {
-        const col = +e.target.dataset.col;
-        const field = e.target.value;
+    changeMapping(e: Event): void {
+        const target = e.target as HTMLSelectElement;
+        const col = +(target.dataset.col ?? '0');
+        const field = target.value;
 
         const isBuiltIn = this.knownFields.some((f) => f.field === field);
         const mapping = field ? (isBuiltIn ? 'builtin' : 'custom') : 'ignore';
@@ -80,24 +116,26 @@ class ImportCsvView extends View {
 
         if (field) {
             let ix = 0;
-            for (const mapping of this.fieldMapping) {
-                if (mapping.field === field && col !== ix) {
-                    mapping.type = 'ignore';
-                    mapping.field = '';
+            for (const m of this.fieldMapping) {
+                if (m.field === field && col !== ix) {
+                    m.type = 'ignore';
+                    m.field = '';
                     const select = this.el.querySelector(
                         `.import-csv__field-select[data-col="${ix}"]`
-                    );
-                    select.value = '';
+                    ) as HTMLSelectElement | null;
+                    if (select) {
+                        select.value = '';
+                    }
                 }
                 ix++;
             }
         }
     }
 
-    guessFieldMapping() {
-        const usedFields = {};
+    guessFieldMapping(): void {
+        const usedFields: Record<string, boolean> = {};
 
-        for (const fieldName of this.model.headers.map((f) => f.trim())) {
+        for (const fieldName of this.model.headers.map((f: string) => f.trim())) {
             if (!fieldName || /^(group|grouping)$/i.test(fieldName)) {
                 this.fieldMapping.push({ type: 'ignore' });
                 continue;
@@ -119,12 +157,13 @@ class ImportCsvView extends View {
         }
     }
 
-    fillGroups() {
+    fillGroups(): void {
         this.groups = [];
         for (const file of this.appModel.files) {
-            file.forEachGroup((group) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            file.forEachGroup((group: any) => {
                 const title = group.title;
-                const spaces = [];
+                const spaces: string[] = [];
                 for (let parent = group; parent.parentGroup; parent = parent.parentGroup) {
                     spaces.push(' ', ' ');
                 }
@@ -133,37 +172,48 @@ class ImportCsvView extends View {
         }
     }
 
-    changeGroup(e) {
-        const groupId = e.target.value;
+    changeGroup(e: Event): void {
+        const target = e.target as HTMLSelectElement;
+        const groupId = target.value;
         if (!groupId) {
             this.targetGroup = undefined;
             return;
         }
-        const fileId = e.target.querySelector(`option[value="${groupId}"]`).dataset.file;
+        const option = target.querySelector(
+            `option[value="${groupId}"]`
+        ) as HTMLOptionElement | null;
+        const fileId = option?.dataset.file;
         const file = this.appModel.files.get(fileId);
         this.targetGroup = file.getGroup(groupId);
     }
 
-    runImport() {
-        let group = this.targetGroup;
+    runImport(): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let group: any = this.targetGroup;
 
-        let filePromise;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let filePromise: Promise<any>;
         if (group) {
             filePromise = Promise.resolve(group.file);
         } else {
             const fileName = this.fileName.replace(/\.csv$/i, '');
-            filePromise = new Promise((resolve) => this.appModel.createNewFile(fileName, resolve));
+            filePromise = new Promise((resolve) =>
+                this.appModel.createNewFile(fileName, resolve)
+            );
         }
 
-        filePromise.then((file) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        filePromise.then((file: any) => {
             if (!group) {
                 group = file.groups[0];
             }
 
-            for (const row of this.model.rows) {
-                const newEntry = EntryModel.newEntry(group, file);
+            for (const row of this.model.rows as string[][]) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const newEntry = (EntryModel as any).newEntry(group, file);
                 for (let ix = 0; ix < row.length; ix++) {
-                    let value = row[ix];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    let value: any = row[ix];
                     if (!value) {
                         continue;
                     }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Events } from 'framework/events';
 import { View } from 'framework/views/view';
 import { GeneratorPresets } from 'comp/app/generator-presets';
@@ -7,12 +6,36 @@ import { Locale } from 'util/locale';
 import { Scrollable } from 'framework/views/scrollable';
 import template from 'templates/generator-presets.hbs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loc = Locale as unknown as Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const genPresets = GeneratorPresets as unknown as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const charRanges = CharRanges as unknown as Record<string, string>;
+
+interface GeneratorPreset {
+    name: string;
+    title: string;
+    length?: number;
+    upper?: boolean;
+    lower?: boolean;
+    digits?: boolean;
+    special?: boolean;
+    brackets?: boolean;
+    ambiguous?: boolean;
+    high?: boolean;
+    include?: string;
+    pattern?: string;
+    default?: boolean;
+    [key: string]: unknown;
+}
+
 class GeneratorPresetsView extends View {
     parent = '.app__panel';
 
     template = template;
 
-    events = {
+    events: Record<string, string> = {
         'click .back-button': 'returnToApp',
         'change .gen-ps__list': 'changePreset',
         'click .gen-ps__btn-create': 'createPreset',
@@ -27,14 +50,22 @@ class GeneratorPresetsView extends View {
         'input #gen-ps__field-pattern': 'changePattern'
     };
 
-    selected = null;
+    selected: string | null = null;
 
-    reservedTitles = [Locale.genPresetDerived];
+    presets: GeneratorPreset[] = [];
 
-    render() {
-        this.presets = GeneratorPresets.all;
+    reservedTitles: string[] = [loc.genPresetDerived as string];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createScroll!: (config: any) => void;
+    pageResized!: () => void;
+
+    render(): this | undefined {
+        this.presets = genPresets.all as GeneratorPreset[];
         if (!this.selected || !this.presets.some((p) => p.name === this.selected)) {
-            this.selected = (this.presets.filter((p) => p.default)[0] || this.presets[0]).name;
+            this.selected = (
+                this.presets.filter((p) => p.default)[0] || this.presets[0]
+            ).name;
         }
         super.render({
             presets: this.presets,
@@ -47,60 +78,70 @@ class GeneratorPresetsView extends View {
             bar: this.$el.find('.scroller__bar')[0]
         });
         this.renderExample();
+        return this;
     }
 
-    renderExample() {
+    renderExample(): void {
         const selectedPreset = this.getPreset(this.selected);
-        const example = PasswordGenerator.generate(selectedPreset);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const example = (PasswordGenerator as any).generate(selectedPreset);
         this.$el.find('.gen-ps__example').text(example);
         this.pageResized();
     }
 
-    getSelectedRanges() {
+    getSelectedRanges(): Array<{
+        name: string;
+        title: string;
+        enabled: unknown;
+        sample: string;
+    }> {
         const sel = this.getPreset(this.selected);
-        const rangeOverride = {
-            high: '¡¢£¤¥¦§©ª«¬®¯°±¹²´µ¶»¼÷¿ÀÖîü...'
+        const rangeOverride: Record<string, string> = {
+            high: '\u00a1\u00a2\u00a3\u00a4\u00a5\u00a6\u00a7\u00a9\u00aa\u00ab\u00ac\u00ae\u00af\u00b0\u00b1\u00b9\u00b2\u00b4\u00b5\u00b6\u00bb\u00bc\u00f7\u00bf\u00c0\u00d6\u00ee\u00fc...'
         };
         return ['Upper', 'Lower', 'Digits', 'Special', 'Brackets', 'High', 'Ambiguous'].map(
             (name) => {
                 const nameLower = name.toLowerCase();
                 return {
                     name: nameLower,
-                    title: Locale['genPs' + name],
-                    enabled: sel[nameLower],
-                    sample: rangeOverride[nameLower] || CharRanges[nameLower]
+                    title: loc['genPs' + name] as string,
+                    enabled: sel?.[nameLower],
+                    sample: rangeOverride[nameLower] || charRanges[nameLower]
                 };
             }
         );
     }
 
-    getPreset(name) {
+    getPreset(name: string | null): GeneratorPreset | undefined {
         return this.presets.filter((p) => p.name === name)[0];
     }
 
-    returnToApp() {
+    returnToApp(): void {
         Events.emit('edit-generator-presets');
     }
 
-    changePreset(e) {
-        this.selected = e.target.value;
+    changePreset(e: Event): void {
+        this.selected = (e.target as HTMLSelectElement).value;
         this.render();
     }
 
-    createPreset() {
-        let name;
-        let title;
+    createPreset(): void {
+        let name = '';
+        let title = '';
         for (let i = 1; ; i++) {
             const newName = 'Custom' + i;
-            const newTitle = Locale.genPsNew + ' ' + i;
-            if (!this.presets.filter((p) => p.name === newName || p.title === newTitle).length) {
+            const newTitle = (loc.genPsNew as string) + ' ' + i;
+            if (
+                !this.presets.filter((p) => p.name === newName || p.title === newTitle).length
+            ) {
                 name = newName;
                 title = newTitle;
                 break;
             }
         }
         const selected = this.getPreset(this.selected);
-        const preset = {
+        if (!selected) return;
+        const preset: GeneratorPreset = {
             name,
             title,
             length: selected.length,
@@ -112,85 +153,95 @@ class GeneratorPresetsView extends View {
             ambiguous: selected.ambiguous,
             include: selected.include
         };
-        GeneratorPresets.add(preset);
+        genPresets.add(preset);
         this.selected = name;
         this.render();
     }
 
-    deletePreset() {
-        GeneratorPresets.remove(this.selected);
+    deletePreset(): void {
+        genPresets.remove(this.selected);
         this.render();
     }
 
-    togglePatternHelp() {
+    togglePatternHelp(): void {
         this.$el.find('.gen-ps__pattern-help').toggleClass('hide');
     }
 
-    changeTitle(e) {
-        const title = $.trim(e.target.value);
-        if (title && title !== this.getPreset(this.selected).title) {
-            let duplicate = this.presets.some((p) => p.title.toLowerCase() === title.toLowerCase());
+    changeTitle(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        const title = $.trim(target.value);
+        const currentPreset = this.getPreset(this.selected);
+        if (title && currentPreset && title !== currentPreset.title) {
+            let duplicate = this.presets.some(
+                (p) => p.title.toLowerCase() === title.toLowerCase()
+            );
             if (!duplicate) {
                 duplicate = this.reservedTitles.some(
                     (p) => p.toLowerCase() === title.toLowerCase()
                 );
             }
             if (duplicate) {
-                $(e.target).addClass('input--error');
+                $(target).addClass('input--error');
                 return;
             } else {
-                $(e.target).removeClass('input--error');
+                $(target).removeClass('input--error');
             }
-            GeneratorPresets.setPreset(this.selected, { title });
+            genPresets.setPreset(this.selected, { title });
             this.$el.find('.gen-ps__list option[selected]').text(title);
         }
     }
 
-    changeEnabled(e) {
-        const enabled = e.target.checked;
-        GeneratorPresets.setDisabled(this.selected, !enabled);
+    changeEnabled(e: Event): void {
+        const enabled = (e.target as HTMLInputElement).checked;
+        genPresets.setDisabled(this.selected, !enabled);
     }
 
-    changeDefault(e) {
-        const isDefault = e.target.checked;
-        GeneratorPresets.setDefault(isDefault ? this.selected : null);
+    changeDefault(e: Event): void {
+        const isDefault = (e.target as HTMLInputElement).checked;
+        genPresets.setDefault(isDefault ? this.selected : null);
     }
 
-    changeLength(e) {
-        const length = +e.target.value;
+    changeLength(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        const length = +target.value;
         if (length > 0) {
-            GeneratorPresets.setPreset(this.selected, { length });
-            $(e.target).removeClass('input--error');
+            genPresets.setPreset(this.selected, { length });
+            $(target).removeClass('input--error');
         } else {
-            $(e.target).addClass('input--error');
+            $(target).addClass('input--error');
         }
-        this.presets = GeneratorPresets.all;
+        this.presets = genPresets.all as GeneratorPreset[];
         this.renderExample();
     }
 
-    changeRange(e) {
-        const enabled = e.target.checked;
-        const range = e.target.dataset.range;
-        GeneratorPresets.setPreset(this.selected, { [range]: enabled });
-        this.presets = GeneratorPresets.all;
+    changeRange(e: Event): void {
+        const target = e.target as HTMLInputElement;
+        const enabled = target.checked;
+        const range = target.dataset.range;
+        if (range) {
+            genPresets.setPreset(this.selected, { [range]: enabled });
+        }
+        this.presets = genPresets.all as GeneratorPreset[];
         this.renderExample();
     }
 
-    changeInclude(e) {
-        const include = e.target.value;
-        if (include !== this.getPreset(this.selected).include) {
-            GeneratorPresets.setPreset(this.selected, { include });
+    changeInclude(e: Event): void {
+        const include = (e.target as HTMLInputElement).value;
+        const currentPreset = this.getPreset(this.selected);
+        if (currentPreset && include !== currentPreset.include) {
+            genPresets.setPreset(this.selected, { include });
         }
-        this.presets = GeneratorPresets.all;
+        this.presets = genPresets.all as GeneratorPreset[];
         this.renderExample();
     }
 
-    changePattern(e) {
-        const pattern = e.target.value;
-        if (pattern !== this.getPreset(this.selected).pattern) {
-            GeneratorPresets.setPreset(this.selected, { pattern });
+    changePattern(e: Event): void {
+        const pattern = (e.target as HTMLInputElement).value;
+        const currentPreset = this.getPreset(this.selected);
+        if (currentPreset && pattern !== currentPreset.pattern) {
+            genPresets.setPreset(this.selected, { pattern });
         }
-        this.presets = GeneratorPresets.all;
+        this.presets = genPresets.all as GeneratorPreset[];
         this.renderExample();
     }
 }
