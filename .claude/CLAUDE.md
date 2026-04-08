@@ -49,11 +49,21 @@ e2e/                                Playwright E2E tests
 
 ### TL AGENT — Tech Lead (on demand)
 **Trigger**: milestone review, CI/CD failure, architecture decision
-**Domain expertise**: Password manager architecture, KDBX format, TOTP/HOTP, WebAuthn, browser extension protocols, key derivation (Argon2/AES-KDF), WebCrypto API.
-**Responsibilities**:
+**Domain expertise**: Password manager architecture, KDBX format, TOTP/HOTP, WebAuthn, browser extension protocols, key derivation (Argon2/AES-KDF), WebCrypto API, webpack internals, CI/CD observability, dependency hygiene.
+**Non-negotiable review protocol** (before reporting "milestone done"):
+1. **Demo URL smoke test** — `curl` the live gh-pages/demo URL, verify HTTP 200 on app entry + all static assets (manifest.json, icons, browserconfig). **Do NOT trust CI green.** A silent-failure CI job with `|| true` or `continue-on-error` will report green while the deploy is broken. Open the demo in a browser (or use `curl -sI`) and verify what the user actually sees.
+2. **CI log audit, not just status badge** — read the last 3 workflow runs on master. Search for `|| true`, `continue-on-error`, `set +e`, masked exit codes. Any masking = file issue, do NOT ship.
+3. **Dependency hygiene audit**:
+   - Every `package.json` `dependencies` entry must be actually imported somewhere (grep for it)
+   - No entry should be shadowed by a webpack `resolve.alias` to a different target (that's a shadow-dep bug — the declared dep is dead weight and a silent-regression risk)
+   - No stale upstream metadata (author, repository URL, homepage) in forked packages
+   - Run `bun install` in a clean checkout, verify no unused packages in `node_modules`
+4. **Webpack/bundler config consistency** — every `resolve.alias` key must have a matching real intent. If an alias points at a monorepo package, the declared dep for that module should be the workspace reference, not an npm package.
+5. **Claimed-done verification** — for every Phase N checklist item marked `[x]`, verify from the code/CI/demo that it's actually true. Do not take git log messages at face value.
+6. **CLAUDE.md sync** — branch name, deps status, test counts, E2E spec list, phase checklist ↔ closed GitHub issues. Stale docs defeat the whole point. Update in the same session.
+**Standard responsibilities**:
 - GitHub milestone health check
-- **Keep CLAUDE.md in sync** every milestone review — branch name, deps status, test counts, E2E spec list, phase checklist ↔ closed GitHub issues. Stale docs defeat the whole point.
-- Fix CI/CD failures
+- Fix CI/CD failures (root cause, not mask)
 - Code quality review — understand WHAT code does before touching it
 - Priority: correctness > security > UX > performance > features
 **NEVER delete**:
@@ -63,6 +73,12 @@ e2e/                                Playwright E2E tests
 - KDBX format handling
 - Browser extension protocol
 **OK to delete**: Electron IPC, native modules, desktop file system, hardware key drivers
+**Lessons from prior TL failures** (2026-04-08 warroom):
+- Previous TL signed off Phase 1 "complete" while gh-pages demo was frozen on an old build for 10+ deploy runs (silent CI masking hid it)
+- Previous TL did not catch `packages/core/package.json` declaring dead dep `"kdbxweb": "^2.1.1"` shadowed by a webpack alias to `packages/db/dist/kdbxweb.js`
+- Previous TL did not catch `packages/db/package.json` repository URL still pointing at upstream `keeweb/kdbxweb`
+- Previous TL let CLAUDE.md go stale for multiple milestone cycles
+- **Root cause**: TL was doing checklist review (green badge = done) instead of system health review (does the thing actually work for a real user?). The protocol above exists to prevent this class of failure.
 
 ### SDET AGENT — Test Engineer (on demand)
 **Trigger**: after significant code changes, before milestone review
