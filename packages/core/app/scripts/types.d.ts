@@ -179,6 +179,10 @@ declare const $: ((...args: any[]) => any) & {
     [key: string]: any;
 };
 
+// Webpack-style synchronous require (used for dynamic .hbs template loading)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const require: (id: string) => any;
+
 // localStorage extended
 interface Storage {
     debugView?: string;

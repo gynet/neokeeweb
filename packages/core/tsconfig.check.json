@@ -55,6 +55,7 @@
     "app/scripts/views/select/select-entry-field-view.ts",
     "app/scripts/views/select/select-entry-view.ts",
     "app/scripts/views/details/details-fields.ts",
-    "app/scripts/views/details/details-history-view.ts"
+    "app/scripts/views/details/details-history-view.ts",
+    "app/scripts/views/list-view.ts"
   ]
 }

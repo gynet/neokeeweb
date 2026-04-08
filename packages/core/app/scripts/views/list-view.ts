@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { View, DefaultTemplateOptions } from 'framework/views/view';
 import { Events } from 'framework/events';
 import { SearchResultCollection } from 'collections/search-result-collection';
@@ -16,6 +16,24 @@ import throttle from 'lodash/throttle';
 import template from 'templates/list.hbs';
 import emptyTemplate from 'templates/list-empty.hbs';
 
+const loc = Locale as unknown as Record<string, any>;
+const settings = AppSettingsModel as unknown as {
+    colorfulIcons: boolean;
+    listViewWidth: number;
+    tableViewColumns?: string[];
+};
+const alerts = Alerts as unknown as {
+    yesno(opts: any): void;
+    buttons: { ok: any; cancel: any };
+};
+const dragDropInfo = DragDropInfo as unknown as { dragObject: any };
+
+interface TableColumn {
+    val: string;
+    name: string;
+    enabled: boolean;
+}
+
 class ListView extends View {
     parent = '.app__list';
 
@@ -23,7 +41,7 @@ class ListView extends View {
 
     emptyTemplate = emptyTemplate;
 
-    events = {
+    events: Record<string, string> = {
         'click': 'click',
         'click .list__table-options': 'tableOptionsClick',
         'dragstart .list__item': 'itemDragStart'
@@ -34,9 +52,21 @@ class ListView extends View {
     maxWidth = 500;
     maxHeight = 500;
 
-    itemsEl = null;
+    itemsEl: any = null;
+    items: any;
+    renderedItems: Map<number, any>;
+    pendingRender = false;
+    presenter: any;
+    itemHeight = 0;
+    itemsContainerEl: any;
+    dragView: any;
 
-    tableColumns = [
+    initScroll!: () => void;
+    createScroll!: (config: any) => void;
+    pageResized!: () => void;
+    setSize!: (size: any) => void;
+
+    tableColumns: TableColumn[] = [
         { val: 'title', name: 'title', enabled: true },
         { val: 'user', name: 'user', enabled: true },
         { val: 'url', name: 'website', enabled: true },
@@ -46,11 +76,11 @@ class ListView extends View {
         { val: 'fileName', name: 'file', enabled: false }
     ];
 
-    constructor(model, options) {
+    constructor(model: any, options?: any) {
         super(model, options);
 
         this.initScroll();
-        this.views.search = new ListSearchView(this.model);
+        this.views.search = new (ListSearchView as any)(this.model);
 
         this.listenTo(this.views.search, 'select-prev', this.selectPrev);
         this.listenTo(this.views.search, 'select-next', this.selectNext);
@@ -72,7 +102,7 @@ class ListView extends View {
         this.renderedItems = new Map();
     }
 
-    render() {
+    render(): this | undefined {
         if (!this.isVisible()) {
             this.pendingRender = true;
             return;
@@ -83,7 +113,7 @@ class ListView extends View {
             super.render();
             this.itemsEl = this.$el.find('.list__items>.scroller');
             this.itemsEl.on('scroll', () => this.renderVisibleItems());
-            this.views.search.render();
+            (this.views.search as any).render();
             this.setTableView();
 
             this.createScroll({
@@ -94,14 +124,14 @@ class ListView extends View {
         }
         if (this.items.length) {
             const itemsTemplate = this.getItemsTemplate();
-            const noColor = AppSettingsModel.colorfulIcons ? '' : 'grayscale';
+            const noColor = settings.colorfulIcons ? '' : 'grayscale';
 
-            const presenter = new EntryPresenter(
+            const presenter = new (EntryPresenter as any)(
                 this.getDescField(),
                 noColor,
                 this.model.activeEntryId
             );
-            const columns = {};
+            const columns: Record<string, boolean> = {};
             this.tableColumns.forEach((col) => {
                 if (col.enabled) {
                     columns[col.val] = true;
@@ -135,25 +165,30 @@ class ListView extends View {
             this.itemsEl.html(this.emptyTemplate({}, DefaultTemplateOptions));
         }
         this.pageResized();
+        return this;
     }
 
-    getItemsTemplate() {
+    getItemsTemplate(): any {
         if (this.model.settings.tableView) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             return require('templates/list-mode-table.hbs');
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             return require('templates/list-mode-list.hbs');
         }
     }
 
-    getItemTemplate() {
+    getItemTemplate(): any {
         if (this.model.settings.tableView) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             return require('templates/list-item-table.hbs');
         } else {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             return require('templates/list-item-short.hbs');
         }
     }
 
-    renderVisibleItems() {
+    renderVisibleItems(): void {
         if (!this.isVisible()) {
             return;
         }
@@ -177,7 +212,7 @@ class ListView extends View {
         const presenter = this.presenter;
 
         let itemsHtml = '';
-        const renderedIndices = [];
+        const renderedIndices: number[] = [];
 
         for (let ix = firstIx; ix <= lastIx; ix++) {
             const item = this.items[ix];
@@ -195,7 +230,7 @@ class ListView extends View {
         const renderedElements = [...tempEl.children];
 
         for (let i = 0; i < renderedElements.length; i++) {
-            const el = renderedElements[i];
+            const el = renderedElements[i] as HTMLElement;
             const ix = renderedIndices[i];
             this.itemsContainerEl.append(el);
             el.style.top = ix * itemHeight + 'px';
@@ -214,7 +249,7 @@ class ListView extends View {
         }
     }
 
-    ensureItemRendered(ix) {
+    ensureItemRendered(ix: number): void {
         if (this.renderedItems.has(ix)) {
             return;
         }
@@ -232,17 +267,17 @@ class ListView extends View {
         const [el] = tempEl.children;
 
         this.itemsContainerEl.append(el);
-        el.style.top = ix * this.itemHeight + 'px';
+        (el as HTMLElement).style.top = ix * this.itemHeight + 'px';
 
         this.renderedItems.set(ix, el);
     }
 
-    getDescField() {
+    getDescField(): string {
         return this.model.sort.replace('-', '');
     }
 
-    click(e) {
-        const listItemEl = e.target.closest('.list__item');
+    click(e: Event): void {
+        const listItemEl = (e.target as HTMLElement).closest('.list__item') as HTMLElement | null;
         if (!listItemEl) {
             return;
         }
@@ -254,21 +289,21 @@ class ListView extends View {
         Events.emit('toggle-details', true);
     }
 
-    selectPrev() {
+    selectPrev(): void {
         const ix = this.items.indexOf(this.items.get(this.model.activeEntryId));
         if (ix > 0) {
             this.selectItem(this.items[ix - 1]);
         }
     }
 
-    selectNext() {
+    selectNext(): void {
         const ix = this.items.indexOf(this.items.get(this.model.activeEntryId));
         if (ix < this.items.length - 1) {
             this.selectItem(this.items[ix + 1]);
         }
     }
 
-    createEntry(arg) {
+    createEntry(arg?: any): void {
         const newEntry = this.model.createNewEntry(arg);
         this.items.unshift(newEntry);
         this.render();
@@ -276,21 +311,21 @@ class ListView extends View {
         Events.emit('toggle-details', true);
     }
 
-    createGroup() {
+    createGroup(): void {
         const newGroup = this.model.createNewGroup();
         Events.emit('edit-group', newGroup);
     }
 
-    createTemplate() {
+    createTemplate(): void {
         if (!this.model.settings.templateHelpShown) {
-            Alerts.yesno({
+            alerts.yesno({
                 icon: 'sticky-note-o',
-                header: Locale.listAddTemplateHeader,
+                header: loc.listAddTemplateHeader as string,
                 body:
-                    Locale.listAddTemplateBody1.replace('{}', '"+"') +
+                    (loc.listAddTemplateBody1 as string).replace('{}', '"+"') +
                     '\n' +
-                    Locale.listAddTemplateBody2.replace('{}', 'Templates'),
-                buttons: [Alerts.buttons.ok, Alerts.buttons.cancel],
+                    (loc.listAddTemplateBody2 as string).replace('{}', 'Templates'),
+                buttons: [alerts.buttons.ok, alerts.buttons.cancel],
                 success: () => {
                     this.model.settings.templateHelpShown = true;
                     this.createTemplate();
@@ -304,7 +339,7 @@ class ListView extends View {
         this.selectItem(templateEntry);
     }
 
-    selectItem(item) {
+    selectItem(item: any): void {
         this.presenter.activeEntryId = item.id;
         this.model.activeEntryId = item.id;
 
@@ -314,6 +349,7 @@ class ListView extends View {
         Events.emit('entry-selected', item);
         this.itemsEl.find('.list__item--active').removeClass('list__item--active');
         const itemEl = document.getElementById(item.id);
+        if (!itemEl) return;
         itemEl.classList.add('list__item--active');
         const listEl = this.itemsEl[0];
         const itemRect = itemEl.getBoundingClientRect();
@@ -325,68 +361,61 @@ class ListView extends View {
         }
     }
 
-    viewShown() {
-        this.views.search.show();
+    viewShown(): void {
+        (this.views.search as any).show();
         if (this.pendingRender) {
             this.render();
         }
     }
 
-    viewHidden() {
-        this.views.search.hide();
+    viewHidden(): void {
+        (this.views.search as any).hide();
     }
 
-    setTableView() {
+    setTableView(): void {
         const isTable = this.model.settings.tableView;
         this.dragView.setCoord(isTable ? 'y' : 'x');
         this.setDefaultSize();
     }
 
-    setDefaultSize() {
+    setDefaultSize(): void {
         this.setSize(this.model.settings.listViewWidth);
     }
 
-    setSize(size) {
-        this.$el.css({ width: 'auto', height: 'auto' });
-        if (size) {
-            this.$el.css('flex', '0 0 ' + size + 'px');
-        } else {
-            this.$el.css('flex', '');
-        }
-    }
-
-    viewResized(size) {
+    viewResized(size: any): void {
         this.setSize(size);
         this.throttleSetViewSizeSetting(size);
         this.renderVisibleItems();
     }
 
-    throttleSetViewSizeSetting = throttle((size) => {
-        AppSettingsModel.listViewWidth = size;
+    throttleSetViewSizeSetting = throttle((size: any) => {
+        settings.listViewWidth = size;
     }, 1000);
 
-    filterChanged(filter) {
+    filterChanged(filter: any): void {
         this.items = filter.entries;
         this.renderedItems = new Map();
         this.render();
     }
 
-    entryUpdated() {
+    entryUpdated(): void {
         const scrollTop = this.itemsEl[0].scrollTop;
         this.render();
         this.itemsEl[0].scrollTop = scrollTop;
         this.renderVisibleItems();
     }
 
-    itemDragStart(e) {
+    itemDragStart(e: DragEvent): void {
         e.stopPropagation();
         const id = $(e.target).closest('.list__item').attr('id');
-        e.dataTransfer.setData('text/entry', id);
-        e.dataTransfer.effectAllowed = 'move';
-        DragDropInfo.dragObject = this.items.get(id);
+        e.dataTransfer?.setData('text/entry', id);
+        if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        dragDropInfo.dragObject = this.items.get(id);
     }
 
-    tableOptionsClick(e) {
+    tableOptionsClick(e: Event): void {
         e.stopImmediatePropagation();
         if (this.views.optionsDropdown) {
             this.hideOptionsDropdown();
@@ -399,7 +428,7 @@ class ListView extends View {
         const options = this.tableColumns.map((col) => ({
             value: col.val,
             icon: col.enabled ? 'check-square-o' : 'square-o',
-            text: StringFormat.capFirst(Locale[col.name])
+            text: StringFormat.capFirst(loc[col.name] as string)
         }));
         view.render({
             position: {
@@ -408,26 +437,27 @@ class ListView extends View {
             },
             options
         });
-        this.views.optionsDropdown = view;
+        this.views.optionsDropdown = view as unknown as View;
     }
 
-    hideOptionsDropdown() {
+    hideOptionsDropdown(): void {
         if (this.views.optionsDropdown) {
-            this.views.optionsDropdown.remove();
+            (this.views.optionsDropdown as View).remove();
             delete this.views.optionsDropdown;
         }
     }
 
-    optionsDropdownSelect(e) {
+    optionsDropdownSelect(e: any): void {
         const col = this.tableColumns.find((c) => c.val === e.item);
+        if (!col) return;
         col.enabled = !col.enabled;
         e.el.find('i:first').toggleClass('fa-check-square-o fa-square-o');
         this.render();
         this.saveTableColumnsEnabled();
     }
 
-    readTableColumnsEnabled() {
-        const tableViewColumns = AppSettingsModel.tableViewColumns;
+    readTableColumnsEnabled(): void {
+        const tableViewColumns = settings.tableViewColumns;
         if (tableViewColumns && tableViewColumns.length) {
             this.tableColumns.forEach((col) => {
                 col.enabled = tableViewColumns.indexOf(col.name) >= 0;
@@ -435,11 +465,11 @@ class ListView extends View {
         }
     }
 
-    saveTableColumnsEnabled() {
+    saveTableColumnsEnabled(): void {
         const tableViewColumns = this.tableColumns
             .filter((column) => column.enabled)
             .map((column) => column.name);
-        AppSettingsModel.tableViewColumns = tableViewColumns;
+        settings.tableViewColumns = tableViewColumns;
     }
 }
 
