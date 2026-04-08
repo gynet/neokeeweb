@@ -64,7 +64,6 @@ class ListView extends View {
     initScroll!: () => void;
     createScroll!: (config: any) => void;
     pageResized!: () => void;
-    setSize!: (size: any) => void;
 
     tableColumns: TableColumn[] = [
         { val: 'title', name: 'title', enabled: true },
@@ -380,6 +379,15 @@ class ListView extends View {
 
     setDefaultSize(): void {
         this.setSize(this.model.settings.listViewWidth);
+    }
+
+    setSize(size: number | null | undefined): void {
+        this.$el.css({ width: 'auto', height: 'auto' });
+        if (size) {
+            this.$el.css('flex', '0 0 ' + size + 'px');
+        } else {
+            this.$el.css('flex', '');
+        }
     }
 
     viewResized(size: any): void {
