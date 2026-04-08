@@ -105,8 +105,16 @@ function createOtp(url: string, params: OtpParams): ParsedOtp {
     if (params.digits && ['6', '7', '8'].indexOf(String(params.digits)) < 0) {
         throw 'Bad digits: ' + params.digits;
     }
-    if (params.type === 'hotp' && !params.counter) {
-        throw 'Bad counter: ' + params.counter;
+    if (params.type === 'hotp') {
+        // RFC 4226: counter is a non-negative integer. Counter=0 is valid (#28).
+        if (params.counter === undefined || params.counter === null || (params.counter as unknown) === '') {
+            throw 'Bad counter: ' + params.counter;
+        }
+        const counterNum = Number(params.counter);
+        if (!Number.isFinite(counterNum) || counterNum < 0 || Math.floor(counterNum) !== counterNum) {
+            throw 'Bad counter: ' + params.counter;
+        }
+        params.counter = counterNum;
     }
     const periodNum = params.period !== undefined ? Number(params.period) : undefined;
     if (periodNum !== undefined && (isNaN(periodNum) || periodNum < 1)) {
@@ -473,11 +481,10 @@ describe('HOTP code generation — RFC 4226 test vectors', () => {
     //   9        | 520489
 
     const secretB32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
-    // NOTE: counter=0 is intentionally omitted — the current createOtp
-    // implementation rejects counter=0 via `!params.counter` (see Issue #28).
-    // Valid HOTP counter=0 produces "755224" per RFC 4226 Appendix D.
-    // Counters 1..9 still verify the HMAC-SHA1 + truncation logic end-to-end.
+    // Issue #28: counter=0 is a valid HOTP counter and must produce "755224".
+    // Previously the validator used `!params.counter`, which rejected counter=0 as falsy.
     const vectors: Array<{ counter: number; expected: string }> = [
+        { counter: 0, expected: '755224' },
         { counter: 1, expected: '287082' },
         { counter: 2, expected: '359152' },
         { counter: 3, expected: '969429' },
@@ -499,4 +506,65 @@ describe('HOTP code generation — RFC 4226 test vectors', () => {
             expect(pass).toBe(expected);
         });
     }
+
+    test('counter=0 (Issue #28 regression) is accepted programmatically', () => {
+        expect(() =>
+            createOtp('otpauth://hotp/test?secret=' + secretB32 + '&counter=0', {
+                type: 'hotp',
+                secret: secretB32,
+                counter: 0
+            })
+        ).not.toThrow();
+    });
+
+    test('counter="0" string from URL is accepted and coerced to 0', async () => {
+        const otp = createOtp('otpauth://hotp/test?secret=' + secretB32 + '&counter=0', {
+            type: 'hotp',
+            secret: secretB32,
+            // simulate parseUrl, which stores params from the query string as strings
+            counter: '0' as unknown as number
+        });
+        expect(otp.counter).toBe(0);
+        const { pass } = await computeOtpCode(otp, 0);
+        expect(pass).toBe('755224');
+    });
+
+    test('rejects negative counter', () => {
+        expect(() =>
+            createOtp('otpauth://hotp/test?secret=' + secretB32 + '&counter=-1', {
+                type: 'hotp',
+                secret: secretB32,
+                counter: -1
+            })
+        ).toThrow(/Bad counter/);
+    });
+
+    test('rejects non-numeric counter', () => {
+        expect(() =>
+            createOtp('otpauth://hotp/test?secret=' + secretB32 + '&counter=abc', {
+                type: 'hotp',
+                secret: secretB32,
+                counter: 'abc' as unknown as number
+            })
+        ).toThrow(/Bad counter/);
+    });
+
+    test('rejects missing counter on hotp', () => {
+        expect(() =>
+            createOtp('otpauth://hotp/test?secret=' + secretB32, {
+                type: 'hotp',
+                secret: secretB32
+            })
+        ).toThrow(/Bad counter/);
+    });
+
+    test('rejects fractional counter', () => {
+        expect(() =>
+            createOtp('otpauth://hotp/test?secret=' + secretB32 + '&counter=1.5', {
+                type: 'hotp',
+                secret: secretB32,
+                counter: 1.5
+            })
+        ).toThrow(/Bad counter/);
+    });
 });

@@ -15,8 +15,18 @@ const Otp = function (url, params) {
     if (params.digits && ['6', '7', '8'].indexOf(params.digits) < 0) {
         throw 'Bad digits: ' + params.digits;
     }
-    if (params.type === 'hotp' && !params.counter) {
-        throw 'Bad counter: ' + params.counter;
+    if (params.type === 'hotp') {
+        // RFC 4226: counter is a non-negative integer. Counter=0 is valid (#28).
+        // params.counter may arrive as a number (programmatic) or string (parsed from URL),
+        // so coerce + validate explicitly instead of using a falsy check.
+        if (params.counter === undefined || params.counter === null || params.counter === '') {
+            throw 'Bad counter: ' + params.counter;
+        }
+        const counterNum = Number(params.counter);
+        if (!Number.isFinite(counterNum) || counterNum < 0 || Math.floor(counterNum) !== counterNum) {
+            throw 'Bad counter: ' + params.counter;
+        }
+        params.counter = counterNum;
     }
     if ((params.period && isNaN(params.period)) || params.period < 1) {
         throw 'Bad period: ' + params.period;
