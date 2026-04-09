@@ -64,7 +64,12 @@ module.exports = (env, argv) => {
                 // Library aliases
                 jquery: `jquery/dist/jquery${devMode ? '' : '.min'}.js`,
                 morphdom: `morphdom/dist/morphdom-umd${devMode ? '' : '.min'}.js`,
-                kdbxweb: path.resolve(rootDir, '../../packages/db/dist/kdbxweb.js'),
+                // `kdbxweb` is a workspace alias to @neokeeweb/db (see
+                // packages/core/package.json). No webpack alias needed —
+                // bun install materialises the workspace package at
+                // packages/core/node_modules/kdbxweb pointing at
+                // packages/db, and webpack resolves the bare specifier
+                // via the `main` field (packages/db/dist/kdbxweb.js).
                 baron: `baron/baron${devMode ? '' : '.min'}.js`,
                 qrcode: `jsqrcode/dist/qrcode${devMode ? '' : '.min'}.js`,
                 argon2: 'argon2-browser/dist/argon2.js',

@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "bun run --filter @neokeeweb/core dev",
-    "build": "bun run --filter '*' build",
+    "build": "bun run --filter @neokeeweb/db build && bun run --filter @neokeeweb/core build",
     "test": "bun run --filter '*' test",
     "lint": "bun run --filter '*' lint",
     "test:db": "bun run --filter @neokeeweb/db test",
