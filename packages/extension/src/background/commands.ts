@@ -17,13 +17,38 @@ interface Frame {
 
 function startCommandListener(): void {
     chrome.commands.onCommand.addListener(async (command, tab) => {
-        if (!tab) {
-            [tab] = await new Promise<chrome.tabs.Tab[]>((resolve) =>
-                chrome.tabs.query({ active: true }, resolve)
-            );
+        // eslint-disable-next-line no-console
+        console.info('[NKW-Connect/bg] chrome.commands.onCommand fired', {
+            command,
+            tabId: tab?.id,
+            tabUrl: tab?.url
+        });
+        try {
+            if (!tab) {
+                [tab] = await new Promise<chrome.tabs.Tab[]>((resolve) =>
+                    chrome.tabs.query({ active: true }, resolve)
+                );
+            }
+            const frameId = await getActiveFrame(tab);
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect/bg] runCommand entering', {
+                command,
+                tabId: tab.id,
+                url: tab.url,
+                frameId
+            });
+            await runCommand({ command, tab, frameId, url: tab.url });
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect/bg] runCommand exited cleanly', command);
+        } catch (e) {
+            // Previously this was swallowed silently because
+            // chrome.commands.onCommand's listener is async and
+            // rejections never surface. Log and re-throw so it
+            // shows up in the extension background console for
+            // diagnosis instead of the user seeing nothing.
+            // eslint-disable-next-line no-console
+            console.error('[NKW-Connect/bg] runCommand FAILED', command, e);
         }
-        const frameId = await getActiveFrame(tab);
-        await runCommand({ command, tab, frameId, url: tab.url });
     });
 }
 

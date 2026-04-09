@@ -77,21 +77,68 @@ class TransportBrowserTab extends TransportBase {
     }
 
     private findOrCreateTab(): Promise<chrome.tabs.Tab> {
+        // Historical bug: the original code used
+        //   chrome.tabs.query({ url: this._keeWebUrl })
+        // which treats `url` as a Chrome match pattern, NOT a literal
+        // URL. A literal URL without trailing `*` only matches the
+        // EXACT string. As soon as NeoKeeWeb's hash-routed SPA added
+        // any fragment (#app/open, #list/entry/xyz, #settings/general)
+        // the pattern stopped matching, the extension assumed no
+        // NeoKeeWeb tab existed, created a new one with a fresh
+        // locked database, get-logins threw `noOpenFiles`, and
+        // runCommand silently threw — the user saw "nothing happens"
+        // on autofill. 2026-04-09 warroom.
+        //
+        // Fix: query ALL tabs and filter by URL prefix ourselves.
+        // Strip hash + query string from the tab URL before comparing
+        // against `this._keeWebUrl`. This matches whether the user
+        // is at `/neokeeweb/`, `/neokeeweb/index.html`,
+        // `/neokeeweb/#whatever`, or `/neokeeweb/?foo=bar`.
         return new Promise((resolve, reject) => {
-            chrome.tabs.query({ url: this._keeWebUrl }, ([tab]) => {
+            chrome.tabs.query({}, (allTabs) => {
+                // eslint-disable-next-line no-console
+                console.info(
+                    '[NKW-Connect/bg] findOrCreateTab: scanning',
+                    allTabs.length,
+                    'tabs for',
+                    this._keeWebUrl
+                );
+                const targetNoSlash = this._keeWebUrl.replace(/\/$/, '');
+                const tab = allTabs.find((t) => {
+                    if (!t.url) return false;
+                    const withoutFragment = t.url.split('#')[0].split('?')[0];
+                    return (
+                        withoutFragment === this._keeWebUrl ||
+                        withoutFragment === targetNoSlash ||
+                        withoutFragment.startsWith(this._keeWebUrl) ||
+                        withoutFragment.startsWith(targetNoSlash + '/')
+                    );
+                });
                 if (tab) {
-                    resolve(tab);
-                } else {
-                    chrome.tabs.create({ url: this._keeWebUrl, active: true }, (tab) => {
-                        if (tab) {
-                            resolve(tab);
-                        } else {
-                            reject(
-                                new Error(chrome.i18n.getMessage('errorBrowserCannotCreateTab'))
-                            );
-                        }
-                    });
+                    // eslint-disable-next-line no-console
+                    console.info(
+                        '[NKW-Connect/bg] findOrCreateTab: found existing tab',
+                        { id: tab.id, url: tab.url }
+                    );
+                    return resolve(tab);
                 }
+                // eslint-disable-next-line no-console
+                console.warn(
+                    '[NKW-Connect/bg] findOrCreateTab: no existing tab, creating new',
+                    this._keeWebUrl,
+                    '(candidates:',
+                    allTabs.map((t) => t.url).slice(0, 5),
+                    ')'
+                );
+                chrome.tabs.create({ url: this._keeWebUrl, active: true }, (tab) => {
+                    if (tab) {
+                        resolve(tab);
+                    } else {
+                        reject(
+                            new Error(chrome.i18n.getMessage('errorBrowserCannotCreateTab'))
+                        );
+                    }
+                });
             });
         });
     }
