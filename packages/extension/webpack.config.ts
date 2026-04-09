@@ -74,6 +74,22 @@ export default {
                             );
                             merge.recursive(manifest, patchData);
                         }
+                        // Firefox MV3 does not accept background.service_worker
+                        // (that's a Chrome-specific key). It uses background
+                        // .scripts. Deep-merge alone can't drop the Chrome key,
+                        // so we post-process the background section here for
+                        // firefox. Symptom when this is missing: Firefox refuses
+                        // the xpi with a "corrupted" error on install.
+                        if (browser === 'firefox') {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const bg = (manifest as any).background;
+                            if (bg?.service_worker) {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (manifest as any).background = {
+                                    scripts: [bg.service_worker]
+                                };
+                            }
+                        }
                         const str = JSON.stringify(manifest, null, 2);
                         content = Buffer.from(str, 'utf8');
                         return content;
