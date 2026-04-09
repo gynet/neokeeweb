@@ -4,11 +4,26 @@ import {
     restoreAllMockedModules,
 } from '../helpers/mock-isolation';
 
-// Path-based mocks (relative specs) — these only affect the immediate
-// import graph of this test file, so they cannot pollute other test
-// files in the same Bun run. We keep them on the synchronous
-// mock.module API for clarity.
-mock.module('../../app/scripts/models/app-settings-model', () => ({
+// IMPORTANT: Bun's `mock.module(name, factory)` is a process-wide
+// override regardless of whether `name` is a relative path or a bare
+// specifier. Both forms normalise to the same absolute module record,
+// so a mock installed here persists for every subsequent test file in
+// the same `bun test` run. A previous version of this file assumed
+// relative-path mocks were file-scoped and used raw `mock.module` for
+// them — that was wrong. When `storage-webdav.test.ts` happens to run
+// before `tests/models/app-settings-model.test.ts` (which is what
+// Linux CI does even though macOS does not), the latter's
+// `await import('.../app-settings-model')` saw this file's stub and
+// `AppSettingsModel.upgrade` / `.set` were undefined, failing 9 tests.
+//
+// Fix: route all mocks that have a real-module consumer elsewhere in
+// the test suite through `installMockedModule`, and restore them in
+// `afterAll`. The one exception is `runtime-data-model`, which has a
+// top-level `window` access that blows up during snapshot capture in
+// Bun's non-DOM test env — and which no other test file uses the real
+// version of — so we keep it on raw `mock.module` (the leak is inert).
+
+await installMockedModule('../../app/scripts/models/app-settings-model', () => ({
     AppSettingsModel: {
         webdav: true,
         webdavSaveMethod: 'default',
@@ -16,11 +31,14 @@ mock.module('../../app/scripts/models/app-settings-model', () => ({
     }
 }));
 
+// runtime-data-model's module body touches `window` — cannot snapshot
+// safely. No other test file imports the real module, so a leak here
+// is inert.
 mock.module('../../app/scripts/models/runtime-data-model', () => ({
     RuntimeDataModel: {}
 }));
 
-mock.module('../../app/scripts/util/logger', () => ({
+await installMockedModule('../../app/scripts/util/logger', () => ({
     Logger: class {
         debug(..._args: unknown[]) {}
         info(..._args: unknown[]) {}
@@ -29,6 +47,10 @@ mock.module('../../app/scripts/util/logger', () => ({
     }
 }));
 
+// locale.ts imports `locales/base.json` via a webpack alias that Bun
+// cannot resolve in-test, so snapshot capture would fail. Use raw
+// mock.module; no other test imports the real Locale, so the leak is
+// inert — but if that ever changes, revisit this.
 mock.module('../../app/scripts/util/locale', () => ({
     Locale: {
         webdavNoLastModified: 'No Last-Modified header'
@@ -36,12 +58,7 @@ mock.module('../../app/scripts/util/locale', () => ({
 }));
 
 // `kdbxweb` is a published bare-specifier shared across multiple test
-// files (notably `tests/comp/extension/protocol-impl.test.ts`). A raw
-// `mock.module('kdbxweb', ...)` here leaks into every later file in
-// the same run. We use `installMockedModule` so the helper captures a
-// real-module snapshot first; the `afterAll(restoreAllMockedModules)`
-// hook below puts the real exports back when this file finishes. See
-// `tests/helpers/mock-isolation.ts` for the full rationale.
+// files (notably `tests/comp/extension/protocol-impl.test.ts`).
 await installMockedModule('kdbxweb', () => ({
     CryptoEngine: {
         sha256: (_data: ArrayBuffer) => Promise.resolve(new ArrayBuffer(32))
