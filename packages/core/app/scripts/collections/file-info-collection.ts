@@ -3,7 +3,7 @@ import { Collection } from 'framework/collection';
 import { SettingsStore } from 'comp/settings/settings-store';
 import { FileInfoModel } from 'models/file-info-model';
 
-class FileInfoCollection extends Collection {
+class FileInfoCollection extends Collection<FileInfoModel> {
     static override model = FileInfoModel;
 
     load(): Promise<void> {

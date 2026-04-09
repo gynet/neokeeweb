@@ -122,10 +122,12 @@ test.describe('Extension full-chain autofill (chromium)', () => {
 
             // 1. Open NeoKeeWeb dev server, click Demo, wait for unlock
             const neowebPage = await context.newPage();
-            await neowebPage.goto(NEOWEB_URL, { waitUntil: 'networkidle', timeout: 30_000 });
-            await neowebPage.waitForSelector('#open__icon-demo', { timeout: 20_000 });
+            await neowebPage.goto(NEOWEB_URL, { waitUntil: 'networkidle', timeout: 60_000 });
+            // CI runner is slow on cold webpack dev server — give
+            // generous timeouts (Chromium flakiness under xvfb).
+            await neowebPage.waitForSelector('#open__icon-demo', { timeout: 60_000 });
             await neowebPage.click('#open__icon-demo');
-            await neowebPage.waitForSelector('.list__item', { timeout: 20_000 });
+            await neowebPage.waitForSelector('.list__item', { timeout: 60_000 });
 
             // 2. Open github.com/login + focus username input
             const githubPage = await context.newPage();

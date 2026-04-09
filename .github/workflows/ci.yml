@@ -32,6 +32,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      - name: Build packages/db (for kdbxweb type resolution)
+        # packages/core imports 'kdbxweb' (symlinked to packages/db).
+        # Without dist/types/, tsc can't find the module. Locally the
+        # types are present from prior builds but CI starts clean.
+        run: cd packages/db && bun run build
       - name: Run tsc --noEmit on packages/core
         id: tsc
         continue-on-error: true

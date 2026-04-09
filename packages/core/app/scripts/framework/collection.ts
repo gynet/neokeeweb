@@ -13,7 +13,7 @@ interface CollectionEmitter extends EventEmitter {
 const SymbolEvents: unique symbol = Symbol('events');
 const SymbolArray: unique symbol = Symbol('array');
 
-function emitSet(target: Collection, value: unknown, prevValue: unknown): void {
+function emitSet(target: Collection<any>, value: unknown, prevValue: unknown): void {
     const emitter = (target as any)[SymbolEvents] as CollectionEmitter;
     if (!emitter.paused) {
         const updates: CollectionChangeEvent<unknown> = { added: [], removed: [] };
@@ -29,7 +29,7 @@ function emitSet(target: Collection, value: unknown, prevValue: unknown): void {
     }
 }
 
-function emitRemoved(target: Collection, removed: unknown[]): void {
+function emitRemoved(target: Collection<any>, removed: unknown[]): void {
     const emitter = (target as any)[SymbolEvents] as CollectionEmitter;
     if (!emitter.paused) {
         for (const item of removed) {
@@ -39,7 +39,7 @@ function emitRemoved(target: Collection, removed: unknown[]): void {
     }
 }
 
-function checkType(target: Collection, value: unknown): void {
+function checkType(target: Collection<any>, value: unknown): void {
     const modelClass = (target.constructor as typeof Collection).model;
     if (!modelClass) {
         throw new Error(`Model type not defined for ${target.constructor.name}`);
@@ -51,8 +51,8 @@ function checkType(target: Collection, value: unknown): void {
     }
 }
 
-const ProxyDef: ProxyHandler<Collection> = {
-    set(target: Collection, property: string | symbol, value: unknown): boolean {
+const ProxyDef: ProxyHandler<Collection<any>> = {
+    set(target: Collection<any>, property: string | symbol, value: unknown): boolean {
         const numProp = parseInt(property as string);
         if (isNaN(numProp)) {
             (target as any)[property] = value;
@@ -68,7 +68,7 @@ const ProxyDef: ProxyHandler<Collection> = {
         return true;
     },
 
-    get(target: Collection, property: string | symbol): unknown {
+    get(target: Collection<any>, property: string | symbol): unknown {
         if (typeof property !== 'string') {
             return (target as any)[property];
         }
@@ -80,21 +80,24 @@ const ProxyDef: ProxyHandler<Collection> = {
     }
 };
 
-class Collection {
+class Collection<T = unknown> {
     static model: unknown;
 
     declare [SymbolEvents]: CollectionEmitter;
-    declare [SymbolArray]: unknown[];
+    declare [SymbolArray]: T[];
 
-    comparator?: ((a: any, b: any) => number) | null;
+    // Numeric index access via Proxy returns T
+    [index: number]: T;
 
-    constructor(items?: unknown[]) {
+    comparator?: ((a: T, b: T) => number) | null;
+
+    constructor(items?: T[]) {
         const emitter: CollectionEmitter = new EventEmitter();
         emitter.setMaxListeners(100);
 
         const properties: PropertyDescriptorMap = {
             [SymbolEvents]: { value: emitter },
-            [SymbolArray]: { value: [] as unknown[] }
+            [SymbolArray]: { value: [] as T[] }
         };
 
         Object.defineProperties(this, properties);
@@ -103,7 +106,7 @@ class Collection {
             this.push(...items);
         }
 
-        return new Proxy(this, ProxyDef);
+        return new Proxy(this, ProxyDef) as this;
     }
 
     get length(): number {
@@ -112,7 +115,7 @@ class Collection {
 
     set length(value: number) {
         const array = this[SymbolArray];
-        let removed: unknown[] | undefined;
+        let removed: T[] | undefined;
         if (value < array.length) {
             removed = array.slice(value);
         }
@@ -122,7 +125,7 @@ class Collection {
         }
     }
 
-    push(...items: unknown[]): void {
+    push(...items: T[]): void {
         if (items.length) {
             for (const item of items) {
                 checkType(this, item);
@@ -137,7 +140,7 @@ class Collection {
         }
     }
 
-    pop(): unknown | undefined {
+    pop(): T | undefined {
         this[SymbolEvents].paused = true;
         const item = this[SymbolArray].pop();
         this[SymbolEvents].paused = false;
@@ -148,7 +151,7 @@ class Collection {
         return item;
     }
 
-    shift(): unknown | undefined {
+    shift(): T | undefined {
         this[SymbolEvents].paused = true;
         const item = this[SymbolArray].shift();
         this[SymbolEvents].paused = false;
@@ -159,7 +162,7 @@ class Collection {
         return item;
     }
 
-    unshift(...items: unknown[]): void {
+    unshift(...items: T[]): void {
         if (items.length) {
             for (const item of items) {
                 checkType(this, item);
@@ -174,7 +177,7 @@ class Collection {
         }
     }
 
-    splice(start: number, deleteCount?: number, ...items: unknown[]): unknown[] {
+    splice(start: number, deleteCount?: number, ...items: T[]): T[] {
         for (const item of items) {
             checkType(this, item);
         }
@@ -208,11 +211,11 @@ class Collection {
         this[SymbolEvents].off(eventName, listener);
     }
 
-    get(id: string): unknown | undefined {
-        return this.find((model: any) => model.id === id);
+    get(id: string): T | undefined {
+        return this.find((model: T) => (model as any)?.id === id);
     }
 
-    remove(idOrModel: string | unknown): void {
+    remove(idOrModel: string | T): void {
         for (let i = 0; i < this.length; i++) {
             while (
                 i < this.length &&
@@ -223,8 +226,8 @@ class Collection {
         }
     }
 
-    sort(): unknown[] {
-        return this[SymbolArray].sort(this.comparator as (a: unknown, b: unknown) => number);
+    sort(): T[] {
+        return this[SymbolArray].sort(this.comparator as (a: T, b: T) => number);
     }
 
     fill(): never {
@@ -235,36 +238,36 @@ class Collection {
         throw new Error('Not implemented');
     }
 
-    toJSON(): unknown[] {
+    toJSON(): T[] {
         return this[SymbolArray].concat();
     }
 
     // These methods are dynamically defined below via ProxiedArrayMethods
-    declare [Symbol.iterator]: () => Iterator<unknown>;
-    declare concat: (...items: unknown[]) => unknown[];
-    declare entries: () => IterableIterator<[number, unknown]>;
-    declare every: (predicate: (item: unknown, index: number) => boolean) => boolean;
-    declare filter: (predicate: (item: unknown, index: number) => boolean) => unknown[];
-    declare find: (predicate: (item: unknown, index: number) => boolean) => unknown | undefined;
-    declare findIndex: (predicate: (item: unknown, index: number) => boolean) => number;
-    declare flat: () => unknown[];
-    declare flatMap: (callback: (item: unknown, index: number) => unknown) => unknown[];
-    declare forEach: (callback: (item: unknown, index: number) => void) => void;
-    declare includes: (item: unknown) => boolean;
-    declare indexOf: (item: unknown) => number;
+    declare [Symbol.iterator]: () => Iterator<T>;
+    declare concat: (...items: (T | T[])[]) => T[];
+    declare entries: () => IterableIterator<[number, T]>;
+    declare every: (predicate: (item: T, index: number) => boolean) => boolean;
+    declare filter: (predicate: (item: T, index: number) => boolean) => T[];
+    declare find: (predicate: (item: T, index: number) => boolean) => T | undefined;
+    declare findIndex: (predicate: (item: T, index: number) => boolean) => number;
+    declare flat: () => T[];
+    declare flatMap: <U>(callback: (item: T, index: number) => U | U[]) => U[];
+    declare forEach: (callback: (item: T, index: number) => void) => void;
+    declare includes: (item: T) => boolean;
+    declare indexOf: (item: T) => number;
     declare join: (separator?: string) => string;
     declare keys: () => IterableIterator<number>;
-    declare lastIndexOf: (item: unknown) => number;
-    declare map: <U>(callback: (item: unknown, index: number) => U) => U[];
-    declare reduce: <U>(callback: (acc: U, item: unknown, index: number) => U, initialValue: U) => U;
+    declare lastIndexOf: (item: T) => number;
+    declare map: <U>(callback: (item: T, index: number) => U) => U[];
+    declare reduce: <U>(callback: (acc: U, item: T, index: number) => U, initialValue: U) => U;
     declare reduceRight: <U>(
-        callback: (acc: U, item: unknown, index: number) => U,
+        callback: (acc: U, item: T, index: number) => U,
         initialValue: U
     ) => U;
-    declare reverse: () => unknown[];
-    declare slice: (start?: number, end?: number) => unknown[];
-    declare some: (predicate: (item: unknown, index: number) => boolean) => boolean;
-    declare values: () => IterableIterator<unknown>;
+    declare reverse: () => T[];
+    declare slice: (start?: number, end?: number) => T[];
+    declare some: (predicate: (item: T, index: number) => boolean) => boolean;
+    declare values: () => IterableIterator<T>;
 }
 
 const ProxiedArrayMethods: (symbol | string)[] = [
@@ -294,7 +297,7 @@ const ProxiedArrayMethods: (symbol | string)[] = [
 
 for (const method of ProxiedArrayMethods) {
     Object.defineProperty(Collection.prototype, method, {
-        value: function proxyMethod(this: Collection, ...args: unknown[]): unknown {
+        value: function proxyMethod(this: Collection<any>, ...args: unknown[]): unknown {
             return ((this as any)[SymbolArray] as any)[method](...args);
         }
     });
