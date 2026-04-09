@@ -65,9 +65,13 @@ interface FileModelProperties {
     kdfName: string | null;
     kdfParameters: KdfParams | null;
     fingerprint: string | null;
-    oldPasswordHash: ArrayBuffer | null;
-    oldKeyFileHash: ArrayBuffer | null;
-    oldKeyChangeDate: Date | null;
+    // kdbxweb stores credential hashes as ProtectedValue | undefined;
+    // these mirrors exist solely so "has the key changed?" can compare
+    // object identity against the current credentials. They're never
+    // inspected directly, only round-tripped.
+    oldPasswordHash: kdbxweb.ProtectedValue | undefined;
+    oldKeyFileHash: kdbxweb.ProtectedValue | undefined;
+    oldKeyChangeDate: Date | undefined;
     encryptedPassword: string | null;
     encryptedPasswordDate: Date | null;
     supportsTags: boolean;
@@ -115,9 +119,9 @@ class FileModel extends Model {
     declare kdfName: string | null;
     declare kdfParameters: KdfParams | null;
     declare fingerprint: string | null;
-    declare oldPasswordHash: ArrayBuffer | null;
-    declare oldKeyFileHash: ArrayBuffer | null;
-    declare oldKeyChangeDate: Date | null;
+    declare oldPasswordHash: kdbxweb.ProtectedValue | undefined;
+    declare oldKeyFileHash: kdbxweb.ProtectedValue | undefined;
+    declare oldKeyChangeDate: Date | undefined;
     declare encryptedPassword: string | null;
     declare encryptedPasswordDate: Date | null;
     declare supportsTags: boolean;
@@ -251,7 +255,7 @@ class FileModel extends Model {
         const password = kdbxweb.ProtectedValue.fromString('demo');
         const credentials = new kdbxweb.Credentials(password);
         const demoFile = kdbxweb.ByteUtils.arrayToBuffer(
-            kdbxweb.ByteUtils.base64ToBytes(demoFileData as string)
+            kdbxweb.ByteUtils.base64ToBytes(demoFileData)
         );
         kdbxweb.Kdbx.load(demoFile, credentials)
             .then((db) => {
@@ -274,9 +278,9 @@ class FileModel extends Model {
             passwordChanged: false,
             keyFileChanged: false
         });
-        this.oldPasswordHash = this.db.credentials.passwordHash as ArrayBuffer | null;
-        this.oldKeyFileHash = this.db.credentials.keyFileHash as ArrayBuffer | null;
-        this.oldKeyChangeDate = this.db.meta.keyChanged as Date | null;
+        this.oldPasswordHash = this.db.credentials.passwordHash;
+        this.oldKeyFileHash = this.db.credentials.keyFileHash;
+        this.oldKeyChangeDate = this.db.meta.keyChanged;
     }
 
     readModel(): void {
@@ -397,7 +401,7 @@ class FileModel extends Model {
         callback: (err?: unknown) => void
     ): void {
         let credentials: kdbxweb.Credentials;
-        let credentialsPromise = Promise.resolve();
+        let credentialsPromise: Promise<unknown> = Promise.resolve();
         if (remoteKey) {
             credentials = new kdbxweb.Credentials(kdbxweb.ProtectedValue.fromString(''));
             credentialsPromise = credentials.ready.then(() => {
@@ -459,11 +463,11 @@ class FileModel extends Model {
         });
     }
 
-    getLocalEditState(): unknown {
+    getLocalEditState(): kdbxweb.KdbxEditState {
         return this.db.getLocalEditState();
     }
 
-    setLocalEditState(editState: unknown): void {
+    setLocalEditState(editState: kdbxweb.KdbxEditState): void {
         this.db.setLocalEditState(editState);
     }
 
@@ -681,14 +685,14 @@ class FileModel extends Model {
         });
     }
 
-    setKeyFile(keyFile: ArrayBuffer, keyFileName: string): void {
+    setKeyFile(keyFile: ArrayBuffer | Uint8Array, keyFileName: string): void {
         this.db.credentials.setKeyFile(keyFile);
         this.db.meta.keyChanged = new Date();
         this.set({ keyFileName, keyFileChanged: true });
         this.setModified();
     }
 
-    generateAndSetKeyFile(): Promise<ArrayBuffer> {
+    generateAndSetKeyFile(): Promise<Uint8Array> {
         return kdbxweb.Credentials.createRandomKeyFile().then((keyFile) => {
             const keyFileName = 'Generated';
             this.setKeyFile(keyFile, keyFileName);
@@ -848,7 +852,12 @@ class FileModel extends Model {
     getCustomIcons(): Record<string, string> {
         const customIcons: Record<string, string> = {};
         for (const [id, icon] of this.db.meta.customIcons) {
-            customIcons[id] = IconUrlFormat.toDataUrl(icon.data);
+            // toDataUrl only returns null for null/undefined input; icon.data
+            // is ArrayBuffer so the result is always a string here.
+            const dataUrl = IconUrlFormat.toDataUrl(icon.data);
+            if (dataUrl) {
+                customIcons[id] = dataUrl;
+            }
         }
         return customIcons;
     }
@@ -868,7 +877,14 @@ class FileModel extends Model {
         this.forEachEntry({}, (entry) => entry.renameTag(from, to));
     }
 
-    setFormatVersion(version: number): void {
+    setFormatVersion(version: 3 | 4): void {
+        // NeoKeeWeb is KDBX4-only (see CLAUDE.md Architecture Decisions),
+        // but the UI control is preserved and the db layer still accepts
+        // version 3 as a narrow literal. Runtime check keeps us honest
+        // if a caller ever passes 0/1/2/5 via DOM coercion.
+        if (version !== 3 && version !== 4) {
+            throw new Error(`Unsupported KDBX version: ${String(version)}`);
+        }
         this.db.setVersion(version);
         this.setModified();
         this.readModel();

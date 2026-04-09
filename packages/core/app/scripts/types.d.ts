@@ -82,6 +82,16 @@ declare module '*.hbs' {
     export default template;
 }
 
+// The bundled demo database, loaded via webpack's base64-loader.
+// `demo.kdbx` is a resolve.alias target in webpack.config.js pointing
+// at app/resources/Demo.kdbx — it's handed to file-model to open the
+// live demo on first run. base64-loader returns a base64-encoded
+// string which file-model then passes through kdbxweb.ByteUtils.
+declare module 'demo.kdbx' {
+    const data: string;
+    export default data;
+}
+
 // util/ui/tip — now a real TS module (migrated from JS)
 
 // comp/browser/key-handler — TS module; keep ambient broader so views
