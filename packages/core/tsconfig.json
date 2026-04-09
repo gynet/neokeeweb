@@ -28,6 +28,7 @@
   },
   "include": [
     "app/scripts/types.d.ts",
+    "app/scripts/kdbxweb.d.ts",
     "app/scripts/app.ts",
     "app/scripts/const/**/*.ts",
     "app/scripts/util/**/*.ts",
