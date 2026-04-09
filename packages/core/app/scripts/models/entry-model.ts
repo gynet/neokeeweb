@@ -11,6 +11,8 @@ import { Ranking } from 'util/data/ranking';
 import { IconUrlFormat } from 'util/formatting/icon-url-format';
 import { omit } from 'util/fn';
 import { EntrySearch } from 'util/entry-search';
+import type { EntryModel as SearchableEntryModel, SearchFilter } from 'util/entry-search';
+import type { ColorName } from 'const/colors';
 
 const UrlRegex = /^https?:\/\//i;
 const FieldRefRegex = /^\{REF:([TNPAU])@I:(\w{32})}$/;
@@ -24,23 +26,30 @@ const FieldRefIds: Record<string, string> = {
 };
 const ExtraUrlFieldName = 'KP2A_URL';
 
-interface EntryFilter {
-    text?: string;
-    textLower?: string;
-    textParts?: string[] | null;
-    textLowerParts?: string[] | null;
-    tag?: string;
-    tagLower?: string;
+/**
+ * Parse a legacy OTP query-string / TrayTOTP-settings numeric argument
+ * (period, digits, step, size) into a number. Returns `undefined` if
+ * the value is missing or not finite, which matches the ignored-default
+ * behaviour in `Otp.makeUrl`.
+ */
+function parseOtpNumericArg(value: string | undefined): number | undefined {
+    if (value === undefined || value === '') {
+        return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+// EntryFilter extends SearchFilter so `EntryModel.matches()` can forward
+// it to `EntrySearch.matches()` without loss. SearchFilter uses the
+// structural `AdvancedFilter` flags (regex, cs, user, url, ...); callers
+// in views that still use the legacy `exact/protect/user` sub-flags are
+// treated as a subset of the advanced filter.
+interface EntryFilter extends SearchFilter {
     trash?: boolean;
     group?: string;
     subGroups?: boolean;
     includeDisabled?: boolean;
-    autoType?: boolean;
-    advanced?: {
-        exact?: boolean;
-        protect?: boolean;
-        user?: boolean;
-    };
 }
 
 interface AutoTypeItem {
@@ -48,10 +57,15 @@ interface AutoTypeItem {
     sequence: string;
 }
 
-interface OtpGenerator {
-    url: string;
-    [key: string]: unknown;
-}
+/**
+ * What `EntryModel.otpGenerator` actually holds.
+ *
+ * Historically this was typed as a loose `{ url: string; [k: string]: unknown }`
+ * bag but at runtime it's always an `Otp` instance produced by
+ * `Otp.parseUrl(url)`. Typing it as `Otp` lets `setOtp(otp)` compile
+ * without casts.
+ */
+type OtpGenerator = Otp;
 
 class EntryModel extends Model {
     _search!: EntrySearch;
@@ -98,7 +112,10 @@ class EntryModel extends Model {
 
     constructor(props?: Record<string, unknown>) {
         super(props);
-        this._search = new EntrySearch(this);
+        // EntrySearch's structural model type is defined in util/entry-search
+        // to avoid a circular import; the runtime class always satisfies it
+        // via the fields/searchText/searchTags/getAllFields members below.
+        this._search = new EntrySearch(this as unknown as SearchableEntryModel);
     }
 
     setEntry(entry: kdbxweb.KdbxEntry, group: unknown, file: unknown): void {
@@ -250,7 +267,13 @@ class EntryModel extends Model {
     }
 
     _fieldsToModel(): Record<string, unknown> {
-        return omit(this.getAllFields(), BuiltInFields as unknown as string[]);
+        // `getAllFields()` always returns a concrete object, never null,
+        // so `omit` returns a `Partial<Record<string, unknown>>` we can
+        // safely widen back to the indexed type.
+        return (omit(this.getAllFields(), BuiltInFields as unknown as string[]) ?? {}) as Record<
+            string,
+            unknown
+        >;
     }
 
     _attachmentsToModel(binaries: Map<string, unknown>): AttachmentModel[] {
@@ -375,9 +398,9 @@ class EntryModel extends Model {
         return entry.entry.fields.get(FieldRefIds[fieldRefId]);
     }
 
-    setColor(color: string | null): void {
+    setColor(color: ColorName | null): void {
         this._entryModified();
-        this.entry.bgColor = Color.getKnownBgColor(color) as string;
+        this.entry.bgColor = color ? Color.getKnownBgColor(color) : undefined;
         this._fillByEntry();
     }
 
@@ -582,7 +605,11 @@ class EntryModel extends Model {
                     args[parts[0]] = decodeURIComponent(parts[1]).replace(/=/g, '');
                 });
                 if (args.key) {
-                    otpUrl = Otp.makeUrl(args.key, args.step, args.size);
+                    otpUrl = Otp.makeUrl(
+                        args.key,
+                        parseOtpNumericArg(args.step),
+                        parseOtpNumericArg(args.size)
+                    );
                 }
             }
         } else if (this.entry.fields.get('TOTP Seed')) {
@@ -596,15 +623,15 @@ class EntryModel extends Model {
                 if (settings && (settings as kdbxweb.ProtectedValue).isProtected) {
                     settings = (settings as kdbxweb.ProtectedValue).getText();
                 }
-                let period: string | undefined;
-                let digits: string | undefined;
+                let period: number | undefined;
+                let digits: number | undefined;
                 if (settings) {
                     const settingsParts = (settings as string).split(';');
                     if (settingsParts.length > 0 && settingsParts[0] > '0') {
-                        period = settingsParts[0];
+                        period = parseOtpNumericArg(settingsParts[0]);
                     }
                     if (settingsParts.length > 1 && settingsParts[1] > '0') {
-                        digits = settingsParts[1];
+                        digits = parseOtpNumericArg(settingsParts[1]);
                     }
                 }
                 otpUrl = Otp.makeUrl(secret as string, period, digits);
@@ -656,7 +683,12 @@ class EntryModel extends Model {
 
     setEnableAutoType(enabled: boolean | null): void {
         this._entryModified();
-        this.entry.autoType.enabled = enabled;
+        // kdbxweb's KdbxEntryAutoType types `enabled` as `boolean`, but
+        // the runtime and the KDBX XML spec both permit an "inherit"
+        // state encoded as null/undefined — `getEffectiveEnableAutoType`
+        // below explicitly falls back to the parent group when
+        // `typeof enabled !== 'boolean'`. Widen at assignment only.
+        (this.entry.autoType as { enabled: boolean | null }).enabled = enabled;
         this._buildAutoType();
     }
 
@@ -761,7 +793,8 @@ class EntryModel extends Model {
         if (!this.entry.customData) {
             this.entry.customData = new Map();
         }
-        this.entry.customData.set('IgnorePwIssues', '1');
+        // KdbxCustomDataItem = { value: string | undefined; lastModified?: Date }
+        this.entry.customData.set('IgnorePwIssues', { value: '1' });
         this._entryModified();
     }
 

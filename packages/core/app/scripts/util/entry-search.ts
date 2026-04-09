@@ -41,9 +41,12 @@ interface EntryModel {
 interface SearchFilter {
     tagLower?: string;
     textLower?: string;
-    textLowerParts?: string[];
+    // Nullable because app-model.prepareFilter() resets these to `null`
+    // when clearing a previous search. Every consumer here tests them
+    // as falsy before using, so null and undefined behave the same.
+    textLowerParts?: string[] | null;
     text?: string;
-    textParts?: string[];
+    textParts?: string[] | null;
     color?: string | boolean;
     autoType?: boolean;
     otp?: boolean;
