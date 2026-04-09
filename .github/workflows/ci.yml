@@ -85,3 +85,72 @@ jobs:
             packages/extension/test-results/
             packages/extension/playwright-report/
           retention-days: 7
+
+  e2e-full-chain-chromium:
+    # Full-chain autofill regression guard for Chromium. Drives the
+    # COMPLETE runCommand chain via chrome.action.onClicked.dispatch
+    # (a public chrome.events.Event API), including the encrypted
+    # backend.getLogins round-trip that was broken by the 2026-04-09
+    # nonce-aliasing bug. Runs against real github.com/login.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: cd packages/extension && bun run build-chrome
+      - run: bunx playwright install chromium --with-deps
+      - run: sudo apt-get install -y xvfb
+      - name: Full-chain chromium E2E
+        run: xvfb-run bunx playwright test --config playwright.config.ts --project=extension e2e/extension/autofill-full-chain.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-full-chain-chromium-report
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  e2e-full-chain-firefox:
+    # Full-chain autofill regression guard for Firefox 149. Uses
+    # Selenium + geckodriver because Playwright's bundled Firefox
+    # enforces xpi signature verification (our dev xpi is unsigned).
+    # Drives runCommand via the `invoke-action-click` runtime message
+    # RPC from the extension options page (Firefox does not expose
+    # chrome.action.onClicked.dispatch like Chromium does).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: cd packages/extension && bun run build-firefox
+      - name: Install Firefox + geckodriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y firefox firefox-geckodriver || sudo apt-get install -y firefox-esr
+          if ! command -v geckodriver; then
+            GECKO_VERSION=v0.36.0
+            wget -q https://github.com/mozilla/geckodriver/releases/download/${GECKO_VERSION}/geckodriver-${GECKO_VERSION}-linux64.tar.gz
+            tar -xzf geckodriver-${GECKO_VERSION}-linux64.tar.gz
+            sudo mv geckodriver /usr/local/bin/
+          fi
+          firefox --version
+          geckodriver --version
+      - name: Start NeoKeeWeb dev server
+        run: |
+          bun run --filter @neokeeweb/core dev > /tmp/dev-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8085 > /dev/null; then
+              echo "dev server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+      - name: Full-chain firefox E2E
+        env:
+          HEADLESS: '1'
+          NEOWEB_URL: http://localhost:8085/
+        run: bun run e2e/extension/autofill-firefox-full-chain.mjs
+      - name: Dump dev server log on failure
+        if: failure()
+        run: cat /tmp/dev-server.log || true
