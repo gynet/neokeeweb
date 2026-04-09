@@ -210,7 +210,9 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [ ] iOS share workflow Phase 1 subset (#35 — Mode A `navigator.share` + Mode E/F docs + clipboard hygiene)
 - [ ] WebDAV CORS diagnostic UI (#37)
 
-**Current test counts**: db 509 pass + 12 skip · core 284 pass (+ framework Collection 41) · extension 128 pass · E2E specs in `e2e/core/`: app, clipboard, crud, database-lifecycle, database-open, database-roundtrip, features, import, otp, smoke
+**Current test counts** (all packages): **988 pass · 12 skip · 0 fail · 6879 expects** (1000 tests across 58 files). E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. Extension E2E: autofill-content-page, autofill-full-chain, autofill-github-repro, autofill-github-tabswitch.
+
+**TS strict-mode ratchet**: **74 errors remaining** in `packages/core` (see `packages/core/.typescript-baseline`). CI `typecheck` job blocks regressions. History: 368 → 306 → 204 → 74 (80% reduction from initial baseline). Phase 1 target: 0, at which point `transpileOnly: true` is removed from `packages/core/webpack.config.js`. Remaining debt concentrated in `entry-model.ts` (~19), `file-model.ts` (~13), long-tail views.
 
 ## Phase 2 Goals (Planned)
 
