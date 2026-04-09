@@ -20,6 +20,83 @@ import { Logger } from 'util/logger';
 import { debounce, noop } from 'util/fn';
 import 'util/kdbxweb/protected-value-ex';
 
+interface StorageStat {
+    rev?: string | null;
+    path?: string;
+    notFound?: boolean;
+}
+
+interface StorageError {
+    name?: string;
+    message?: string;
+    code?: string;
+    notFound?: boolean;
+    revConflict?: boolean;
+    ykError?: boolean;
+    toString(): string;
+}
+
+type StorageErrorLike = StorageError | string | null | undefined;
+
+type StorageLoadCallback = (
+    err: StorageErrorLike,
+    data?: ArrayBuffer,
+    stat?: StorageStat | null
+) => void;
+
+type StorageStatCallback = (err: StorageErrorLike, stat?: StorageStat | null) => void;
+
+type StorageSaveCallback = (err: StorageErrorLike, stat?: StorageStat | null) => void;
+
+/**
+ * Common provider-method shape used by app-model for dynamic `Storage[name]`
+ * lookups. Individual provider classes (StorageCache, StorageWebDav) implement
+ * a superset of this; the optional methods (stat/watch/getPathForName/mkdir)
+ * originate from upstream KeeWeb file-system providers that are not shipped in
+ * the web-only fork, but app-model still guards them with runtime checks.
+ */
+interface StorageProvider {
+    name: string | null;
+    enabled: boolean;
+    load(
+        path: string | null | undefined,
+        opts: Record<string, unknown> | null | undefined,
+        callback: StorageLoadCallback | null
+    ): void;
+    save(
+        path: string | null | undefined,
+        opts: Record<string, unknown> | null | undefined,
+        data: ArrayBuffer,
+        callback: StorageSaveCallback | null,
+        rev?: string
+    ): void;
+    remove?(id: string, opts?: unknown, callback?: (err?: unknown) => void): void;
+    stat?(
+        path: string | null | undefined,
+        opts: Record<string, unknown> | null | undefined,
+        callback: StorageStatCallback | null
+    ): void;
+    watch?(path: string, callback: () => void): void;
+    unwatch?(path: string): void;
+    getPathForName?(name: string): string;
+    mkdir?(path: string, callback: (err?: unknown) => void): void;
+    fileOptsToStoreOpts?(
+        opts: Record<string, unknown>,
+        file: FileModel
+    ): Record<string, unknown>;
+    storeOptsToFileOpts?(
+        opts: Record<string, unknown>,
+        file: FileModel
+    ): Record<string, unknown>;
+}
+
+function getStorageProvider(name: string | null | undefined): StorageProvider | undefined {
+    if (!name) {
+        return undefined;
+    }
+    return (Storage as unknown as Record<string, StorageProvider | undefined>)[name];
+}
+
 interface FileUnlockPromise {
     resolve: (file: FileModel) => void;
     reject: (err: Error) => void;
@@ -566,7 +643,7 @@ class AppModel {
         const logger = new Logger('open', params.name);
         logger.info('File open request');
 
-        const fileInfo = params.id
+        const fileInfo: FileInfoModel | undefined = params.id
             ? this.fileInfos.get(params.id)
             : this.fileInfos.getMatch(params.storage, params.name, params.path);
 
@@ -589,20 +666,29 @@ class AppModel {
             );
         } else if (params.fileData) {
             logger.info('Open file from supplied content');
-            if (params.storage === 'file') {
-                Storage.file.stat(params.path, null, (err, stat) => {
+            // params.storage === 'file' was a desktop/Electron code path;
+            // in the web-only fork, Storage['file'] is never present, so the
+            // branch is effectively a no-op. Keep it so that any future file
+            // provider can be re-enabled without touching app-model.
+            const fileStorage = getStorageProvider('file');
+            if (params.storage === 'file' && fileStorage?.stat) {
+                fileStorage.stat(params.path, null, (err, stat) => {
                     if (err) {
                         return callback(err);
                     }
-                    params.rev = stat.rev;
-                    this.openFileWithData(params, callback, fileInfo, params.fileData);
+                    params.rev = stat?.rev ?? undefined;
+                    this.openFileWithData(params, callback, fileInfo ?? null, params.fileData!);
                 });
             } else {
-                this.openFileWithData(params, callback, fileInfo, params.fileData, true);
+                this.openFileWithData(params, callback, fileInfo ?? null, params.fileData, true);
             }
         } else if (!params.storage) {
             logger.info('Open file from cache as main storage');
-            this.openFileFromCache(params, callback, fileInfo);
+            if (fileInfo) {
+                this.openFileFromCache(params, callback, fileInfo);
+            } else {
+                callback(Locale.openFileNoCacheError);
+            }
         } else if (
             fileInfo &&
             fileInfo.openDate &&
@@ -614,8 +700,9 @@ class AppModel {
             this.openFileFromCache(
                 params,
                 (err, file) => {
-                    if (err) {
-                        if (err.name === 'KdbxError' || err.ykError) {
+                    const errObj = err as StorageError | undefined;
+                    if (errObj) {
+                        if (errObj.name === 'KdbxError' || errObj.ykError) {
                             return callback(err);
                         }
                         logger.info(
@@ -635,7 +722,7 @@ class AppModel {
             params.storage === 'file' ||
             this.settings.disableOfflineStorage
         ) {
-            this.openFileFromStorage(params, callback, fileInfo, logger);
+            this.openFileFromStorage(params, callback, fileInfo ?? null, logger);
         } else {
             logger.info('Open file from cache, will sync after load', params.storage);
             this.openFileFromCache(
@@ -646,7 +733,8 @@ class AppModel {
                         setTimeout(() => this.syncFile(file), 0);
                         callback(err);
                     } else {
-                        if (err.name === 'KdbxError' || err.ykError) {
+                        const errObj = err as StorageError | undefined;
+                        if (errObj?.name === 'KdbxError' || errObj?.ykError) {
                             return callback(err);
                         }
                         logger.info(
@@ -661,23 +749,38 @@ class AppModel {
         }
     }
 
-    openFileFromCache(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void, fileInfo: FileInfoModel): void {
+    openFileFromCache(
+        params: OpenFileParams,
+        callback: (err?: unknown, file?: FileModel) => void,
+        fileInfo: FileInfoModel
+    ): void {
         Storage.cache.load(fileInfo.id, null, (err, data) => {
+            let loadErr: unknown = err;
             if (!data) {
-                err = Locale.openFileNoCacheError;
+                loadErr = Locale.openFileNoCacheError;
             }
-            new Logger('open', params.name).info('Loaded file from cache', err);
-            if (err) {
-                callback(err);
+            new Logger('open', params.name).info('Loaded file from cache', loadErr);
+            if (loadErr) {
+                callback(loadErr);
             } else {
-                this.openFileWithData(params, callback, fileInfo, data);
+                this.openFileWithData(params, callback, fileInfo, data as ArrayBuffer);
             }
         });
     }
 
-    openFileFromStorage(params: OpenFileParams, callback: (err?: unknown, file?: FileModel) => void, fileInfo: FileInfoModel | null, logger: Logger, noCache?: boolean): void {
+    openFileFromStorage(
+        params: OpenFileParams,
+        callback: (err?: unknown, file?: FileModel) => void,
+        fileInfo: FileInfoModel | null,
+        logger: Logger,
+        noCache?: boolean
+    ): void {
         logger.info('Open file from storage', params.storage);
-        const storage = Storage[params.storage];
+        const storage = getStorageProvider(params.storage);
+        if (!storage) {
+            callback('Storage not available: ' + params.storage);
+            return;
+        }
         const storageLoad = () => {
             logger.info('Load from storage');
             storage.load(params.path, params.opts, (err, data, stat) => {
@@ -692,9 +795,15 @@ class AppModel {
                 } else {
                     logger.info('Open file from content loaded from storage');
                     params.fileData = data;
-                    params.rev = (stat && stat.rev) || null;
+                    params.rev = (stat && stat.rev) || undefined;
                     const needSaveToCache = storage.name !== 'file';
-                    this.openFileWithData(params, callback, fileInfo, data, needSaveToCache);
+                    this.openFileWithData(
+                        params,
+                        callback,
+                        fileInfo,
+                        data as ArrayBuffer,
+                        needSaveToCache
+                    );
                 }
             });
         };
