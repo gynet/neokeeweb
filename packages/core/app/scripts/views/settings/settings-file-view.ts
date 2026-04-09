@@ -276,7 +276,18 @@ class SettingsFileView extends View {
             if (!data) {
                 return;
             }
-            const blob = new Blob([data], { type: 'application/octet-stream' });
+            // DOM BlobPart wants Uint8Array<ArrayBuffer> (not the
+            // broader ArrayBufferLike the call-site returns); normalise
+            // through a fresh ArrayBuffer so the Blob constructor is
+            // happy under strict TS.
+            let blobInput: ArrayBuffer;
+            if (data instanceof Uint8Array) {
+                blobInput = new ArrayBuffer(data.byteLength);
+                new Uint8Array(blobInput).set(data);
+            } else {
+                blobInput = data;
+            }
+            const blob = new Blob([blobInput], { type: 'application/octet-stream' });
             FileSaver.saveAs(blob, fileName);
         });
     }
@@ -430,8 +441,13 @@ class SettingsFileView extends View {
     }
 
     generateKeyFile(): void {
-        this.model.generateAndSetKeyFile().then((keyFile: ArrayBuffer | Uint8Array) => {
-            const blob = new Blob([keyFile], { type: 'application/octet-stream' });
+        this.model.generateAndSetKeyFile().then((keyFile: Uint8Array) => {
+            // generateAndSetKeyFile returns Uint8Array (kdbxweb typing);
+            // copy into a fresh ArrayBuffer so Blob accepts it under
+            // strict TS (BlobPart wants Uint8Array<ArrayBuffer>).
+            const arrayBuf = new ArrayBuffer(keyFile.byteLength);
+            new Uint8Array(arrayBuf).set(keyFile);
+            const blob = new Blob([arrayBuf], { type: 'application/octet-stream' });
             FileSaver.saveAs(blob, this.model.name + '.key');
             this.renderKeyFileSelect();
         });

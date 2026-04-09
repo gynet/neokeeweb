@@ -28,14 +28,15 @@ class UpdateModel extends Model {
 
     load(): Promise<void> {
         return SettingsStore.load('update-info').then((data) => {
-            if (data) {
+            if (data && typeof data === 'object') {
+                const record = data as Record<string, unknown>;
                 try {
-                    for (const [key, val] of Object.entries(data)) {
+                    for (const [key, val] of Object.entries(record)) {
                         if (/Date$/.test(key)) {
-                            data[key] = val ? new Date(val as string | number) : null;
+                            record[key] = val ? new Date(val as string | number) : null;
                         }
                     }
-                    this.set(data, { silent: true });
+                    this.set(record, { silent: true });
                 } catch {
                     /* failed to load model */
                 }

@@ -92,6 +92,18 @@ declare module 'demo.kdbx' {
     export default data;
 }
 
+// PEM public keys bundled as resolve.alias targets and loaded via
+// webpack's raw-loader-equivalent (a simple String(source) loader),
+// used by util/data/signature-verifier to validate signed releases.
+declare module 'public-key.pem' {
+    const data: string;
+    export default data;
+}
+declare module 'public-key-new.pem' {
+    const data: string;
+    export default data;
+}
+
 // util/ui/tip — now a real TS module (migrated from JS)
 
 // comp/browser/key-handler — TS module; keep ambient broader so views

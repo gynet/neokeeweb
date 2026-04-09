@@ -9,8 +9,8 @@ class RuntimeDataModel extends Model {
 
     load(): Promise<void> {
         return SettingsStore.load('runtime-data').then((data) => {
-            if (data) {
-                this.set(data, { silent: true });
+            if (data && typeof data === 'object') {
+                this.set(data as Record<string, unknown>, { silent: true });
             }
         });
     }

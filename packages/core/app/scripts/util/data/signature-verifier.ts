@@ -1,13 +1,9 @@
 import * as kdbxweb from 'kdbxweb';
 import { Logger } from 'util/logger';
-// Webpack `string-loader` for *.pem files returns the file content
-// as a string. The TS compiler sees these as missing modules without
-// an ambient declaration; declared in app/scripts/types.d.ts.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — webpack raw-loader provides .pem as string at build time
+// *.pem ambient modules declared in app/scripts/types.d.ts; webpack
+// resolves via resolve.alias (see webpack.config.js) and a raw-loader
+// delivers the file content as a string at build time.
 import publicKeyData from 'public-key.pem';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — webpack raw-loader provides .pem as string at build time
 import publicKeyDataNew from 'public-key-new.pem';
 
 const SignatureVerifier = {
@@ -40,7 +36,13 @@ const SignatureVerifier = {
                 }
                 const subtle = window.crypto.subtle;
                 const keyFormat = 'spki';
-                const pkBytes = kdbxweb.ByteUtils.base64ToBytes(pk);
+                // base64ToBytes returns a Uint8Array whose backing buffer
+                // is typed as ArrayBufferLike (could be SharedArrayBuffer
+                // in strict TS); pass the concrete ArrayBuffer slice
+                // into WebCrypto.
+                const pkBytes = kdbxweb.ByteUtils.arrayToBuffer(
+                    kdbxweb.ByteUtils.base64ToBytes(pk)
+                );
                 subtle
                     .importKey(keyFormat, pkBytes, algo, false, ['verify'])
                     .then((cryptoKey) => {
@@ -77,7 +79,7 @@ const SignatureVerifier = {
 
     getPublicKeys(): string[] {
         if (!this.publicKeys) {
-            this.publicKeys = [publicKeyData as string, publicKeyDataNew as string].map((pk) => {
+            this.publicKeys = [publicKeyData, publicKeyDataNew].map((pk) => {
                 const m = pk.match(/-+BEGIN PUBLIC KEY-+([\s\S]+?)-+END PUBLIC KEY-+/);
                 if (!m) {
                     throw new Error('Malformed PEM public key');

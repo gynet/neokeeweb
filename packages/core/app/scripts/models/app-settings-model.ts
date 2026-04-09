@@ -77,9 +77,10 @@ class AppSettingsModel extends Model {
 
     load(): Promise<void> {
         return SettingsStore.load('app-settings').then((data) => {
-            if (data) {
-                this.upgrade(data);
-                this.set(data, { silent: true });
+            if (data && typeof data === 'object') {
+                const record = data as Record<string, unknown>;
+                this.upgrade(record);
+                this.set(record, { silent: true });
             }
         });
     }
