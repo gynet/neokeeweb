@@ -17,12 +17,13 @@ interface Frame {
 
 function startCommandListener(): void {
     chrome.commands.onCommand.addListener(async (command, tab) => {
-        // eslint-disable-next-line no-console
-        console.info('[NKW-Connect/bg] chrome.commands.onCommand fired', {
-            command,
-            tabId: tab?.id,
-            tabUrl: tab?.url
-        });
+        // Async listeners: any rejection from runCommand is otherwise
+        // silently swallowed by the browser. We wrap in try/catch so
+        // errors surface to the extension background console instead
+        // of the user seeing nothing. 2026-04-09 warroom: this try/
+        // catch was the only reason we eventually caught the
+        // encryptResponse nonce increment bug — without it the
+        // "Bad nonce in response" error vanished into the void.
         try {
             if (!tab) {
                 [tab] = await new Promise<chrome.tabs.Tab[]>((resolve) =>
@@ -30,24 +31,10 @@ function startCommandListener(): void {
                 );
             }
             const frameId = await getActiveFrame(tab);
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] runCommand entering', {
-                command,
-                tabId: tab.id,
-                url: tab.url,
-                frameId
-            });
             await runCommand({ command, tab, frameId, url: tab.url });
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] runCommand exited cleanly', command);
         } catch (e) {
-            // Previously this was swallowed silently because
-            // chrome.commands.onCommand's listener is async and
-            // rejections never surface. Log and re-throw so it
-            // shows up in the extension background console for
-            // diagnosis instead of the user seeing nothing.
             // eslint-disable-next-line no-console
-            console.error('[NKW-Connect/bg] runCommand FAILED', command, e);
+            console.error('[NeoKeeWeb Connect] runCommand failed for', command, e);
         }
     });
 }

@@ -96,13 +96,6 @@ class TransportBrowserTab extends TransportBase {
         // `/neokeeweb/#whatever`, or `/neokeeweb/?foo=bar`.
         return new Promise((resolve, reject) => {
             chrome.tabs.query({}, (allTabs) => {
-                // eslint-disable-next-line no-console
-                console.info(
-                    '[NKW-Connect/bg] findOrCreateTab: scanning',
-                    allTabs.length,
-                    'tabs for',
-                    this._keeWebUrl
-                );
                 const targetNoSlash = this._keeWebUrl.replace(/\/$/, '');
                 const tab = allTabs.find((t) => {
                     if (!t.url) return false;
@@ -115,21 +108,8 @@ class TransportBrowserTab extends TransportBase {
                     );
                 });
                 if (tab) {
-                    // eslint-disable-next-line no-console
-                    console.info(
-                        '[NKW-Connect/bg] findOrCreateTab: found existing tab',
-                        { id: tab.id, url: tab.url }
-                    );
                     return resolve(tab);
                 }
-                // eslint-disable-next-line no-console
-                console.warn(
-                    '[NKW-Connect/bg] findOrCreateTab: no existing tab, creating new',
-                    this._keeWebUrl,
-                    '(candidates:',
-                    allTabs.map((t) => t.url).slice(0, 5),
-                    ')'
-                );
                 chrome.tabs.create({ url: this._keeWebUrl, active: true }, (tab) => {
                     if (tab) {
                         resolve(tab);

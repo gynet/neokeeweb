@@ -29,6 +29,8 @@
     "bun": ">=1.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.59.1",
+    "@types/selenium-webdriver": "^4.35.5",
+    "selenium-webdriver": "^4.41.0"
   }
 }

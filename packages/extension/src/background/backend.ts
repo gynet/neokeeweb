@@ -86,27 +86,16 @@ class Backend extends TypedEmitter<BackendEvents> {
     }
 
     async connect(): Promise<void> {
-        // eslint-disable-next-line no-console
-        console.info('[NKW-Connect/bg] backend.connect called, current state:', this._state,
-            'keeWebUrl:', this.keeWebUrl);
-
         if (this.state === BackendConnectionState.Connected) {
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend already Connected, returning');
             return Promise.resolve();
         }
         if (this.state === BackendConnectionState.Connecting) {
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend already Connecting, awaiting connect-finished');
             return new Promise((resolve, reject) =>
                 this.once('connect-finished', (e) => {
                     e ? reject(e) : resolve();
                 })
             );
         }
-
-        // eslint-disable-next-line no-console
-        console.info('[NKW-Connect/bg] backend.connect: starting new connection to', this.keeWebUrl);
 
         this.rejectPendingRequests('Reconnecting');
 
@@ -123,24 +112,15 @@ class Backend extends TypedEmitter<BackendEvents> {
                 throw new Error('Protocol not initialized');
             }
 
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend.connect: calling transport.connect()');
             await this._transport.connect();
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend.connect: transport connected, calling changePublicKeys()');
             await this._protocol.changePublicKeys();
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend.connect: handshake complete');
 
             this.setState(BackendConnectionState.Connected);
-
-            // eslint-disable-next-line no-console
-            console.info('[NKW-Connect/bg] backend.connect: state = Connected');
 
             this.emit('connect-finished');
         } catch (e) {
             // eslint-disable-next-line no-console
-            console.error('[NKW-Connect/bg] backend.connect FAILED:', (<Error>e).message, e);
+            console.error('[NeoKeeWeb Connect] backend.connect failed:', (<Error>e).message);
 
             this._connectionError = (<Error>e).message;
             this.setState(BackendConnectionState.Error);

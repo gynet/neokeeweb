@@ -57,6 +57,20 @@ export default defineConfig({
         baseURL: LIVE_URL,
       },
     },
+    {
+      // Extension E2E — loads the built NeoKeeWeb Connect extension as
+      // unpacked and drives it via chrome.* APIs from the test. Needs
+      // `cd packages/extension && bun run build-chrome` first. Does NOT
+      // use the top-level webServer because the tests launch their own
+      // persistent Chromium context with --load-extension, which is
+      // incompatible with the headless webServer-driven projects above.
+      // See e2e/extension/*.spec.ts.
+      name: 'extension',
+      testDir: './e2e/extension',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
   ],
 
   // Only launch the local dev server when running the local-target

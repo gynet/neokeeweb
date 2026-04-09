@@ -252,20 +252,21 @@ function buildEncryptedRequest(
 /**
  * Decrypt a protocol response on the extension side.
  *
- * NOTE on nonce handling: the current implementation of `encryptResponse`
- * in protocol-impl.ts has a quirk — it calls
- *   incrementNonce(new Uint8Array(nonceBytes))
- * which increments a COPY of the nonce (because `new Uint8Array(uint8)`
- * copies), then serializes the UNmodified `nonceBytes` to base64. The
- * encryption itself also runs against `new Uint8Array(nonceBytes)` which
- * is another unincremented copy. The practical effect is that the
- * response nonce in the returned object equals the request nonce, and
- * the ciphertext was sealed with that same nonce.
+ * Correctness note: per the KeePassXC-Browser / KeeWeb Connect protocol
+ * spec, `response.nonce` must equal `increment(request.nonce)` and the
+ * ciphertext is sealed with that incremented nonce. This helper
+ * therefore decrypts directly with `response.nonce` as the naclBox
+ * key — whatever the server sent MUST be what the server encrypted
+ * with, otherwise the extension would reject the response.
  *
- * That behavior is intentionally NOT "fixed" here — it is what real
- * KeePassXC-Browser clients interact with at runtime, and touching it
- * risks breaking protocol compatibility. Tests assert the current shape
- * so any future change is caught explicitly.
+ * History: an earlier version of protocol-impl.ts had a mutation-
+ * aliasing bug where `new Uint8Array(nonceBytes)` created a throw-
+ * away copy; the increment was lost and `response.nonce` silently
+ * equaled `request.nonce`. A prior test-author saw this, misread
+ * it as a "protocol quirk", and wrote a regression pin asserting
+ * the broken behavior. Fixed in commit 495b3a49 — this helper now
+ * matches the protocol spec, and the dedicated nonce-increment
+ * test below REPLACES the old pin with the correct assertion.
  */
 function decryptResponse(
     client: ClientState,
@@ -558,16 +559,26 @@ describe('ProtocolImpl — KeePassXC-Browser NaCl box protocol', () => {
         expect(Array.from(responseNonce)).toEqual(Array.from(reference));
     });
 
-    test('encryptResponse returns the request nonce unmodified (documented quirk)', async () => {
-        // This is a regression pin. The current implementation of
-        // encryptResponse incorrectly wraps the nonce in a fresh Uint8Array
-        // before calling incrementNonce, so the mutation applies to a
-        // discarded copy. The on-wire nonce in the response is therefore
-        // identical to the request nonce. If this ever changes (someone
-        // "fixes" the call), this test will flip — and the fixer MUST also
-        // audit KeePassXC-Browser compatibility before merging.
+    test('encryptResponse increments the request nonce (KeePassXC-Browser spec)', async () => {
+        // Per the KeePassXC-Browser and KeeWeb Connect protocol, the
+        // server's encrypted response MUST carry `increment(request.nonce)`,
+        // and the ciphertext MUST be sealed with that incremented nonce.
+        // The extension's validateNonce() rejects any response whose nonce
+        // doesn't match `increment(request.nonce)` with "Bad nonce in
+        // response" — which blocks get-logins / get-databasehash / every
+        // other encrypted handler downstream of the handshake.
+        //
+        // History: this test previously asserted the BROKEN behavior with
+        // the misleading name "returns the request nonce unmodified
+        // (documented quirk)". The bug was a mutation-aliasing issue
+        // in encryptResponse where `new Uint8Array(nonceBytes)` created
+        // a throwaway copy, silently dropping the increment. The pin
+        // test locked the bug in place and warned future fixers that
+        // "KeePassXC-Browser compatibility" depended on the broken
+        // behavior — the exact opposite of reality. Fixed in commit
+        // 495b3a49; this test now asserts the correct protocol behavior.
         initProtocol({ hasOpenFiles: true });
-        const client = await handshake('client-pin');
+        const client = await handshake('client-nonce-inc');
 
         const nonceBytes = new Uint8Array(24);
         for (let i = 0; i < 24; i++) nonceBytes[i] = 0x10 + i;
@@ -593,12 +604,94 @@ describe('ProtocolImpl — KeePassXC-Browser NaCl box protocol', () => {
         })) as ProtocolResponse;
 
         expect(response.error).toBeUndefined();
+
+        // 1. response.nonce MUST equal increment(request.nonce)
         const responseNonce = new Uint8Array(
             kdbxweb.ByteUtils.base64ToBytes(response.nonce as string)
         );
-        expect(Array.from(responseNonce)).toEqual(Array.from(nonceBytes));
+        const expected = new Uint8Array(nonceBytes);
+        incrementNonceLE(expected);
+        expect(
+            Array.from(responseNonce),
+            'response.nonce must equal increment(request.nonce) ' +
+                'per KeePassXC-Browser spec. If this fails, check ' +
+                'encryptResponse in protocol-impl.ts for mutation-' +
+                'aliasing bugs (new Uint8Array copy vs in-place).'
+        ).toEqual(Array.from(expected));
 
-        // And the decrypted payload is sealed with that same nonce.
+        // 2. The response ciphertext MUST be decryptable with that
+        //    same incremented nonce (decryptResponse uses response.nonce).
+        const decrypted = decryptResponse(client, request, response);
+        expect(decrypted.hash).toBe(KEEWEB_HASH);
+
+        // 3. Sanity: an extension that naively decrypted with the
+        //    un-incremented request nonce would fail. We explicitly
+        //    confirm that reversal to lock the protocol semantics.
+        const responseMessage = new Uint8Array(
+            kdbxweb.ByteUtils.base64ToBytes(response.message as string)
+        );
+        const wrongNonce = nonceBytes; // NOT incremented
+        const wrongDecrypt = naclBox.open(
+            responseMessage,
+            wrongNonce,
+            client.appPublicKey,
+            client.keys.secretKey
+        );
+        expect(
+            wrongDecrypt,
+            'decrypting with the un-incremented request nonce must fail ' +
+                '— this guards against future regressions where both ' +
+                'sides of the protocol drift back to the old buggy behavior.'
+        ).toBeNull();
+    });
+
+    test('encryptResponse nonce handling: first byte wrap-around with carry', async () => {
+        // Edge case of libsodium little-endian increment: byte[0] = 0xff
+        // + 1 carries into byte[1]. The change-public-keys handler path
+        // already tests the change-public-keys flow specifically for the
+        // wrap-around (see earlier test); this one validates the
+        // encryptResponse path (get-databasehash handler) handles it
+        // the same way.
+        initProtocol({ hasOpenFiles: true });
+        const client = await handshake('client-carry');
+
+        const nonceBytes = new Uint8Array(24);
+        nonceBytes[0] = 0xff;
+        // byte[1..23] stay 0
+
+        const payload = { action: 'get-databasehash' };
+        const data = new TextEncoder().encode(JSON.stringify(payload));
+        const encrypted = naclBox(
+            data,
+            nonceBytes,
+            client.appPublicKey,
+            client.keys.secretKey
+        );
+        const request: ProtocolRequest = {
+            action: 'get-databasehash',
+            clientID: client.clientId,
+            nonce: kdbxweb.ByteUtils.bytesToBase64(nonceBytes),
+            message: kdbxweb.ByteUtils.bytesToBase64(encrypted)
+        };
+
+        const response = (await ProtocolImpl.handleRequest(request, {
+            connectionId: 12,
+            extensionName: 'KeePassXC-Browser'
+        })) as ProtocolResponse;
+
+        expect(response.error).toBeUndefined();
+        const responseNonce = new Uint8Array(
+            kdbxweb.ByteUtils.base64ToBytes(response.nonce as string)
+        );
+        // After libsodium-style increment: 0xff + 1 = 0x00 with carry
+        // propagating to byte[1] = 0x01.
+        expect(responseNonce[0]).toBe(0x00);
+        expect(responseNonce[1]).toBe(0x01);
+        for (let i = 2; i < 24; i++) {
+            expect(responseNonce[i]).toBe(0);
+        }
+
+        // And decryption with the incremented nonce must work.
         const decrypted = decryptResponse(client, request, response);
         expect(decrypted.hash).toBe(KEEWEB_HASH);
     });
