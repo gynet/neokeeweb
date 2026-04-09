@@ -1,29 +1,33 @@
 {
     "name": "@neokeeweb/db",
     "version": "2.2.0",
-    "description": "Kdbx KeePass database reader for web",
+    "description": "KDBX4 KeePass database reader/writer for NeoKeeWeb. Forked from kdbxweb by Antelle.",
     "main": "dist/kdbxweb.js",
-    "private": false,
+    "private": true,
     "types": "dist/types/index.d.ts",
-    "homepage": "https://keeweb.info",
+    "homepage": "https://github.com/gynet/neokeeweb",
     "repository": {
         "type": "git",
-        "url": "https://github.com/keeweb/kdbxweb.git"
+        "url": "https://github.com/gynet/neokeeweb.git",
+        "directory": "packages/db"
     },
     "author": {
-        "name": "Antelle",
-        "email": "keeweb@keeweb.info",
-        "url": "https://antelle.net"
+        "name": "gynet",
+        "url": "https://github.com/gynet"
     },
+    "contributors": [
+        {
+            "name": "Antelle",
+            "email": "keeweb@keeweb.info",
+            "url": "https://antelle.net",
+            "comment": "Original author of kdbxweb, from which this package is forked"
+        }
+    ],
     "engines": {
         "node": "^18.18.0"
     },
     "license": "MIT",
     "readme": "README.md",
-    "funding": {
-        "type": "github",
-        "url": "https://github.com/sponsors/antelle"
-    },
     "scripts": {
         "test": "bun test",
         "start": "bun run lint && bun run build",
