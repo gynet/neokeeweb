@@ -102,6 +102,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      - name: Build packages/db (webpack dev server needs kdbxweb dist)
+        # packages/core webpack aliases `kdbxweb` → packages/db/dist.
+        # Without this build step the dev server fails to compile with
+        # "Can't resolve 'kdbxweb'" across ~20 files. Same root cause as
+        # the typecheck job's missing-types issue, different layer.
+        run: cd packages/db && bun run build
       - run: cd packages/extension && bun run build-chrome
       - run: bunx playwright install chromium --with-deps
       - run: sudo apt-get install -y xvfb
@@ -135,6 +141,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      - name: Build packages/db (webpack dev server needs kdbxweb dist)
+        # packages/core webpack aliases `kdbxweb` → packages/db/dist.
+        # Without this the dev server fails with "Can't resolve 'kdbxweb'".
+        run: cd packages/db && bun run build
       - run: cd packages/extension && bun run build-firefox
       - name: Install Firefox + geckodriver (pinned binary download)
         run: |
