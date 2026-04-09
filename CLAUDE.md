@@ -68,4 +68,5 @@ See milestone: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Remove dead desktop/plugin/YubiKey code (33 files, -1500 lines)
 - [x] Legacy deps cleaned (#6 — lodash + bourbon removed; baron + pikaday kept as feature-backing; jquery kept)
 - [x] TypeScript migration for packages/core (#2 — 58 → 0 @ts-nocheck files)
+- [ ] Runtime persistence restored (settings-store + settings-manager stubs from a436c401 — tracked by 2026-04-09 warroom)
 - [ ] E2E test scenarios (#4 — roundtrip + clipboard + import + NaCl + OTP done; UI-only scenarios remaining)

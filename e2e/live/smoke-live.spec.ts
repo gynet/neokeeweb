@@ -65,6 +65,19 @@ test.describe('live demo smoke', () => {
         ).toBe(EXPECTED_SHA_SHORT);
     });
 
+    test('body has theme class applied (not stale stub)', async ({ page }) => {
+        // Catches the catastrophic regression where SettingsManager.setTheme()
+        // was a no-op stub and the live demo's only "theme" was whatever
+        // class was hardcoded in index.html. After the 2026-04-09 warroom fix,
+        // SettingsManager.setBySettings() runs at boot and confirms the body
+        // has a /^th-/ class. If a future change re-stubs setBySettings or
+        // breaks SettingsManager init, this test will turn red.
+        await page.goto(BASE);
+        await page.waitForLoadState('networkidle');
+        const bodyClass = await page.evaluate(() => document.body.className);
+        expect(bodyClass, 'body must have a theme class').toMatch(/(^|\s)th-/);
+    });
+
     test('all manifest icons resolve', async ({ request }) => {
         const manifestResponse = await request.get(new URL('manifest.json', BASE).href);
         expect(manifestResponse.status()).toBe(200);

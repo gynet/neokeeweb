@@ -73,6 +73,17 @@
         <link rel="stylesheet" href="css/app.css?__inline=true" />
         <script src="js/app.js?__inline=true"></script>
     </head>
+    <!--
+        The `th-dark` class below is a pre-paint default, not a hardcoded
+        theme. SettingsManager.setBySettings() runs at app startup and
+        replaces this class with whichever theme the user chose (one of 12
+        options) by calling setTheme(), which strips any /^th-/ class and
+        adds the new one. We keep the default as `th-dark` so the HTML
+        paint before app.js boots matches the dark background and avoids
+        a white flash for the most common case. The 2026-04-09 warroom
+        found this had silently become the only thing keeping the body
+        themed because settings-manager.ts had been stubbed out.
+    -->
     <body class="th-dark">
         <noscript>
             <h1>NeoKeeWeb</h1>

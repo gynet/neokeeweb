@@ -61,6 +61,7 @@ e2e/                                Playwright E2E tests
 4. **Webpack/bundler config consistency** — every `resolve.alias` key must have a matching real intent. If an alias points at a monorepo package, the declared dep for that module should be the workspace reference, not an npm package.
 5. **Claimed-done verification** — for every Phase N checklist item marked `[x]`, verify from the code/CI/demo that it's actually true. Do not take git log messages at face value.
 6. **CLAUDE.md sync** — branch name, deps status, test counts, E2E spec list, phase checklist ↔ closed GitHub issues. Stale docs defeat the whole point. Update in the same session.
+7. **Stub audit** — grep the codebase for `// Stub`, `// TODO stub`, single-line `return Promise.resolve()` / `return true` / `return null` function bodies, and any module re-imported from upstream during fork whose body was truncated to a no-op. For each, verify whether the feature is **actually needed** in NeoKeeWeb's web-only mode. A stub is only OK if the feature is genuinely desktop/Electron-exclusive (shortcuts, single-instance-checker, usb-listener, updater, etc.). **Stub that removes logic needed in web mode = P0 silent regression** — same disease class as `|| true` CI masking, different layer. Root cause of 2026-04-09 warroom: `settings-store.ts` stubbed during build fix, destroyed all runtime persistence (file-info, app-settings, runtime-data), never noticed because `git log` looked clean.
 **Standard responsibilities**:
 - GitHub milestone health check
 - Fix CI/CD failures (root cause, not mask)
@@ -79,6 +80,7 @@ e2e/                                Playwright E2E tests
 - Previous TL did not catch `packages/db/package.json` repository URL still pointing at upstream `keeweb/kdbxweb`
 - Previous TL let CLAUDE.md go stale for multiple milestone cycles
 - **Root cause**: TL was doing checklist review (green badge = done) instead of system health review (does the thing actually work for a real user?). The protocol above exists to prevent this class of failure.
+- 2026-04-09 warroom: `settings-store.ts` was stubbed in commit a436c401 "Fix core web app build" because `import { Launcher }` broke after Electron strip. Correct fix was to keep the localStorage branch; actual fix stubbed the whole module. Result: all persistence silently broken for months. `fileInfos`, `appSettings`, `runtimeData`, `updateInfo` all no-ops. Users lost uploaded files on refresh. Extension couldn't autofill (permissions didn't persist). Previous TL review protocols 1-6 didn't catch this because it's runtime behavior, not build/branding/metadata. Rule 7 added. Stub audit also discovered sibling `settings-manager.ts` has the same disease: setTheme/setLocale/setFontSize no-ops, only 2 themes and 1 locale exposed — UI settings controls silently do nothing even though 12 themes and 3 locales ship in the bundle.
 
 ### SDET AGENT — Test Engineer (on demand)
 **Trigger**: after significant code changes, before milestone review
