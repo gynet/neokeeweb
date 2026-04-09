@@ -211,8 +211,32 @@ function encryptResponse(
     if (!request.nonce) {
         throw new Error('Empty nonce');
     }
+    // Nonce increment bug (2026-04-09 warroom root cause of the entire
+    // extension autofill failure):
+    //
+    // Upstream KeeWeb was written against kdbxweb <=1.x where
+    // ByteUtils.base64ToBytes returned an ArrayBuffer. The original
+    // code did:
+    //     const nonceBytes = base64ToBytes(request.nonce);    // ArrayBuffer
+    //     incrementNonce(new Uint8Array(nonceBytes));          // view → mutates buffer
+    //     const nonce = bytesToBase64(nonceBytes);             // re-encode buffer
+    // where `new Uint8Array(ArrayBuffer)` is a VIEW, so the increment
+    // propagated back through the underlying buffer.
+    //
+    // Our fork of kdbxweb changed base64ToBytes to return Uint8Array.
+    // `new Uint8Array(uint8array)` is a COPY, not a view, so the
+    // increment happened on a throw-away copy and `nonceBytes` stayed
+    // at the original value. The response payload.nonce ended up
+    // equal to request.nonce (not incremented), and the extension
+    // side's validateNonce rejected every response with "Bad nonce
+    // in response" — visible only by running the full extension
+    // protocol through a Selenium harness and capturing the
+    // background console error.
+    //
+    // Fix: increment nonceBytes in place. incrementNonce takes a
+    // Uint8Array and mutates it; we pass it directly now.
     const nonceBytes = kdbxweb.ByteUtils.base64ToBytes(request.nonce);
-    incrementNonce(new Uint8Array(nonceBytes));
+    incrementNonce(nonceBytes);
     const nonce = kdbxweb.ByteUtils.bytesToBase64(nonceBytes);
 
     const client = getClient(request);
@@ -224,7 +248,7 @@ function encryptResponse(
 
     const encrypted = tweetnaclBox(
         data,
-        new Uint8Array(nonceBytes),
+        nonceBytes,
         client.publicKey,
         client.keys.secretKey
     );
