@@ -24,7 +24,19 @@ if (!window.kwExtensionInstalled) {
         }
 
         function run(message: ContentScriptMessage): ContentScriptReturn | undefined {
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] content-page received', {
+                action: message.action,
+                messageUrl: message.url,
+                locationHref: location.href,
+                urlMatches: location.href === message.url
+            });
             if (location.href !== message.url) {
+                // eslint-disable-next-line no-console
+                console.warn(
+                    '[NKW-Connect] content-page URL mismatch — message dropped. ' +
+                        `message.url=${message.url} location.href=${location.href}`
+                );
                 return;
             }
             switch (message.action) {
@@ -59,32 +71,73 @@ if (!window.kwExtensionInstalled) {
         function autoFill(arg: ContentScriptMessageAutoFill) {
             const { text, password, submit } = arg;
 
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] autoFill start', {
+                hasText: !!text,
+                hasPassword: !!password,
+                submit,
+                activeTag: (document.activeElement as HTMLElement | null)?.tagName,
+                activeId: (document.activeElement as HTMLElement | null)?.id,
+                activeType: (document.activeElement as HTMLInputElement | null)?.type,
+                messageUrl: arg.url,
+                locationHref: location.href
+            });
+
             let input = <HTMLInputElement | undefined>document.activeElement;
             if (!input) {
+                // eslint-disable-next-line no-console
+                console.warn('[NKW-Connect] autoFill abort: no document.activeElement');
                 return;
             }
 
             if (!text) {
+                // eslint-disable-next-line no-console
+                console.warn('[NKW-Connect] autoFill abort: empty text param');
                 return;
             }
 
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] autoFill setInputText username', {
+                targetTag: input.tagName,
+                targetType: input.type,
+                targetId: input.id,
+                valueBefore: input.value
+            });
             setInputText(input, text);
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] autoFill username valueAfter', input.value);
 
             const form = input.form;
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] autoFill form present?', !!form, form?.id);
 
             if (password) {
                 input = getNextFormPasswordInput(input);
                 if (!input) {
+                    // eslint-disable-next-line no-console
+                    console.warn('[NKW-Connect] autoFill abort: no password input found after username');
                     return;
                 }
 
+                // eslint-disable-next-line no-console
+                console.info('[NKW-Connect] autoFill password target', {
+                    id: input.id,
+                    type: input.type,
+                    valueBefore: input.value
+                });
                 input.focus();
                 setInputText(input, password);
+                // eslint-disable-next-line no-console
+                console.info('[NKW-Connect] autoFill password valueAfter', input.value);
             }
 
             if (form && submit) {
+                // eslint-disable-next-line no-console
+                console.info('[NKW-Connect] autoFill submitForm');
                 submitForm(form);
             }
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] autoFill done');
         }
 
         function setInputText(input: HTMLInputElement, text: string) {
