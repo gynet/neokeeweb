@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -9,6 +10,24 @@ const rootDir = __dirname;
 const pkg = require('./package.json');
 
 process.noDeprecation = true;
+
+// Resolve a verifiable build identity so code = build = demo = test cannot
+// silently drift apart. Prefers the CI-provided commit SHA; falls back to
+// whatever HEAD is in the working tree; finally 'unknown' if git is gone.
+const gitSha =
+    process.env.GITHUB_SHA ||
+    process.env.GIT_SHA ||
+    (() => {
+        try {
+            return execSync('git rev-parse HEAD', { cwd: rootDir })
+                .toString()
+                .trim();
+        } catch {
+            return 'unknown';
+        }
+    })();
+const gitShaShort = gitSha.slice(0, 7);
+const buildTime = new Date().toISOString();
 
 module.exports = (env, argv) => {
     const mode = argv.mode || 'development';
@@ -220,8 +239,21 @@ module.exports = (env, argv) => {
                     ' ' +
                     (typeof pkg.author === 'string' ? pkg.author : pkg.author.name) +
                     ', opensource.org/licenses/' +
-                    pkg.license
+                    pkg.license +
+                    ' [' +
+                    gitShaShort +
+                    ' @ ' +
+                    buildTime +
+                    ']'
             ),
+            // Inject build identity into the bundle so runtime, tests, and
+            // live demo can all assert the same commit SHA. See
+            // app/scripts/app.ts + e2e/live/smoke-live.spec.ts.
+            new webpack.DefinePlugin({
+                __NEOKEEWEB_BUILD_SHA__: JSON.stringify(gitSha),
+                __NEOKEEWEB_BUILD_SHA_SHORT__: JSON.stringify(gitShaShort),
+                __NEOKEEWEB_BUILD_TIME__: JSON.stringify(buildTime)
+            }),
             new webpack.ProvidePlugin({
                 $: 'jquery'
             }),

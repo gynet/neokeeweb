@@ -168,3 +168,11 @@ interface Storage {
     debugView?: string;
     debugBrowserExtension?: string;
 }
+
+// Build-identity globals injected by webpack.DefinePlugin. These exist so
+// the live demo, bundle, and CI can all verify the exact same commit SHA
+// ("code = build = demo = test"). Do not fall back to 'unknown' in prod —
+// if the build produced 'unknown' here, the build system is broken.
+declare const __NEOKEEWEB_BUILD_SHA__: string;
+declare const __NEOKEEWEB_BUILD_SHA_SHORT__: string;
+declare const __NEOKEEWEB_BUILD_TIME__: string;

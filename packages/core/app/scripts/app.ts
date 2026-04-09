@@ -42,6 +42,21 @@ const startProfiler = StartProfiler as unknown as {
     report(): void;
 };
 
+// Build identity — injected by webpack.DefinePlugin at build time. Emit on
+// startup so the browser console, Playwright `page.evaluate`, and manual
+// smoke tests can all verify the exact commit + time this bundle was built
+// from. Also exposed on `window` so E2E live-drift tests can read it
+// without needing source maps or bundle scraping.
+console.info(
+    `NeoKeeWeb build ${__NEOKEEWEB_BUILD_SHA_SHORT__} (${__NEOKEEWEB_BUILD_TIME__})`
+);
+(window as unknown as Record<string, unknown>).__NEOKEEWEB_BUILD_SHA__ =
+    __NEOKEEWEB_BUILD_SHA__;
+(window as unknown as Record<string, unknown>).__NEOKEEWEB_BUILD_SHA_SHORT__ =
+    __NEOKEEWEB_BUILD_SHA_SHORT__;
+(window as unknown as Record<string, unknown>).__NEOKEEWEB_BUILD_TIME__ =
+    __NEOKEEWEB_BUILD_TIME__;
+
 startProfiler.milestone('loading modules');
 
 $(() => {
