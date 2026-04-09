@@ -298,8 +298,14 @@ class View extends EventEmitter {
         key: number,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handler: (...args: any[]) => any,
-        shortcut?: number,
-        modal?: string,
+        // Accept null as well as number | undefined — legacy callers
+        // pass explicit `null` to mean "no modifier shortcut", which
+        // the underlying KeyHandler treats identically to absent.
+        shortcut?: number | null,
+        // KeyHandler.onKey types `modal` as `unknown`; legacy callers
+        // pass a modal name string OR the literal `false` to mean
+        // "no modal-scoped dispatch". Mirror that here.
+        modal?: string | boolean,
         noPrevent?: boolean
     ): void {
         (KeyHandler as any).onKey(key, handler, this, shortcut, modal, noPrevent);
