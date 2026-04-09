@@ -197,6 +197,26 @@ type AppFilter = EntryFilter & {
     advanced?: AdvancedSearch;
 };
 
+/**
+ * Shape of FileModel.backup (declared as Record<string, unknown> on the
+ * model since it is persisted as a JSON blob). Defined centrally so the
+ * backup/restore helpers can narrow safely.
+ */
+interface BackupSettings extends Record<string, unknown> {
+    enabled?: boolean;
+    pending?: boolean;
+    storage?: string;
+    path?: string;
+    schedule?: string;
+    lastTime?: number;
+}
+
+function asBackupSettings(
+    value: Record<string, unknown> | null | undefined
+): BackupSettings | null {
+    return (value ?? null) as BackupSettings | null;
+}
+
 class AppModel {
     static instance: AppModel;
 
@@ -980,6 +1000,9 @@ class AppModel {
             storage: params.storage,
             path: params.path
         });
+        if (!params.fileXml) {
+            return callback('Missing fileXml in import params');
+        }
         file.importWithXml(params.fileXml, (err) => {
             logger.info('Import xml complete ' + (err ? 'with error' : ''), err);
             if (err) {
@@ -1027,9 +1050,15 @@ class AppModel {
                     keyFilePath: file.keyFilePath || null
                 });
         }
-        if (this.settings.deviceOwnerAuth === 'file' && file.encryptedPassword) {
+        if (
+            this.settings.deviceOwnerAuth === 'file' &&
+            file.encryptedPassword &&
+            file.encryptedPasswordDate
+        ) {
             const maxDate = new Date(file.encryptedPasswordDate);
-            maxDate.setMinutes(maxDate.getMinutes() + this.settings.deviceOwnerAuthTimeoutMinutes);
+            maxDate.setMinutes(
+                maxDate.getMinutes() + this.settings.deviceOwnerAuthTimeoutMinutes
+            );
             if (maxDate > new Date()) {
                 fileInfo.encryptedPassword = file.encryptedPassword;
                 fileInfo.encryptedPasswordDate = file.encryptedPasswordDate;
@@ -1450,6 +1479,9 @@ class AppModel {
 
     unsetKeyFile(fileId: string): void {
         const fileInfo = this.fileInfos.get(fileId);
+        if (!fileInfo) {
+            return;
+        }
         fileInfo.set({
             keyFileName: null,
             keyFilePath: null,
@@ -1467,46 +1499,57 @@ class AppModel {
     }
 
     backupFile(file: FileModel, data: ArrayBuffer, callback: (err?: unknown) => void): void {
-        const opts = file.opts;
-        let backup = file.backup;
+        const opts = file.opts ?? undefined;
+        const backup = asBackupSettings(file.backup);
         const logger = new Logger('backup', file.name);
         if (!backup || !backup.storage || !backup.path) {
             return callback('Invalid backup settings');
         }
+        const backupStorageName = backup.storage;
+        const backupStorage = getStorageProvider(backupStorageName);
+        if (!backupStorage) {
+            return callback('Backup storage not available: ' + backupStorageName);
+        }
         let path = backup.path.replace('{date}', DateFormat.dtStrFs(new Date()));
-        logger.info('Backup file to', backup.storage, path);
-        const saveToFolder = () => {
-            if (Storage[backup.storage].getPathForName) {
-                path = Storage[backup.storage].getPathForName(path);
+        logger.info('Backup file to', backupStorageName, path);
+        const saveToFolder = (): void => {
+            if (backupStorage.getPathForName) {
+                path = backupStorage.getPathForName(path);
             }
-            Storage[backup.storage].save(path, opts, data, (err) => {
+            backupStorage.save(path, opts, data, (err) => {
                 if (err) {
                     logger.error('Backup error', err);
                 } else {
                     logger.info('Backup complete');
-                    backup = file.backup;
-                    backup.lastTime = Date.now();
-                    delete backup.pending;
-                    file.backup = backup;
-                    this.setFileBackup(file.id, backup);
+                    const updated = asBackupSettings(file.backup) ?? { ...backup };
+                    updated.lastTime = Date.now();
+                    delete updated.pending;
+                    file.backup = updated;
+                    this.setFileBackup(file.id, updated);
                 }
                 callback(err);
             });
         };
         let folderPath = UrlFormat.fileToDir(path);
-        if (Storage[backup.storage].getPathForName) {
-            folderPath = Storage[backup.storage].getPathForName(folderPath).replace('.kdbx', '');
+        if (backupStorage.getPathForName) {
+            folderPath = backupStorage.getPathForName(folderPath).replace('.kdbx', '');
         }
-        Storage[backup.storage].stat(folderPath, opts, (err) => {
+        if (!backupStorage.stat) {
+            // No stat support (e.g. some remote providers) — save directly.
+            logger.info('Backup storage has no stat, saving without folder check');
+            saveToFolder();
+            return;
+        }
+        backupStorage.stat(folderPath, opts, (err) => {
             if (err) {
-                if (err.notFound) {
+                if ((err as StorageError).notFound) {
                     logger.info('Backup folder does not exist');
-                    if (!Storage[backup.storage].mkdir) {
-                        return callback('Mkdir not supported by ' + backup.storage);
+                    if (!backupStorage.mkdir) {
+                        return callback('Mkdir not supported by ' + backupStorageName);
                     }
-                    Storage[backup.storage].mkdir(folderPath, (err) => {
-                        if (err) {
-                            logger.error('Error creating backup folder', err);
+                    backupStorage.mkdir(folderPath, (mkErr) => {
+                        if (mkErr) {
+                            logger.error('Error creating backup folder', mkErr);
                             callback('Error creating backup folder');
                         } else {
                             logger.info('Backup folder created');
@@ -1525,7 +1568,7 @@ class AppModel {
     }
 
     scheduleBackupFile(file: FileModel, data: ArrayBuffer): void {
-        const backup = file.backup;
+        const backup = asBackupSettings(file.backup);
         if (!backup || !backup.enabled) {
             return;
         }
@@ -1611,7 +1654,7 @@ class AppModel {
                 if (fileInfo.encryptedPassword) {
                     this.memoryPasswordStorage[fileInfo.id] = {
                         value: fileInfo.encryptedPassword,
-                        date: fileInfo.encryptedPasswordDate
+                        date: fileInfo.encryptedPasswordDate ?? new Date()
                     };
                     fileInfo.encryptedPassword = null;
                     fileInfo.encryptedPasswordDate = null;
@@ -1684,7 +1727,7 @@ class AppModel {
         if (!this.hardwareDecryptInProgress) {
             this.mainWindowBlurTimer = setTimeout(() => {
                 // macOS emits focus-blur-focus event in a row when triggering auto-type from minimized state
-                delete this.mainWindowBlurTimer;
+                this.mainWindowBlurTimer = null;
                 this.rejectPendingFileUnlockPromise('Main window blur');
             }, Timeouts.AutoTypeWindowFocusAfterBlur);
         }
