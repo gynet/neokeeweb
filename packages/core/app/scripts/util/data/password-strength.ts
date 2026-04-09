@@ -27,7 +27,13 @@ const symbolsPerCharClass = new Uint8Array([
     26 /* uppercase letters */
 ]);
 
-function passwordStrength(password) {
+interface PasswordStrengthInput {
+    isProtected?: boolean;
+    byteLength?: number;
+    forEachChar(cb: (charCode: number) => void): void;
+}
+
+function passwordStrength(password: PasswordStrengthInput) {
     if (!password || !password.isProtected) {
         throw new TypeError('Bad password type');
     }
@@ -40,7 +46,7 @@ function passwordStrength(password) {
     const countByClass = [0, 0, 0, 0];
     let isSingleChar = true;
     let prevCharCode = -1;
-    password.forEachChar((charCode) => {
+    password.forEachChar((charCode: number) => {
         const charClass = charCode < charClasses.length ? charClasses[charCode] : 0;
         countByClass[charClass]++;
         length++;

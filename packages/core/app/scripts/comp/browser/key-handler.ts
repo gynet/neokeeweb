@@ -6,8 +6,28 @@ import { FocusManager } from 'comp/app/focus-manager';
 const shortcutKeyProp: 'metaKey' | 'ctrlKey' =
     navigator.platform.indexOf('Mac') >= 0 ? 'metaKey' : 'ctrlKey';
 
+// jQuery-wrapped keyboard event. We bind via `$(document).bind('keypress',
+// ...)` so handlers receive the jQuery event object, not a native one.
+// `@types/jquery` is intentionally not in devDependencies (no project
+// uses jQuery types directly), so we declare a minimal local shim of
+// the jQuery event surface we actually use. Migrating away from jQuery
+// is a Phase 2 view-layer task, not in scope here.
+interface JQueryKeyEvent {
+    keyCode?: number;
+    which?: number;
+    metaKey?: boolean;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    target?: EventTarget | null;
+    preventDefault(): void;
+    stopPropagation(): void;
+    stopImmediatePropagation(): void;
+    isImmediatePropagationStopped(): boolean;
+}
+
 interface KeyShortcut {
-    handler: (e: JQuery.KeyDownEvent | JQuery.KeyPressEvent, code?: number) => void;
+    handler: (e: JQueryKeyEvent, code?: number) => void;
     thisArg: unknown;
     shortcut: number;
     modal: unknown;
@@ -38,7 +58,7 @@ class KeyHandler {
 
     onKey(
         key: number,
-        handler: (e: JQuery.KeyDownEvent, code?: number) => void,
+        handler: (e: JQueryKeyEvent, code?: number) => void,
         thisArg: unknown,
         shortcut: number,
         modal?: unknown,
@@ -59,7 +79,7 @@ class KeyHandler {
 
     offKey(
         key: number,
-        handler: (e: JQuery.KeyDownEvent, code?: number) => void,
+        handler: (e: JQueryKeyEvent, code?: number) => void,
         thisArg: unknown
     ): void {
         if (this.shortcuts[key]) {
@@ -69,13 +89,16 @@ class KeyHandler {
         }
     }
 
-    isActionKey(e: JQuery.KeyDownEvent): boolean {
+    isActionKey(e: JQueryKeyEvent): boolean {
         return !!(e as unknown as Record<string, boolean>)[shortcutKeyProp];
     }
 
-    keydown(e: JQuery.KeyDownEvent): void {
+    keydown(e: JQueryKeyEvent): void {
         IdleTracker.regUserAction();
         const code = e.keyCode || e.which;
+        if (code === undefined) {
+            return;
+        }
         const keyShortcuts = this.shortcuts[code];
         if (keyShortcuts && keyShortcuts.length) {
             for (const sh of keyShortcuts) {
@@ -122,7 +145,7 @@ class KeyHandler {
         }
     }
 
-    keypress(e: JQuery.KeyPressEvent): void {
+    keypress(e: JQueryKeyEvent): void {
         if (
             !FocusManager.modal &&
             e.which !== Keys.DOM_VK_RETURN &&
@@ -142,7 +165,7 @@ class KeyHandler {
         IdleTracker.regUserAction();
     }
 
-    handleAKey(e: JQuery.KeyDownEvent): void {
+    handleAKey(e: JQueryKeyEvent): void {
         const target = e.target as HTMLInputElement;
         if (
             target.tagName.toLowerCase() === 'input' &&

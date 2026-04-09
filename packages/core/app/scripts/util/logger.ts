@@ -27,12 +27,18 @@ class Logger {
         this.level = level;
     }
 
-    ts(ts?: number): number | string {
-        if (ts) {
-            return Math.round(performance.now() - ts) + 'ms';
-        } else {
-            return performance.now();
+    // Overloaded so callers can do `const t = logger.ts(); ...; logger.ts(t)`
+    // without TS complaining about feeding a `number | string` back into
+    // a `number | undefined` parameter. The 0-arg call returns a numeric
+    // timestamp (the start time), the 1-arg call returns a human-readable
+    // "Nms" delta string suitable for logging.
+    ts(): number;
+    ts(start: number): string;
+    ts(start?: number): number | string {
+        if (start !== undefined) {
+            return Math.round(performance.now() - start) + 'ms';
         }
+        return performance.now();
     }
 
     getPrefix(): string {

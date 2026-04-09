@@ -1,14 +1,25 @@
 import * as kdbxweb from 'kdbxweb';
 import { Logger } from 'util/logger';
+// Webpack `string-loader` for *.pem files returns the file content
+// as a string. The TS compiler sees these as missing modules without
+// an ambient declaration; declared in app/scripts/types.d.ts.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — webpack raw-loader provides .pem as string at build time
 import publicKeyData from 'public-key.pem';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — webpack raw-loader provides .pem as string at build time
 import publicKeyDataNew from 'public-key-new.pem';
 
 const SignatureVerifier = {
     logger: new Logger('signature-verifier'),
 
-    publicKeys: null,
+    publicKeys: null as string[] | null,
 
-    verify(data, signature, pk) {
+    verify(
+        data: ArrayBuffer | Uint8Array,
+        signature: string | ArrayBuffer | Uint8Array,
+        pk?: string
+    ): Promise<boolean> {
         if (!pk) {
             const pks = this.getPublicKeys();
             return this.verify(data, signature, pks[0]).then((isValid) => {
@@ -21,21 +32,24 @@ const SignatureVerifier = {
         return new Promise((resolve, reject) => {
             const algo = { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } };
             try {
+                let sigBytes: Uint8Array | ArrayBuffer;
                 if (typeof signature === 'string') {
-                    signature = kdbxweb.ByteUtils.base64ToBytes(signature);
+                    sigBytes = kdbxweb.ByteUtils.base64ToBytes(signature);
+                } else {
+                    sigBytes = signature;
                 }
                 const subtle = window.crypto.subtle;
                 const keyFormat = 'spki';
-                pk = kdbxweb.ByteUtils.base64ToBytes(pk);
+                const pkBytes = kdbxweb.ByteUtils.base64ToBytes(pk);
                 subtle
-                    .importKey(keyFormat, pk, algo, false, ['verify'])
+                    .importKey(keyFormat, pkBytes, algo, false, ['verify'])
                     .then((cryptoKey) => {
                         try {
                             subtle
                                 .verify(
                                     algo,
                                     cryptoKey,
-                                    kdbxweb.ByteUtils.arrayToBuffer(signature),
+                                    kdbxweb.ByteUtils.arrayToBuffer(sigBytes),
                                     kdbxweb.ByteUtils.arrayToBuffer(data)
                                 )
                                 .then((isValid) => {
@@ -61,11 +75,15 @@ const SignatureVerifier = {
         });
     },
 
-    getPublicKeys() {
+    getPublicKeys(): string[] {
         if (!this.publicKeys) {
-            this.publicKeys = [publicKeyData, publicKeyDataNew].map((pk) =>
-                pk.match(/-+BEGIN PUBLIC KEY-+([\s\S]+?)-+END PUBLIC KEY-+/)[1].replace(/\s+/g, '')
-            );
+            this.publicKeys = [publicKeyData as string, publicKeyDataNew as string].map((pk) => {
+                const m = pk.match(/-+BEGIN PUBLIC KEY-+([\s\S]+?)-+END PUBLIC KEY-+/);
+                if (!m) {
+                    throw new Error('Malformed PEM public key');
+                }
+                return m[1].replace(/\s+/g, '');
+            });
         }
         return this.publicKeys;
     }
