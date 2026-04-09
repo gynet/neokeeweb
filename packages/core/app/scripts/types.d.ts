@@ -117,16 +117,6 @@ declare module 'comp/app/focus-manager' {
     export { FocusManager };
 }
 
-// comp/settings/settings-store — JS module not yet migrated
-declare module 'comp/settings/settings-store' {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SettingsStore: {
-        load(key: string): Promise<any>;
-        save(key: string, data: unknown): void;
-    };
-    export { SettingsStore };
-}
-
 // comp/i18n/date-format — now a real TS module, keep ambient signature broader
 declare module 'comp/i18n/date-format' {
     const DateFormat: {

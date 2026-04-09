@@ -1,8 +1,16 @@
-import { describe, test, expect, beforeEach, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterAll } from 'bun:test';
+import {
+    installMockedModule,
+    restoreAllMockedModules
+} from '../helpers/mock-isolation';
 
-// Mock SettingsStore before importing the model
+// Mock SettingsStore before importing the model, via the isolation
+// helper so the mock is torn down at afterAll and does not leak into
+// other test files. See tests/helpers/mock-isolation.ts for rationale.
+// Without this, `tests/comp/settings/settings-store.test.ts` loads the
+// mocked version below instead of the real module it's trying to test.
 const mockStore: Record<string, unknown> = {};
-mock.module('../../app/scripts/comp/settings/settings-store', () => ({
+await installMockedModule('../../app/scripts/comp/settings/settings-store', () => ({
     SettingsStore: {
         load: (key: string) => Promise.resolve(mockStore[key] ?? null),
         save: (key: string, data: unknown) => {
@@ -11,6 +19,7 @@ mock.module('../../app/scripts/comp/settings/settings-store', () => ({
         }
     }
 }));
+afterAll(restoreAllMockedModules);
 
 const { AppSettingsModel } = await import('../../app/scripts/models/app-settings-model');
 
