@@ -12,7 +12,7 @@ interface SettingsModelEvents {
 }
 
 class SettingsModel extends TypedEmitter<SettingsModelEvents> {
-    readonly defaultKeeWebUrl = 'https://app.keeweb.info/';
+    readonly defaultKeeWebUrl = 'https://gynet.github.io/neokeeweb/';
 
     private _loaded = false;
     private _canAccessKeeWebTab: boolean | undefined;
