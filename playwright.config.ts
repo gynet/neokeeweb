@@ -1,5 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Local projects need the dev server; the `live` project hits a remote
+// URL (gh-pages) and must NOT launch the local server. Playwright doesn't
+// let individual projects opt out of a top-level webServer, so we gate
+// the webServer config on whether the invocation is targeting only the
+// `live` project. Detection: CLI arg `--project=live` (used by the
+// `test:e2e:live` script and the verify-live CI job).
+const isLiveOnly = process.argv.some((a) => a === '--project=live' || a === '--project=live,');
+
+const LIVE_URL = process.env.NEOKEEWEB_LIVE_URL || 'https://gynet.github.io/neokeeweb/';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -19,6 +29,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testDir: './e2e/core',
       use: {
         ...devices['Desktop Chrome'],
         // Chromium-only: grant clipboard read/write so
@@ -32,14 +43,33 @@ export default defineConfig({
     },
     {
       name: 'firefox',
+      testDir: './e2e/core',
       use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      // Live demo smoke — targets the deployed gh-pages URL directly, no
+      // webServer, no baseURL override. Invoked by CI verify-live job and
+      // by `bun run test:e2e:live`. See e2e/live/smoke-live.spec.ts.
+      name: 'live',
+      testDir: './e2e/live',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: LIVE_URL,
+      },
     },
   ],
 
-  webServer: {
-    command: 'bun run --filter @neokeeweb/core dev',
-    url: 'http://localhost:8085',
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  // Only launch the local dev server when running the local-target
+  // projects. `bun run test:e2e:live` / CI `verify-live` use
+  // `--project=live` and skip this entirely — they hit LIVE_URL instead.
+  ...(isLiveOnly
+    ? {}
+    : {
+        webServer: {
+          command: 'bun run --filter @neokeeweb/core dev',
+          url: 'http://localhost:8085',
+          reuseExistingServer: !process.env.CI,
+          timeout: 30_000,
+        },
+      }),
 });
