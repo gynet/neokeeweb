@@ -205,12 +205,14 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Legacy deps cleaned (#6 — lodash + bourbon removed; baron + pikaday kept as feature-backing; jquery kept, view layer)
 - [x] TypeScript migration for core (#2 — 58 → 0 @ts-nocheck files)
 - [x] CRUD regression guard E2E (#34 — entry + group CREATE/UPDATE/DELETE)
-- [ ] Runtime persistence restored (settings-store + settings-manager stubs — 2026-04-09 warroom)
-- [ ] Remaining E2E UI scenarios (#4)
+- [x] CRUD persistence regression guard E2E (`crud-persistence.spec.ts` — IndexedDB cache roundtrip)
+- [x] Runtime persistence restored (settings-store + settings-manager fully restored, verified by TL warroom protocol 2026-04-09 — both files have full web-only impl + history comments)
+- [ ] Remaining E2E UI scenarios (#4, #40)
 - [ ] iOS share workflow Phase 1 subset (#35 — Mode A `navigator.share` + Mode E/F docs + clipboard hygiene)
 - [ ] WebDAV CORS diagnostic UI (#37)
+- [ ] TS strict-mode baseline → 0 (currently 74)
 
-**Current test counts** (all packages): **988 pass · 12 skip · 0 fail · 6879 expects** (1000 tests across 58 files). E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. Extension E2E: autofill-content-page, autofill-full-chain, autofill-github-repro, autofill-github-tabswitch.
+**Current test counts**: **db 509 pass + 12 skip · core 351 pass · extension 128 pass** · total **988 pass + 12 skip + 6879 expects** (1000 tests across 58 files). E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. Extension E2E: autofill-content-page, autofill-full-chain, autofill-github-repro, autofill-github-tabswitch.
 
 **TS strict-mode ratchet**: **74 errors remaining** in `packages/core` (see `packages/core/.typescript-baseline`). CI `typecheck` job blocks regressions. History: 368 → 306 → 204 → 74 (80% reduction from initial baseline). Phase 1 target: 0, at which point `transpileOnly: true` is removed from `packages/core/webpack.config.js`. Remaining debt concentrated in `entry-model.ts` (~19), `file-model.ts` (~13), long-tail views.
 
