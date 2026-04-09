@@ -38,7 +38,14 @@ module.exports = {
     },
     resolve: {
         extensions: ['.ts', '.js'],
-        modules: [path.join(__dirname, '../util'), path.join(__dirname, '../node_modules')],
+        // NOTE: previously this list also included `path.join(__dirname, '../util')`,
+        // but `packages/db/util` has never existed in the monorepo (leftover from
+        // the upstream kdbxweb layout that merged `util/` into `lib/utils/`).
+        // A stale path here silently resolves nothing — exactly the disease
+        // class that hid the runtime-info.js→.ts webpack-loader regression for
+        // 5 months (see commit 20360adb). Removed during 2026-04-09 config
+        // audit.
+        modules: [path.join(__dirname, '../node_modules')],
         alias: {
             '@': path.resolve(__dirname, '../')
         },

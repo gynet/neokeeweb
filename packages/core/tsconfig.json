@@ -23,7 +23,7 @@
       "hbs-helpers/*": ["./app/scripts/hbs-helpers/*"],
       "presenters/*": ["./app/scripts/presenters/*"],
       "hbs": ["./app/scripts/types.d.ts"],
-      "locales/*": ["./app/resources/locales/*"]
+      "locales/*": ["./app/scripts/locales/*"]
     }
   },
   "include": [
