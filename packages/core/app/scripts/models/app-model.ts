@@ -57,6 +57,33 @@ interface SyncOptions {
     remoteKey?: unknown;
 }
 
+interface ConfigFileEntry {
+    storage?: string;
+    name?: string;
+    path?: string;
+    options?: Record<string, unknown>;
+}
+
+interface UserConfig {
+    settings?: Record<string, unknown>;
+    files?: ConfigFileEntry[];
+    showOnlyFilesFromConfig?: boolean;
+    advancedSearch?: AdvancedSearch;
+}
+
+type AppFilter = EntryFilter & {
+    trash?: boolean;
+    group?: string;
+    subGroups?: boolean;
+    tag?: string;
+    tagLower?: string;
+    text?: string;
+    textLower?: string;
+    textParts?: string[] | null;
+    textLowerParts?: string[] | null;
+    advanced?: AdvancedSearch;
+};
+
 class AppModel {
     static instance: AppModel;
 
@@ -64,7 +91,7 @@ class AppModel {
     files: FileCollection = new FileCollection();
     fileInfos: typeof FileInfoCollection = FileInfoCollection;
     menu: MenuModel = new MenuModel();
-    filter: EntryFilter & { trash?: boolean; group?: string; subGroups?: boolean; tag?: string; tagLower?: string; text?: string } = {};
+    filter: AppFilter = {};
     sort: string = 'title';
     settings: typeof AppSettingsModel = AppSettingsModel;
     activeEntryId: string | null = null;
@@ -96,7 +123,7 @@ class AppModel {
     }
 
     loadConfig(configLocation: string): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise<UserConfig>((resolve, reject) => {
             this.ensureCanLoadConfig(configLocation);
             this.appLogger.debug('Loading config from', configLocation);
             const ts = this.appLogger.ts();
@@ -105,7 +132,7 @@ class AppModel {
             xhr.responseType = 'json';
             xhr.send();
             xhr.addEventListener('load', () => {
-                let response = xhr.response;
+                let response: unknown = xhr.response;
                 if (!response) {
                     const errorDesc = xhr.statusText === 'OK' ? 'Malformed JSON' : xhr.statusText;
                     this.appLogger.error('Error loading app config', errorDesc);
@@ -119,8 +146,9 @@ class AppModel {
                         return reject('Error parsing response');
                     }
                 }
-                if (!response.settings) {
-                    this.appLogger.error('Invalid app config, no settings section', response);
+                const cfg = response as UserConfig;
+                if (!cfg.settings) {
+                    this.appLogger.error('Invalid app config, no settings section', cfg);
                     return reject('Invalid app config, no settings section');
                 }
                 this.appLogger.info(
@@ -128,14 +156,14 @@ class AppModel {
                     configLocation,
                     this.appLogger.ts(ts)
                 );
-                resolve(response);
+                resolve(cfg);
             });
             xhr.addEventListener('error', () => {
                 this.appLogger.error('Error loading app config', xhr.statusText, xhr.status);
                 reject('Error loading app config');
             });
         }).then((config) => {
-            return this.applyUserConfig(config);
+            this.applyUserConfig(config);
         });
     }
 
@@ -151,20 +179,24 @@ class AppModel {
         }
     }
 
-    applyUserConfig(config: Record<string, unknown>): void {
-        this.settings.set(config.settings);
+    applyUserConfig(config: UserConfig): void {
+        if (config.settings) {
+            this.settings.set(config.settings);
+        }
         if (config.files) {
             if (config.showOnlyFilesFromConfig) {
                 this.fileInfos.length = 0;
             }
             config.files
                 .filter(
-                    (file) =>
-                        file &&
-                        file.storage &&
-                        file.name &&
-                        file.path &&
-                        !this.fileInfos.getMatch(file.storage, file.name, file.path)
+                    (file): file is Required<Pick<ConfigFileEntry, 'storage' | 'name' | 'path'>> & ConfigFileEntry =>
+                        !!(
+                            file &&
+                            file.storage &&
+                            file.name &&
+                            file.path &&
+                            !this.fileInfos.getMatch(file.storage, file.name, file.path)
+                        )
                 )
                 .map(
                     (file) =>
@@ -233,11 +265,11 @@ class AppModel {
     }
 
     _addTags(file: FileModel): void {
-        const tagsHash = {};
+        const tagsHash: Record<string, boolean> = {};
         this.tags.forEach((tag) => {
             tagsHash[tag.toLowerCase()] = true;
         });
-        file.forEachEntry({}, (entry) => {
+        file.forEachEntry({}, (entry: EntryModel) => {
             for (const tag of entry.tags) {
                 if (!tagsHash[tag.toLowerCase()]) {
                     tagsHash[tag.toLowerCase()] = true;
@@ -319,7 +351,7 @@ class AppModel {
         this.refresh();
     }
 
-    setFilter(filter: Record<string, unknown>): void {
+    setFilter(filter: AppFilter): void {
         this.filter = this.prepareFilter(filter);
         this.filter.subGroups = this.settings.expandGroups;
         if (!this.filter.advanced && this.advancedSearch) {
@@ -327,11 +359,15 @@ class AppModel {
         }
         const entries = this.getEntries();
         if (!this.activeEntryId || !entries.get(this.activeEntryId)) {
-            const firstEntry = entries[0];
+            const firstEntry = entries[0] as EntryModel | undefined;
             this.activeEntryId = firstEntry ? firstEntry.id : null;
         }
         Events.emit('filter', { filter: this.filter, sort: this.sort, entries });
-        Events.emit('entry-selected', entries.get(this.activeEntryId));
+        if (this.activeEntryId) {
+            Events.emit('entry-selected', entries.get(this.activeEntryId));
+        } else {
+            Events.emit('entry-selected', undefined);
+        }
     }
 
     refresh(): void {
@@ -343,7 +379,7 @@ class AppModel {
         this.refresh();
     }
 
-    addFilter(filter: Record<string, unknown>): void {
+    addFilter(filter: AppFilter): void {
         this.setFilter(Object.assign(this.filter, filter));
     }
 
@@ -361,7 +397,7 @@ class AppModel {
         return entries;
     }
 
-    getEntriesByFilter(filter: Record<string, unknown>, files: FileCollection): SearchResultCollection {
+    getEntriesByFilter(filter: AppFilter, files: FileCollection): SearchResultCollection {
         const preparedFilter = this.prepareFilter(filter);
         const entries = new SearchResultCollection();
 
@@ -385,25 +421,25 @@ class AppModel {
         });
     }
 
-    prepareFilter(filter: Record<string, unknown>): Record<string, unknown> {
-        filter = { ...filter };
+    prepareFilter(filter: AppFilter): AppFilter {
+        const prepared: AppFilter = { ...filter };
 
-        filter.textLower = filter.text ? filter.text.toLowerCase() : '';
-        filter.textParts = null;
-        filter.textLowerParts = null;
+        prepared.textLower = prepared.text ? prepared.text.toLowerCase() : '';
+        prepared.textParts = null;
+        prepared.textLowerParts = null;
 
-        const exact = filter.advanced && filter.advanced.exact;
-        if (!exact && filter.text) {
-            const textParts = filter.text.split(/\s+/).filter((s) => s);
+        const exact = prepared.advanced && prepared.advanced.exact;
+        if (!exact && prepared.text) {
+            const textParts = prepared.text.split(/\s+/).filter((s: string) => s);
             if (textParts.length) {
-                filter.textParts = textParts;
-                filter.textLowerParts = filter.textLower.split(/\s+/).filter((s) => s);
+                prepared.textParts = textParts;
+                prepared.textLowerParts = (prepared.textLower ?? '').split(/\s+/).filter((s: string) => s);
             }
         }
 
-        filter.tagLower = filter.tag ? filter.tag.toLowerCase() : '';
+        prepared.tagLower = prepared.tag ? prepared.tag.toLowerCase() : '';
 
-        return filter;
+        return prepared;
     }
 
     getFirstSelectedGroupForCreation(): { group: GroupModel; file: FileModel } {
@@ -424,7 +460,7 @@ class AppModel {
     }
 
     completeUserNames(part: string): string[] {
-        const userNames = {};
+        const userNames: Record<string, number> = {};
         this.files.forEach((file) => {
             file.forEachEntry(
                 { text: part, textLower: part.toLowerCase(), advanced: { user: true } },
