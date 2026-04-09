@@ -24,7 +24,13 @@ jobs:
       - run: cd packages/extension && bun run build-chrome
       - run: cd packages/extension && bunx playwright install chromium --with-deps
       - run: sudo apt-get install -y xvfb
-      - run: cd packages/extension && xvfb-run bunx playwright test --config playwright.config.ts || true
+      - name: Extension E2E (Playwright headed + xvfb)
+        id: ext-e2e
+        continue-on-error: true
+        run: cd packages/extension && xvfb-run bunx playwright test --config playwright.config.ts
+      - name: Surface extension E2E failure as warning
+        if: steps.ext-e2e.outcome == 'failure'
+        run: echo "::warning title=Extension E2E failed::Headed Playwright under xvfb reported failures. See uploaded e2e-extension-report artifact. Tracked in #32."
       - uses: actions/upload-artifact@v4
         if: always()
         with:
