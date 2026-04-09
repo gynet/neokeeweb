@@ -159,9 +159,18 @@ module.exports = (env, argv) => {
                         }
                     ]
                 },
-                // Runtime info string replacements
+                // Runtime info string replacements.
+                // NOTE: this MUST match both .js and .ts. The TS migration
+                // (commit 9cc7e23c) renamed runtime-info.js → runtime-info.ts
+                // but this regex was not updated, so for ~5 months every
+                // bundle shipped with @@VERSION / @@DATE / @@COMMIT as
+                // literal placeholders. The KeeWeb Connect browser extension
+                // saw `version: "@@VERSION"` in the protocol response and
+                // silently rejected the autofill (it expects a real semver
+                // version), making autofill appear broken on the demo even
+                // though the protocol layer was working. Found 2026-04-09.
                 {
-                    test: /runtime-info\.js$/,
+                    test: /runtime-info\.[jt]s$/,
                     loader: 'string-replace-loader',
                     options: {
                         multiple: [
