@@ -15,6 +15,52 @@ jobs:
       - run: bun run test
       - run: bun run build
 
+  typecheck:
+    # Type-debt ratchet. packages/core is built with `transpileOnly: true`
+    # in webpack (packages/core/webpack.config.js:126) so webpack never
+    # runs a real type check — a conscious trade-off for rebuild speed
+    # but also the blast-door that hid today's warroom bugs (most of the
+    # 8 fixes landed on 2026-04-09 would have been caught by a real tsc
+    # run). This job runs `tsc --noEmit` on packages/core and enforces
+    # that the error count never grows beyond the baseline in
+    # `packages/core/.typescript-baseline`. Every PR that reduces the
+    # count updates the baseline. Once the count hits 0, drop this job
+    # in favor of `tsc --noEmit` being a hard requirement AND remove
+    # `transpileOnly: true` from webpack.config.js.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Run tsc --noEmit on packages/core
+        id: tsc
+        continue-on-error: true
+        run: |
+          cd packages/core
+          bunx tsc --noEmit 2>&1 | tee /tmp/tsc-output.txt || true
+      - name: Compare against baseline
+        run: |
+          cd packages/core
+          if [ ! -f .typescript-baseline ]; then
+            echo "::error::missing packages/core/.typescript-baseline file"
+            exit 1
+          fi
+          BASELINE=$(cat .typescript-baseline | tr -d '[:space:]')
+          CURRENT=$(grep -c 'error TS' /tmp/tsc-output.txt || echo 0)
+          echo "Baseline: $BASELINE errors"
+          echo "Current:  $CURRENT errors"
+          if [ "$CURRENT" -gt "$BASELINE" ]; then
+            echo "::error title=TypeScript type debt increased::TypeScript error count went from $BASELINE (baseline) to $CURRENT. This PR introduces new type errors."
+            echo ""
+            echo "New errors (first 30):"
+            grep 'error TS' /tmp/tsc-output.txt | head -30
+            exit 1
+          fi
+          if [ "$CURRENT" -lt "$BASELINE" ]; then
+            echo "::notice title=TypeScript type debt decreased::Nice! $BASELINE → $CURRENT. Please update packages/core/.typescript-baseline to $CURRENT in this PR."
+          fi
+          echo "OK: TypeScript error count is within baseline."
+
   e2e-extension:
     runs-on: ubuntu-latest
     steps:

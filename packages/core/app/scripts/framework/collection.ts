@@ -193,15 +193,18 @@ class Collection {
         return removed;
     }
 
-    on(eventName: string, listener: (...args: unknown[]) => void): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    on(eventName: string, listener: (...args: any[]) => void): void {
         this[SymbolEvents].on(eventName, listener);
     }
 
-    once(eventName: string, listener: (...args: unknown[]) => void): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    once(eventName: string, listener: (...args: any[]) => void): void {
         this[SymbolEvents].once(eventName, listener);
     }
 
-    off(eventName: string, listener: (...args: unknown[]) => void): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    off(eventName: string, listener: (...args: any[]) => void): void {
         this[SymbolEvents].off(eventName, listener);
     }
 
