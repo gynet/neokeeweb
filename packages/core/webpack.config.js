@@ -50,9 +50,7 @@ module.exports = (env, argv) => {
                 const: path.join(rootDir, 'app/scripts/const'),
                 collections: path.join(rootDir, 'app/scripts/collections'),
                 presenters: path.join(rootDir, 'app/scripts/presenters'),
-                plugins: path.join(rootDir, 'app/scripts/plugins'),
                 locales: path.join(rootDir, 'app/scripts/locales'),
-                'auto-type': path.join(rootDir, 'app/scripts/auto-type'),
                 'hbs-helpers': path.join(rootDir, 'app/scripts/hbs-helpers'),
 
                 // Template and resource aliases
