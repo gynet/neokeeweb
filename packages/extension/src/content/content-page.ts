@@ -10,8 +10,73 @@ declare global {
     }
 }
 
+// Track the last-focused INPUT across focus events. Firefox (and
+// some Chromium sites) move focus away from the input BETWEEN the
+// keyboard shortcut fire and the moment content-page.js is called
+// to read document.activeElement — e.g., the keydown of Ctrl+Shift+U
+// can engage Firefox's Unicode character input mode which steals
+// focus, or an async gap between chrome.commands.onCommand → script
+// injection → message dispatch lets any DOM event reset focus.
+// Result: `document.activeElement.tagName !== 'INPUT'`, and
+// getNextAutoFillCommand + autoFill both silently abort.
+//
+// Fix: register a `focusin` listener on capture phase as soon as
+// content-page.js loads, and remember the most recent INPUT focused
+// by the user. Fall back to that when document.activeElement is no
+// longer an input. This does not happen in Chromium (which is why
+// the Playwright Chromium repro tests pass end-to-end), but is
+// reproducible on Firefox 149 per 2026-04-09 warroom user report.
+//
+// Use a globalThis key so the tracked value survives re-injection.
+// If a re-injection creates a new isolated world, the listener is
+// lost but the fallback also re-initializes — acceptable.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const KW_LAST_INPUT_KEY = '__nkwLastInput';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any)[KW_LAST_INPUT_KEY] =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any)[KW_LAST_INPUT_KEY] || null;
+
+function getTrackedActiveInput(): HTMLInputElement | null {
+    const active = document.activeElement;
+    if (active?.tagName === 'INPUT') {
+        return active as HTMLInputElement;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fallback = (globalThis as any)[KW_LAST_INPUT_KEY] as HTMLInputElement | null;
+    if (fallback && fallback.isConnected) {
+        // eslint-disable-next-line no-console
+        console.info('[NKW-Connect] getTrackedActiveInput: using fallback (lost focus)', {
+            fallbackId: fallback.id,
+            fallbackType: fallback.type
+        });
+        return fallback;
+    }
+    return null;
+}
+
 if (!window.kwExtensionInstalled) {
     window.kwExtensionInstalled = true;
+
+    // Track last-focused input. Capture phase so we see the event
+    // even if the page stops propagation. Ignore non-form inputs
+    // (buttons, submits, files — autofill doesn't target those).
+    window.addEventListener(
+        'focusin',
+        (e) => {
+            const target = e.target as HTMLElement | null;
+            if (
+                target?.tagName === 'INPUT' &&
+                (target as HTMLInputElement).type !== 'button' &&
+                (target as HTMLInputElement).type !== 'submit' &&
+                (target as HTMLInputElement).type !== 'file'
+            ) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (globalThis as any)[KW_LAST_INPUT_KEY] = target;
+            }
+        },
+        true
+    );
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (sender.id !== chrome.runtime.id) {
@@ -49,8 +114,21 @@ if (!window.kwExtensionInstalled) {
         }
 
         function getNextAutoFillCommand() {
-            const input = <HTMLInputElement>document.activeElement;
-            if (input?.tagName !== 'INPUT') {
+            const input = getTrackedActiveInput();
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] getNextAutoFillCommand', {
+                activeTag: document.activeElement?.tagName,
+                activeId: (document.activeElement as HTMLElement | null)?.id,
+                trackedTag: input?.tagName,
+                trackedId: input?.id,
+                trackedType: input?.type
+            });
+            if (!input || input.tagName !== 'INPUT') {
+                // eslint-disable-next-line no-console
+                console.warn(
+                    '[NKW-Connect] getNextAutoFillCommand abort: no tracked input ' +
+                        '(neither document.activeElement nor focusin fallback)'
+                );
                 return;
             }
 
@@ -65,6 +143,8 @@ if (!window.kwExtensionInstalled) {
                     nextCommand = 'submit-username';
                 }
             }
+            // eslint-disable-next-line no-console
+            console.info('[NKW-Connect] getNextAutoFillCommand resolved', { nextCommand });
             return { nextCommand };
         }
 
@@ -83,10 +163,13 @@ if (!window.kwExtensionInstalled) {
                 locationHref: location.href
             });
 
-            let input = <HTMLInputElement | undefined>document.activeElement;
+            let input = getTrackedActiveInput() ?? undefined;
             if (!input) {
                 // eslint-disable-next-line no-console
-                console.warn('[NKW-Connect] autoFill abort: no document.activeElement');
+                console.warn(
+                    '[NKW-Connect] autoFill abort: no tracked input ' +
+                        '(neither document.activeElement nor focusin fallback)'
+                );
                 return;
             }
 
