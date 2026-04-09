@@ -117,30 +117,47 @@ jobs:
           retention-days: 7
 
   e2e-full-chain-firefox:
-    # Full-chain autofill regression guard for Firefox 149. Uses
-    # Selenium + geckodriver because Playwright's bundled Firefox
-    # enforces xpi signature verification (our dev xpi is unsigned).
-    # Drives runCommand via the `invoke-action-click` runtime message
-    # RPC from the extension options page (Firefox does not expose
+    # Full-chain autofill regression guard for Firefox. Uses Selenium
+    # + geckodriver because Playwright's bundled Firefox enforces xpi
+    # signature verification (our dev xpi is unsigned). Drives
+    # runCommand via the `invoke-action-click` runtime message RPC
+    # from the extension options page (Firefox does not expose
     # chrome.action.onClicked.dispatch like Chromium does).
+    #
+    # Runner: ubuntu-latest (24.04 noble) REMOVED firefox from apt
+    # — only the snap is available, which doesn't work inside
+    # containerized CI. We install Firefox + geckodriver via binary
+    # downloads instead, which gives us a pinned Firefox version for
+    # reproducibility (ci drift in browser-version would otherwise
+    # surface as test flakiness).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - run: cd packages/extension && bun run build-firefox
-      - name: Install Firefox + geckodriver
+      - name: Install Firefox + geckodriver (pinned binary download)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y firefox firefox-geckodriver || sudo apt-get install -y firefox-esr
-          if ! command -v geckodriver; then
-            GECKO_VERSION=v0.36.0
-            wget -q https://github.com/mozilla/geckodriver/releases/download/${GECKO_VERSION}/geckodriver-${GECKO_VERSION}-linux64.tar.gz
-            tar -xzf geckodriver-${GECKO_VERSION}-linux64.tar.gz
-            sudo mv geckodriver /usr/local/bin/
-          fi
+          set -euxo pipefail
+          # Firefox — pin a specific version for CI reproducibility.
+          # Update periodically in coordination with the local dev
+          # environment (local runs Firefox 149).
+          FIREFOX_VERSION=149.0.2
+          wget -q "https://download.mozilla.org/?product=firefox-${FIREFOX_VERSION}&os=linux64&lang=en-US" -O firefox.tar.xz
+          tar -xf firefox.tar.xz
+          sudo mv firefox /opt/firefox
+          sudo ln -sf /opt/firefox/firefox /usr/local/bin/firefox
           firefox --version
+          # geckodriver — pinned release.
+          GECKO_VERSION=v0.36.0
+          wget -q "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VERSION}/geckodriver-${GECKO_VERSION}-linux64.tar.gz" -O geckodriver.tar.gz
+          tar -xzf geckodriver.tar.gz
+          sudo mv geckodriver /usr/local/bin/
           geckodriver --version
+          # Firefox deps (libdbus-glib, etc) — install what's actually
+          # needed for headless Firefox on ubuntu-noble.
+          sudo apt-get update
+          sudo apt-get install -y libdbus-glib-1-2 libgtk-3-0 libasound2t64
       - name: Start NeoKeeWeb dev server
         run: |
           bun run --filter @neokeeweb/core dev > /tmp/dev-server.log 2>&1 &
