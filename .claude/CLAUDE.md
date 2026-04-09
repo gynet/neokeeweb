@@ -182,6 +182,13 @@ Agent(description="SWE-DB: [task]", isolation="worktree", run_in_background=true
 Agent(description="SWE-Ext: [task]", isolation="worktree", run_in_background=true)
 ```
 
+## Architectural Non-Goals (#38)
+
+Do not re-propose these unless re-evaluation triggers in #38 fire:
+
+- **iOS Safari extension** — PWA/extension isolation on iOS + App Store native wrapper requirement + 20% login coverage make this wrong tool. Use share-based workflows (#35) instead.
+- **PWA as OS-level system password manager** — credential provider APIs on every platform are native-only by design. NeoKeeWeb's scope is the browser boundary; differentiation comes from hardware-backed encryption (#25, #39).
+
 ## Phase 1 Goals (Current)
 
 See: https://github.com/gynet/neokeeweb/milestone/1
@@ -189,7 +196,7 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [x] Merge 3 repos into monorepo
 - [x] Strip Electron/desktop code
 - [x] Drop KDBX3, keep KDBX4 only
-- [x] Strip OAuth providers (WebDAV + IndexedDB only)
+- [x] Strip OAuth providers (WebDAV + IndexedDB only — replacement tracked by #36 BYOK OAuth)
 - [x] Modernize build (Grunt → Bun + Webpack)
 - [x] Remove dead desktop/plugin/YubiKey code (-1500 lines)
 - [x] CI/CD with GitHub Actions
@@ -197,14 +204,24 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [x] keepass-rs interop tests
 - [x] Legacy deps cleaned (#6 — lodash + bourbon removed; baron + pikaday kept as feature-backing; jquery kept, view layer)
 - [x] TypeScript migration for core (#2 — 58 → 0 @ts-nocheck files)
-- [ ] E2E test scenarios (#4 — roundtrip + clipboard + import + NaCl + OTP done; UI-only scenarios remaining)
+- [x] CRUD regression guard E2E (#34 — entry + group CREATE/UPDATE/DELETE)
+- [ ] Runtime persistence restored (settings-store + settings-manager stubs — 2026-04-09 warroom)
+- [ ] Remaining E2E UI scenarios (#4)
+- [ ] iOS share workflow Phase 1 subset (#35 — Mode A `navigator.share` + Mode E/F docs + clipboard hygiene)
+- [ ] WebDAV CORS diagnostic UI (#37)
 
-**Current test counts**: db 509 pass + 12 skip · core 284 pass · extension 128 pass · E2E specs in `e2e/core/`: app, clipboard, database-lifecycle, database-open, database-roundtrip, features, import, otp, smoke
+**Current test counts**: db 509 pass + 12 skip · core 284 pass (+ framework Collection 41) · extension 128 pass · E2E specs in `e2e/core/`: app, clipboard, crud, database-lifecycle, database-open, database-roundtrip, features, import, otp, smoke
 
 ## Phase 2 Goals (Planned)
 
 See: https://github.com/gynet/neokeeweb/milestone/2
 
-- Passkey support (store + WebAuthn PRF unlock) — Issue #9
-- Cloud storage with user-provided OAuth (BYOK model)
-- UX improvements
+- [ ] Passkey unlock (WebAuthn PRF) — #9 — **prerequisite for #25 and #39**
+- [ ] BYOK OAuth storage adapters (Dropbox + Google Drive) — #36
+- [ ] iOS share workflow Phase 2 subset (#35 — Mode B `share_target`, Mode C/D URL scheme + Shortcut, Mode G QR handoff)
+
+## Phase 3 Goals (Planned)
+
+- [ ] **Per-field** hardware encryption (YubiKey + WebAuthn PRF) — #25 (was "per-entry"; corrected to per-field for search/autofill compatibility)
+- [ ] Quick Autofill — per-URL scoped cache with PRF gating — #39
+- [ ] P2P device sync (Automerge/CRDT + WebRTC) — #26 (exploratory)
