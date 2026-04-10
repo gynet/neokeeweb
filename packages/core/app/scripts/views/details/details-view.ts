@@ -912,6 +912,13 @@ class DetailsView extends View {
                 text: loc.detMenuCopyUser
             });
         }
+        if (typeof navigator.share === 'function') {
+            options.push({
+                value: 'det-share-password',
+                icon: 'share-alt',
+                text: 'Share Password'
+            });
+        }
         options.push({ value: 'det-add-new', icon: 'plus', text: loc.detMenuAddNewField });
         options.push({ value: 'det-clone', icon: 'clone', text: loc.detClone });
         if (canCopy) {
@@ -932,6 +939,9 @@ class DetailsView extends View {
             case 'det-copy-user':
                 this.copyUserName();
                 break;
+            case 'det-share-password':
+                this.sharePassword();
+                break;
             case 'det-add-new':
                 this.addNewField();
                 break;
@@ -942,6 +952,30 @@ class DetailsView extends View {
                 this.copyToClipboard();
                 break;
         }
+    }
+
+    sharePassword(): void {
+        if (!this.model) {
+            return;
+        }
+        const passwordField = this.getFieldView('$Password');
+        if (!passwordField) {
+            return;
+        }
+        const text = passwordField.getTextValue();
+        if (!text) {
+            return;
+        }
+        navigator
+            .share({
+                title: this.model.title || 'Password',
+                text
+            })
+            .catch((err: DOMException) => {
+                if (err.name !== 'AbortError') {
+                    this.copyPassword();
+                }
+            });
     }
 
     setupOtp(): void {
