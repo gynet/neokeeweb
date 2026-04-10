@@ -188,4 +188,46 @@ describe('StorageWebDav', () => {
         storage.applySetting('webdavSaveMethod', 'put');
         expect((storage.appSettings as unknown as Record<string, unknown>).webdavSaveMethod).toBe('put');
     });
+
+    describe('_isCrossOrigin', () => {
+        // In Bun's test runner there is no browser `window`, so
+        // `_isCrossOrigin` catches the error and returns false.
+        // We can still verify the error-path and the URL parsing
+        // by temporarily providing a global `window`.
+        const origWindow = globalThis.window;
+
+        afterAll(() => {
+            if (origWindow === undefined) {
+                delete (globalThis as Record<string, unknown>).window;
+            } else {
+                (globalThis as Record<string, unknown>).window = origWindow;
+            }
+        });
+
+        test('returns true for different origin', () => {
+            (globalThis as Record<string, unknown>).window = {
+                location: { href: 'http://localhost:8085/', origin: 'http://localhost:8085' }
+            };
+            expect(storage._isCrossOrigin('https://example.com/webdav/file.kdbx')).toBe(true);
+        });
+
+        test('returns true for different port on same host', () => {
+            (globalThis as Record<string, unknown>).window = {
+                location: { href: 'http://localhost:8085/', origin: 'http://localhost:8085' }
+            };
+            expect(storage._isCrossOrigin('http://localhost:5006/webdav/file.kdbx')).toBe(true);
+        });
+
+        test('returns false for same origin', () => {
+            (globalThis as Record<string, unknown>).window = {
+                location: { href: 'http://localhost:8085/', origin: 'http://localhost:8085' }
+            };
+            expect(storage._isCrossOrigin('http://localhost:8085/webdav/file.kdbx')).toBe(false);
+        });
+
+        test('returns false for invalid URL when window is missing', () => {
+            delete (globalThis as Record<string, unknown>).window;
+            expect(storage._isCrossOrigin('')).toBe(false);
+        });
+    });
 });
