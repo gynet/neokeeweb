@@ -15,8 +15,7 @@ class DragView extends View {
     mouseDownTime = -1;
     mouseDownCount = 0;
     initialOffset = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    dragMask: any;
+    dragMask: JQuery<HTMLElement> | undefined;
 
     constructor(coord: DragCoord, options?: Record<string, unknown>) {
         super(coord, options);
@@ -70,7 +69,7 @@ class DragView extends View {
     }
 
     mouseup(): void {
-        this.dragMask.remove();
+        this.dragMask?.remove();
         this.$el.removeClass('dragging');
     }
 }

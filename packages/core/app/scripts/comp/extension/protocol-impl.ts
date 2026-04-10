@@ -852,7 +852,7 @@ const ProtocolHandlers: Record<string, ProtocolHandler> = {
                 askSave: saveConfig?.askSave || 'always',
                 update: !!entryToUpdate,
                 allGroups
-            } as unknown as Record<string, unknown>) as AnyAppModel;
+            }) as unknown as AnyAppModel;
 
             await alertWithTimeout({
                 header: loc['extensionSaveEntryHeader'],
@@ -1013,7 +1013,7 @@ const ProtocolHandlers: Record<string, ProtocolHandler> = {
                 name: f.name,
                 selected: ix === 0
             }))
-        } as unknown as Record<string, unknown>) as AnyAppModel;
+        }) as unknown as AnyAppModel;
 
         await alertWithTimeout({
             header: loc['extensionNewGroupHeader'],

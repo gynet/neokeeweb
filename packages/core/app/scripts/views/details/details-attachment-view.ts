@@ -13,8 +13,7 @@ class DetailsAttachmentView extends View {
 
     render(complete?: () => void): this | undefined {
         super.render({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            isMobile: (Features as any).isMobile
+            isMobile: Features.isMobile
         });
         const shortcut = this.$el.find('.details__attachment-preview-download-text-shortcut');
         shortcut.text(Shortcuts.actionShortcutSymbol());

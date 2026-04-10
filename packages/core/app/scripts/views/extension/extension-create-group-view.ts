@@ -6,6 +6,12 @@ interface ExtensionFile {
     selected?: boolean;
 }
 
+interface ExtensionCreateGroupModel {
+    files: ExtensionFile[];
+    // Additional fields pass through to the template (extension name etc.).
+    [key: string]: unknown;
+}
+
 class ExtensionCreateGroupView extends View {
     template = template;
 
@@ -15,12 +21,10 @@ class ExtensionCreateGroupView extends View {
 
     selectedFile: string;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(model: any) {
+    constructor(model: ExtensionCreateGroupModel) {
         super(model);
 
-        const files = model.files as ExtensionFile[];
-        const selected = files.find((f) => f.selected);
+        const selected = model.files.find((f) => f.selected);
         this.selectedFile = selected ? selected.id : '';
     }
 

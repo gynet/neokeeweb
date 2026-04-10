@@ -13,6 +13,15 @@ interface SaveEntryConfig {
     fileId: string;
 }
 
+interface SaveEntryModel {
+    allGroups: SaveEntryGroup[];
+    askSave?: string;
+    // Additional fields are passed through to the template (extensionName,
+    // url, user, update flag) — we don't use them in the constructor and
+    // the template renderer is loose-typed.
+    [key: string]: unknown;
+}
+
 class ExtensionSaveEntryView extends View {
     template = template;
 
@@ -23,13 +32,10 @@ class ExtensionSaveEntryView extends View {
 
     config: SaveEntryConfig;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(model: any) {
+    constructor(model: SaveEntryModel) {
         super(model);
 
-        const selectedGroup = (model.allGroups as SaveEntryGroup[]).find(
-            (g) => g.selected
-        );
+        const selectedGroup = model.allGroups.find((g) => g.selected);
         this.config = {
             askSave: model.askSave || 'always',
             groupId: selectedGroup?.id ?? '',

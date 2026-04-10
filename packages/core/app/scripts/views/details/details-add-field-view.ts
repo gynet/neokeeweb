@@ -11,8 +11,7 @@ class DetailsAddFieldView extends View {
         'click .details__field-value': 'fieldValueClick'
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    labelEl: any;
+    labelEl: JQuery<HTMLElement> | undefined;
 
     render(): this | undefined {
         super.render();
