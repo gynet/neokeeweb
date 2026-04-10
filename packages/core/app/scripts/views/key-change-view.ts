@@ -6,8 +6,17 @@ import { Locale } from 'util/locale';
 import { InputFx } from 'util/ui/input-fx';
 import template from 'templates/key-change.hbs';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loc = Locale as unknown as Record<string, any>;
+const loc = Locale as Record<string, string | undefined>;
+
+// Model passed in by app-model.ts when a key change is requested.
+// Fields are minimal — just what this view reads.
+interface KeyChangeViewModel {
+    file: {
+        name: string;
+        keyFileName?: string | null;
+    };
+    expired: boolean;
+}
 
 class KeyChangeView extends View {
     parent = '.app__body';
@@ -23,19 +32,16 @@ class KeyChangeView extends View {
         'click .key-change__btn-cancel': 'cancel'
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    passwordInput: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    passwordRepeatInput: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    inputEl: any = null;
+    passwordInput: SecureInput;
+    passwordRepeatInput: SecureInput | null = null;
+    inputEl: JQuery<HTMLElement> | null = null;
     keyFileName: string | null = null;
     keyFileData: ArrayBuffer | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    keyFile: any = null;
+    keyFile: null = null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(model: any) {
+    declare model: KeyChangeViewModel;
+
+    constructor(model: KeyChangeViewModel) {
         super(model);
         this.passwordInput = new SecureInput();
     }
@@ -101,8 +107,7 @@ class KeyChangeView extends View {
                     .text(': ' + this.keyFileName);
             };
             reader.onerror = () => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (Alerts as any).error({ header: loc.openFailedRead });
+                Alerts.error({ header: loc.openFailedRead ?? '' });
             };
             reader.readAsArrayBuffer(file);
         } else {

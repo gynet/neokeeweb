@@ -9,16 +9,7 @@ import { Locale } from 'util/locale';
 import { Tip } from 'util/ui/tip';
 import template from 'templates/generator.hbs';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loc = Locale as unknown as Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const genPresets = GeneratorPresets as unknown as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const passGen = PasswordGenerator as unknown as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const settings = AppSettingsModel as unknown as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const copyPaste = CopyPaste as unknown as any;
+const loc = Locale as Record<string, string | undefined>;
 
 interface GeneratorPreset {
     name: string;
@@ -27,6 +18,13 @@ interface GeneratorPreset {
     default?: boolean;
     pseudoLength?: number;
     [key: string]: unknown;
+}
+
+interface GeneratorViewModel {
+    copy?: boolean;
+    password?: import('kdbxweb').ProtectedValue | null;
+    pos?: Record<string, unknown>;
+    noTemplateEditor?: boolean;
 }
 
 class GeneratorView extends View {
@@ -53,30 +51,34 @@ class GeneratorView extends View {
 
     presets: GeneratorPreset[] = [];
     preset: string | null = null;
+    // `gen` is a shallow clone of the currently-selected preset, with
+    // fields mutated as the user toggles checkboxes. PasswordGeneratorOptions
+    // requires `length`, so we widen to Partial at the field level and
+    // let the downstream `generate()` call validate the required bits.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gen: any = {};
+    gen: Record<string, any> = {};
     hidePass = false;
     password = '';
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resultEl: any;
+    resultEl: JQuery<HTMLElement> | undefined;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(model: any) {
+    constructor(model: GeneratorViewModel) {
         super(model);
         this.createPresets();
         const preset = this.preset;
         this.gen = { ...this.presets.find((pr) => pr.name === preset) };
-        this.hidePass = !!settings.generatorHidePassword;
+        this.hidePass = !!AppSettingsModel.generatorHidePassword;
         $('body').one('click', this.remove.bind(this));
         this.listenTo(Events, 'lock-workspace', this.remove.bind(this));
     }
 
     render(): this | undefined {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const canCopy = (document as any).queryCommandSupported
-            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (document as any).queryCommandSupported('copy')
-            : false;
+        // `queryCommandSupported` is deprecated but still lives in
+        // lib.dom.d.ts. Call it directly if the browser implements it;
+        // otherwise fall back to false.
+        const canCopy =
+            typeof document.queryCommandSupported === 'function'
+                ? document.queryCommandSupported('copy')
+                : false;
         const btnTitle = this.model.copy
             ? canCopy
                 ? loc.alertCopy
@@ -98,7 +100,7 @@ class GeneratorView extends View {
     }
 
     createPresets(): void {
-        this.presets = (genPresets.enabled as GeneratorPreset[]).slice();
+        this.presets = (GeneratorPresets.enabled as GeneratorPreset[]).slice();
         if (
             this.model.password &&
             (!this.model.password.isProtected || this.model.password.byteLength)
@@ -107,7 +109,7 @@ class GeneratorView extends View {
                 name: 'Derived',
                 title: loc.genPresetDerived as string
             };
-            Object.assign(derivedPreset, passGen.deriveOpts(this.model.password));
+            Object.assign(derivedPreset, PasswordGenerator.deriveOpts(this.model.password));
             this.presets.splice(0, 0, derivedPreset);
             this.preset = 'Derived';
         } else {
@@ -175,15 +177,21 @@ class GeneratorView extends View {
     }
 
     generate(): void {
-        this.password = passGen.generate(this.gen) as string;
+        // `this.gen` is a mutated clone of the currently-selected preset;
+        // all the required PasswordGeneratorOptions fields (length, name)
+        // are always present at runtime — the `as unknown as` cast papers
+        // over the optional-at-type-level gap from the preset spread.
+        this.password = PasswordGenerator.generate(
+            this.gen as unknown as Parameters<typeof PasswordGenerator.generate>[0]
+        );
         this.showPassword();
         const isLong = this.password.length > 32;
-        this.resultEl.toggleClass('gen__result--long-pass', isLong);
+        this.resultEl?.toggleClass('gen__result--long-pass', isLong);
     }
 
     hideChange(e: Event): void {
         this.hidePass = (e.target as HTMLInputElement).checked;
-        settings.generatorHidePassword = this.hidePass;
+        AppSettingsModel.generatorHidePassword = this.hidePass;
         const label = this.$el.find('.gen__check-hide-label');
         Tip.updateTip(label[0], {
             title: this.hidePass
@@ -195,10 +203,10 @@ class GeneratorView extends View {
 
     btnOkClick(): void {
         if (this.model.copy) {
-            if (!copyPaste.simpleCopy) {
-                copyPaste.createHiddenInput(this.password);
+            if (!CopyPaste.simpleCopy) {
+                CopyPaste.createHiddenInput(this.password);
             }
-            copyPaste.copy(this.password);
+            CopyPaste.copy(this.password);
         }
         this.emit('result', this.password);
         this.remove();
