@@ -116,14 +116,28 @@ module.exports = (env, argv) => {
         },
         module: {
             rules: [
-                // TypeScript (for new .ts files during migration)
+                // TypeScript (strict-mode migration complete, 2026-04-09:
+                // packages/core now compiles at 0 errors — see
+                // .typescript-baseline. transpileOnly used to be `true`
+                // during the 368 -> 0 ratchet; now that the last file has
+                // been typed cleanly, ts-loader performs real type checks
+                // at bundle time and CI enforces the baseline via
+                // .github/workflows/ci.yml typecheck job.)
+                //
+                // Override tsconfig's `noEmit: true` here — that flag
+                // exists so `bunx tsc --noEmit` in CI (the typecheck job)
+                // does a pure check without cluttering the tree with
+                // compiled .js, but webpack's ts-loader needs actual
+                // emit output to feed into the bundle.
                 {
                     test: /\.ts$/,
                     exclude: /node_modules/,
                     use: {
                         loader: 'ts-loader',
                         options: {
-                            transpileOnly: true
+                            compilerOptions: {
+                                noEmit: false
+                            }
                         }
                     }
                 },
