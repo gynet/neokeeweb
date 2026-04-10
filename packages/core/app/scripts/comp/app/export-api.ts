@@ -8,9 +8,7 @@ import { RuntimeDataModel } from 'models/runtime-data-model';
 // overlap structurally. We cast through `unknown` (the TS-recommended
 // escape hatch for cross-shape conversions) so the dynamic property
 // access works without further per-key annotation.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const settingsBag = AppSettingsModel as unknown as Record<string, unknown>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const runtimeBag = RuntimeDataModel as unknown as Record<string, unknown>;
 
 const ExportApi = {

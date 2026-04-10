@@ -1,25 +1,30 @@
 import { Locale } from 'util/locale';
 import { FieldView } from 'views/fields/field-view';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loc = Locale as unknown as Record<string, any>;
+const loc = Locale as Record<string, string | undefined>;
+
+// History values are passed in by entry-model and carry the saved-record
+// count plus an optional `unsaved` flag for the in-memory pending entry.
+interface HistoryValue {
+    length: number;
+    unsaved?: boolean;
+}
 
 class FieldViewHistory extends FieldView {
     readonly = true;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    renderValue(value: any): string {
+    renderValue(value: HistoryValue): string {
         if (!value.length) {
-            return loc.detHistoryEmpty as string;
+            return loc.detHistoryEmpty ?? '';
         }
         let text =
             value.length +
             ' ' +
             (value.length === 1
-                ? (loc.detHistoryRec as string)
-                : (loc.detHistoryRecs as string));
+                ? (loc.detHistoryRec ?? '')
+                : (loc.detHistoryRecs ?? ''));
         if (value.unsaved) {
-            text += ' (' + (loc.detHistoryModified as string) + ')';
+            text += ' (' + (loc.detHistoryModified ?? '') + ')';
         }
         return '<a class="details__history-link">' + text + '</a>';
     }

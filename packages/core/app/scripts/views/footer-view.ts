@@ -3,6 +3,7 @@ import { Events } from 'framework/events';
 import { KeyHandler } from 'comp/browser/key-handler';
 import { Keys } from 'const/keys';
 import { UpdateModel } from 'models/update-model';
+import { AppModel } from 'models/app-model';
 import { GeneratorView } from 'views/generator-view';
 import template from 'templates/footer.hbs';
 
@@ -10,6 +11,8 @@ class FooterView extends View {
     parent = '.app__footer';
 
     template = template;
+
+    declare model: AppModel;
 
     events: Record<string, string> = {
         'click .footer__db-item': 'showFile',
@@ -20,8 +23,7 @@ class FooterView extends View {
         'click .footer__btn-lock': 'lockWorkspace'
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    constructor(model: any, options?: Record<string, unknown>) {
+    constructor(model: AppModel, options?: Record<string, unknown>) {
         super(model, options);
 
         this.onKey(Keys.DOM_VK_L, this.lockWorkspace, KeyHandler.SHORTCUT_ACTION, undefined, true);
@@ -41,8 +43,7 @@ class FooterView extends View {
         super.render({
             files: this.model.files,
             updateAvailable:
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ['ready', 'found'].indexOf((UpdateModel as any).updateStatus) >= 0
+                ['ready', 'found'].indexOf(UpdateModel.updateStatus ?? '') >= 0
         });
         return this;
     }
