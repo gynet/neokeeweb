@@ -88,7 +88,7 @@ const DefaultAppSettings: AppSettings = {
     minimizeOnClose: false, // minimise the app instead of closing
     minimizeOnFieldCopy: false, // minimise the app on copy
     tableView: false, // view entries as a table instead of list
-    colorfulIcons: false, // use colorful custom icons instead of grayscale
+    colorfulIcons: true, // colorful custom icons by default
     useMarkdown: true, // use Markdown in Notes field
     directAutotype: true, // if only one matching entry is found, select that one automatically
     autoTypeTitleFilterEnabled: true, // enable the title filtering in auto-type by default
