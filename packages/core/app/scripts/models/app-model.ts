@@ -418,9 +418,9 @@ class AppModel {
                     const hue = Math.abs(h) % 360;
                     return {
                         title: tag,
-                        icon: 'circle',
-                        iconStyle: `color: hsl(${hue}, 70%, 65%)`,
+                        icon: '',
                         cls: 'menu__item--tag',
+                        itemStyle: `--tag-hue:${hue}`,
                         filterKey: 'tag',
                         filterValue: tag,
                         editable: true

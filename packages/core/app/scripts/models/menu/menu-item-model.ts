@@ -16,6 +16,7 @@ interface MenuItemProperties {
     cls: string | null;
     iconCls: string | null;
     iconStyle: string | null;
+    itemStyle: string | null;
     disabled: boolean | Record<string, string>;
     visible: boolean;
     drag: boolean;
@@ -103,6 +104,7 @@ MenuItemModel.defineModelProperties({
     cls: null,
     iconCls: null,
     iconStyle: null,
+    itemStyle: null,
     disabled: false,
     visible: true,
     drag: false,
