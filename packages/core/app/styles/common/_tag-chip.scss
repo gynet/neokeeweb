@@ -34,40 +34,30 @@
     }
 }
 
-// Left sidebar tag items — GitHub-label-style colored pill background.
-// Each tag gets a CSS custom property --tag-hue (0-359) via itemStyle
-// on the root .menu__item div. No icon — just colored background + text.
+// Left sidebar tag items — 1Password-style: small colored filled circle
+// + clean text on a plain row. No pill background, no border, minimal.
 //
-// Reference: GitHub issue label sidebar, Notion tag property filter,
-// Linear label chips.
+// The circle is an inline SVG rendered as customIcon (data:image/svg+xml).
+// Color comes from deterministic hue per tag name (djb2 hash).
+//
+// Reference: 1Password sidebar "Tags" section.
 .menu__item--tag {
-    // Hide the empty icon slot (icon: '' in _tagsChanged)
-    .menu__item-icon {
-        display: none;
+    .menu__item-icon--image {
+        width: 10px;
+        height: 10px;
+        min-width: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        flex-shrink: 0;
     }
 
     .menu__item-body {
-        padding: 4px 12px;
-        margin: 2px 8px;
-        border-radius: 6px;
-        background: hsla(var(--tag-hue, 200), 55%, 35%, 0.4);
-        border-left: 3px solid hsla(var(--tag-hue, 200), 70%, 60%, 0.8);
-        transition: background 0.12s, transform 0.1s;
-
-        &:hover {
-            background: hsla(var(--tag-hue, 200), 55%, 38%, 0.55);
-        }
+        padding: 3px 10px;
     }
 
     .menu__item-title {
         font-size: 13px;
-        font-weight: 500;
-        color: hsla(var(--tag-hue, 200), 80%, 85%, 1);
-    }
-
-    &.menu__item--active .menu__item-body {
-        background: hsla(var(--tag-hue, 200), 55%, 40%, 0.6);
-        border-left-color: hsla(var(--tag-hue, 200), 80%, 65%, 1);
+        font-weight: 400;
     }
 }
 

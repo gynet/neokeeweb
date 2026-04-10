@@ -416,11 +416,14 @@ class AppModel {
                         h = tag.charCodeAt(i) + ((h << 5) - h);
                     }
                     const hue = Math.abs(h) % 360;
+                    // 1Password-style: small colored filled circle via inline SVG
+                    const dot = `data:image/svg+xml,${encodeURIComponent(
+                        `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><circle cx='6' cy='6' r='5' fill='hsl(${hue},65%,55%)'/></svg>`
+                    )}`;
                     return {
                         title: tag,
-                        icon: '',
+                        customIcon: dot,
                         cls: 'menu__item--tag',
-                        itemStyle: `--tag-hue:${hue}`,
                         filterKey: 'tag',
                         filterValue: tag,
                         editable: true
