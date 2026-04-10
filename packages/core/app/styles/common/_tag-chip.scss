@@ -21,16 +21,18 @@
     transition: opacity 0.15s;
 
     // Deterministic color from --tag-hue (0-359).
-    // BOLD styling — must be clearly visible on both dark and light themes.
-    // The hue comes from a djb2 hash of the tag string in field-view-tags.ts.
-    background: hsla(var(--tag-hue, 200), 65%, 30%, 0.55);
-    color: hsla(var(--tag-hue, 200), 90%, 85%, 1);
-    border: 1px solid hsla(var(--tag-hue, 200), 60%, 55%, 0.5);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    // Apple glassmorphism — frosted tint + blur + subtle border.
+    background: hsla(var(--tag-hue, 200), 30%, 55%, 0.15);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    color: hsla(var(--tag-hue, 200), 70%, 82%, 1);
+    border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.18);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     letter-spacing: 0.3px;
 
     &:hover {
-        background: hsla(var(--tag-hue, 200), 65%, 35%, 0.65);
+        background: hsla(var(--tag-hue, 200), 35%, 58%, 0.22);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 }
 
@@ -65,13 +67,18 @@
         align-items: center;
         padding: 3px 10px 3px 6px;
         border-radius: 14px;
-        background: hsla(var(--tag-hue, 200), 45%, 30%, 0.35);
-        border: 1px solid hsla(var(--tag-hue, 200), 40%, 45%, 0.25);
-        transition: background 0.12s;
+        // Apple-style glassmorphism: frosted glass tint + backdrop blur
+        background: hsla(var(--tag-hue, 200), 30%, 55%, 0.12);
+        backdrop-filter: blur(12px) saturate(1.4);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.15);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: background 0.15s, box-shadow 0.15s;
         cursor: pointer;
 
         &:hover {
-            background: hsla(var(--tag-hue, 200), 50%, 35%, 0.5);
+            background: hsla(var(--tag-hue, 200), 35%, 60%, 0.2);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
         }
     }
 
@@ -99,8 +106,9 @@
     }
 
     &.menu__item--active .menu__item-body {
-        background: hsla(var(--tag-hue, 200), 55%, 40%, 0.55);
-        border-color: hsla(var(--tag-hue, 200), 60%, 55%, 0.5);
+        background: hsla(var(--tag-hue, 200), 35%, 58%, 0.25);
+        border-color: hsla(var(--tag-hue, 200), 40%, 65%, 0.3);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
 }
 
