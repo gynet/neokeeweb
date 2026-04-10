@@ -293,12 +293,12 @@ class MenuModel extends Model {
     _getDefaultTagItem(): DefaultTagItem {
         return {
             title: StringFormat.capFirst((Locale as Record<string, string>).tags),
-            icon: 'tags',
+            icon: 'hashtag',
             defaultItem: true,
             disabled: {
                 header: (Locale as Record<string, string>).menuAlertNoTags,
                 body: (Locale as Record<string, string>).menuAlertNoTagsBody,
-                icon: 'tags'
+                icon: 'hashtag'
             }
         };
     }

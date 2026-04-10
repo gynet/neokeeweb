@@ -34,11 +34,43 @@
     }
 }
 
-// In the left menu sidebar, tags also appear as menu items.
-// Give them a subtle chip-like accent dot instead of the folder icon.
+// Left sidebar tag items — visually distinct from group/folder items.
+// Each tag gets a colored dot (fa-circle) via iconStyle inline hue
+// set in app-model.ts _tagsChanged(). The overall row style is
+// tighter and pill-like compared to the spacious folder rows.
+//
+// Reference: 1Password sidebar labels (colored dot + compact row),
+// GitHub label sidebar, Notion database tag filter.
 .menu__item--tag {
+    .menu__item-body {
+        padding: 3px 8px;
+        margin: 1px 6px;
+        border-radius: 14px;
+        transition: background 0.12s;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+    }
+
+    // The fa-circle icon is small and colored via inline style.
+    // Shrink it to a dot rather than a full icon.
     .menu__item-icon {
-        color: hsla(var(--tag-hue, 200), 60%, 65%, 1);
+        font-size: 8px;
+        width: 14px;
+        min-width: 14px;
+        text-align: center;
+        line-height: 22px;
+    }
+
+    .menu__item-title {
+        font-size: 13px;
+        font-weight: 400;
+    }
+
+    // Active state: subtle colored background matching the dot
+    &.menu__item--active .menu__item-body {
+        background: rgba(255, 255, 255, 0.12);
     }
 }
 

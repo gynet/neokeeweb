@@ -410,9 +410,17 @@ class AppModel {
             this.menu.tagsSection.scrollable = true;
             this.menu.tagsSection.setItems(
                 this.tags.map((tag) => {
+                    // Deterministic hue per tag name (djb2 hash mod 360)
+                    let h = 0;
+                    for (let i = 0; i < tag.length; i++) {
+                        h = tag.charCodeAt(i) + ((h << 5) - h);
+                    }
+                    const hue = Math.abs(h) % 360;
                     return {
                         title: tag,
-                        icon: 'tag',
+                        icon: 'circle',
+                        iconStyle: `color: hsl(${hue}, 70%, 65%)`,
+                        cls: 'menu__item--tag',
                         filterKey: 'tag',
                         filterValue: tag,
                         editable: true
