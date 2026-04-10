@@ -10,6 +10,8 @@ interface WebDavStat {
 interface WebDavError {
     notFound?: boolean;
     revConflict?: boolean;
+    cors?: boolean;
+    serverUrl?: string;
     toString(): string;
 }
 
@@ -402,6 +404,15 @@ class StorageWebDav extends StorageBase {
         return result;
     }
 
+    _isCrossOrigin(url: string): boolean {
+        try {
+            const parsed = new URL(url, window.location.href);
+            return parsed.origin !== window.location.origin;
+        } catch {
+            return false;
+        }
+    }
+
     _request(config: WebDavRequestConfig, callback?: WebDavCallback | null): void {
         if (config.rev) {
             this.logger!.debug(config.op, config.path, config.rev);
@@ -420,6 +431,19 @@ class StorageWebDav extends StorageBase {
                 );
                 let err: WebDavError | string;
                 switch (xhr.status) {
+                    case 0:
+                        // Status 0 with no body on a cross-origin request
+                        // means an opaque response — CORS preflight failed.
+                        if (this._isCrossOrigin(config.path)) {
+                            err = {
+                                cors: true,
+                                serverUrl: config.path,
+                                toString: () => 'CORS error'
+                            };
+                        } else {
+                            err = 'HTTP status 0';
+                        }
+                        break;
                     case 404:
                         err = { notFound: true, toString: () => 'Not found' };
                         break;
@@ -475,7 +499,19 @@ class StorageWebDav extends StorageBase {
                 this.logger!.ts(ts)
             );
             if (callback) {
-                callback('network error', xhr);
+                // XHR error with status 0 on a cross-origin request is the
+                // classic CORS-block signal: the browser refuses to expose
+                // the response (or the preflight failed entirely).
+                if (xhr.status === 0 && this._isCrossOrigin(config.path)) {
+                    const corsErr: WebDavError = {
+                        cors: true,
+                        serverUrl: config.path,
+                        toString: () => 'CORS error'
+                    };
+                    callback(corsErr, xhr);
+                } else {
+                    callback('network error', xhr);
+                }
                 callback = null;
             }
         });
