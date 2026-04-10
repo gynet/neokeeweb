@@ -389,6 +389,8 @@ class AppModel {
         this.updateTags();
     }
 
+    tagCounts: Record<string, number> = {};
+
     _addTags(file: FileModel): void {
         const tagsHash: Record<string, boolean> = {};
         this.tags.forEach((tag) => {
@@ -396,10 +398,12 @@ class AppModel {
         });
         file.forEachEntry({}, (entry: EntryModel) => {
             for (const tag of entry.tags) {
-                if (!tagsHash[tag.toLowerCase()]) {
-                    tagsHash[tag.toLowerCase()] = true;
+                const key = tag.toLowerCase();
+                if (!tagsHash[key]) {
+                    tagsHash[key] = true;
                     this.tags.push(tag);
                 }
+                this.tagCounts[tag] = (this.tagCounts[tag] || 0) + 1;
             }
         });
         this.tags.sort();
@@ -416,14 +420,16 @@ class AppModel {
                         h = tag.charCodeAt(i) + ((h << 5) - h);
                     }
                     const hue = Math.abs(h) % 360;
-                    // 1Password-style: small colored filled circle via inline SVG
+                    const count = this.tagCounts[tag] || 0;
+                    // 1Password-style colored dot via inline SVG
                     const dot = `data:image/svg+xml,${encodeURIComponent(
                         `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><circle cx='6' cy='6' r='5' fill='hsl(${hue},65%,55%)'/></svg>`
                     )}`;
                     return {
-                        title: tag,
+                        title: count > 0 ? `${tag} (${count})` : tag,
                         customIcon: dot,
                         cls: 'menu__item--tag',
+                        itemStyle: `--tag-hue:${hue}`,
                         filterKey: 'tag',
                         filterValue: tag,
                         editable: true
@@ -439,6 +445,7 @@ class AppModel {
     updateTags(): void {
         const oldTags = this.tags.slice();
         this.tags.splice(0, this.tags.length);
+        this.tagCounts = {};
         for (const file of this.files) {
             this._addTags(file);
         }

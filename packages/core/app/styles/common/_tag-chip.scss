@@ -34,30 +34,73 @@
     }
 }
 
-// Left sidebar tag items — 1Password-style: small colored filled circle
-// + clean text on a plain row. No pill background, no border, minimal.
+// Left sidebar tags — flow-wrap cloud layout with colored dot + count.
+// Tags wrap horizontally instead of stacking vertically, each tag is
+// a compact inline pill with a small SVG circle + "tag (N)" text.
 //
-// The circle is an inline SVG rendered as customIcon (data:image/svg+xml).
-// Color comes from deterministic hue per tag name (djb2 hash).
+// The :has() selector targets ONLY the tags section's scroller,
+// leaving groups/files sections in their normal vertical layout.
 //
-// Reference: 1Password sidebar "Tags" section.
+// Reference: tag clouds, 1Password tag dots, tradesviz.com tag UI.
+
+// Make the tags section's scroller a flex-wrap container
+.menu__section:has(.menu__item--tag) {
+    .scroller {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px 8px;
+        align-content: flex-start;
+    }
+}
+
 .menu__item--tag {
+    // Inline pill — NOT full width, shrink to content
+    display: inline-flex;
+    width: auto;
+    flex-shrink: 0;
+
+    .menu__item-body {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px 3px 6px;
+        border-radius: 14px;
+        background: hsla(var(--tag-hue, 200), 45%, 30%, 0.35);
+        border: 1px solid hsla(var(--tag-hue, 200), 40%, 45%, 0.25);
+        transition: background 0.12s;
+        cursor: pointer;
+
+        &:hover {
+            background: hsla(var(--tag-hue, 200), 50%, 35%, 0.5);
+        }
+    }
+
     .menu__item-icon--image {
-        width: 10px;
-        height: 10px;
-        min-width: 10px;
+        width: 8px;
+        height: 8px;
+        min-width: 8px;
         border-radius: 50%;
-        margin-right: 8px;
+        margin-right: 6px;
         flex-shrink: 0;
     }
 
-    .menu__item-body {
-        padding: 3px 10px;
+    .menu__item-title {
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        line-height: 16px;
     }
 
-    .menu__item-title {
-        font-size: 13px;
-        font-weight: 400;
+    // Hide drag handles and other decorations in cloud mode
+    .menu__item-drag-top,
+    .menu__item-edit,
+    .menu__item-collapse {
+        display: none;
+    }
+
+    &.menu__item--active .menu__item-body {
+        background: hsla(var(--tag-hue, 200), 55%, 40%, 0.55);
+        border-color: hsla(var(--tag-hue, 200), 60%, 55%, 0.5);
     }
 }
 
