@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'events';
 import { Logger } from 'util/logger';
 
@@ -11,13 +10,32 @@ const SymbolEvents: unique symbol = Symbol('events');
 const SymbolDefaults: unique symbol = Symbol('defaults');
 const SymbolExtensions: unique symbol = Symbol('extensions');
 
+// Generic event listener type — Node's EventEmitter is intentionally
+// loose about listener arity, and the various Model subclasses emit
+// changes with shapes ranging from `(model)` to `(model, value, prev)`
+// to `(model, change)` to fully variadic. The legacy callers pass
+// concretely-typed listeners like `(file: FileModel) => void`, so we
+// keep the variadic args as `any[]` here — narrowing to `unknown[]`
+// would break covariance against every subclass listener and force a
+// cascading retype of every change-handler in the app. This is the
+// one strategic `any` in the framework layer; everything else is now
+// structurally typed via IndexableModel below.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ModelEventListener = (...args: any[]) => void;
+
+// Models are intentionally indexable: subclasses register their fields
+// via `defineModelProperties` and the Proxy handler reads/writes them
+// dynamically. Rather than scatter `(target as any)[prop]` everywhere
+// we narrow once via this structural type.
+type IndexableModel = Model & Record<string | symbol, unknown>;
+
 function emitPropChange(
     target: Model,
     property: string | symbol,
     value: unknown,
     prevValue: unknown
 ): void {
-    const emitter = (target as any)[SymbolEvents] as ModelEmitter;
+    const emitter = target[SymbolEvents];
     if (!emitter.paused) {
         emitter.emit('change:' + String(property), target, value, prevValue);
         if (!emitter.noChange) {
@@ -29,14 +47,15 @@ function emitPropChange(
 const ProxyDef: ProxyHandler<Model> = {
     deleteProperty(target: Model, property: string | symbol): boolean {
         if (Object.prototype.hasOwnProperty.call(target, property)) {
-            const defaults = (target as any)[SymbolDefaults] as Record<string, unknown>;
+            const indexable = target as IndexableModel;
+            const defaults = target[SymbolDefaults];
             const value = defaults[property as string];
-            const prevValue = (target as any)[property];
+            const prevValue = indexable[property];
             if (prevValue !== value) {
                 if (Object.prototype.hasOwnProperty.call(defaults, property)) {
-                    (target as any)[property] = value;
+                    indexable[property] = value;
                 } else {
-                    delete (target as any)[property];
+                    delete indexable[property];
                 }
                 emitPropChange(target, property, value, prevValue);
             }
@@ -45,18 +64,23 @@ const ProxyDef: ProxyHandler<Model> = {
         return true;
     },
     set(target: Model, property: string | symbol, value: unknown, receiver: unknown): boolean {
+        const indexable = target as IndexableModel;
         if (
             Object.prototype.hasOwnProperty.call(target, property) ||
-            (target as any)[SymbolExtensions]
+            target[SymbolExtensions]
         ) {
-            if ((target as any)[property] !== value) {
-                const prevValue = (target as any)[property];
-                (target as any)[property] = value;
+            if (indexable[property] !== value) {
+                const prevValue = indexable[property];
+                indexable[property] = value;
                 emitPropChange(target, property, value, prevValue);
             }
             return true;
         } else {
-            new Logger((receiver as any).constructor.name).warn(
+            const ctor =
+                receiver && typeof receiver === 'object'
+                    ? (receiver as { constructor?: { name?: string } }).constructor
+                    : undefined;
+            new Logger(ctor?.name ?? 'Model').warn(
                 `Unknown property: ${String(property)}`,
                 new Error().stack
             );
@@ -78,7 +102,7 @@ class Model {
             [SymbolEvents]: { value: emitter }
         };
         for (const [propName, defaultValue] of Object.entries(
-            (this as any)[SymbolDefaults] ?? {}
+            this[SymbolDefaults] ?? {}
         )) {
             properties[propName] = {
                 configurable: true,
@@ -99,14 +123,15 @@ class Model {
     }
 
     set(props: Record<string, unknown>, options?: { silent?: boolean }): void {
-        const emitter = (this as any)[SymbolEvents] as ModelEmitter;
+        const emitter = this[SymbolEvents];
         const silent = options?.silent;
         if (silent) {
             emitter.paused = true;
         }
         emitter.noChange = true;
+        const indexable = this as IndexableModel;
         for (const [prop, value] of Object.entries(props)) {
-            (this as any)[prop] = value;
+            indexable[prop] = value;
         }
         emitter.noChange = false;
         if (silent) {
@@ -116,24 +141,20 @@ class Model {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    on(eventName: string, listener: (...args: any[]) => void): void {
-        (this as any)[SymbolEvents].on(eventName, listener);
+    on(eventName: string, listener: ModelEventListener): void {
+        this[SymbolEvents].on(eventName, listener);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    once(eventName: string, listener: (...args: any[]) => void): void {
-        (this as any)[SymbolEvents].once(eventName, listener);
+    once(eventName: string, listener: ModelEventListener): void {
+        this[SymbolEvents].once(eventName, listener);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    off(eventName: string, listener: (...args: any[]) => void): void {
-        (this as any)[SymbolEvents].off(eventName, listener);
+    off(eventName: string, listener: ModelEventListener): void {
+        this[SymbolEvents].off(eventName, listener);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    emit(eventName: string, ...args: any[]): void {
-        (this as any)[SymbolEvents].emit(eventName, ...args);
+    emit(eventName: string, ...args: unknown[]): void {
+        this[SymbolEvents].emit(eventName, ...args);
     }
 
     static defineModelProperties(
