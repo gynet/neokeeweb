@@ -1,15 +1,28 @@
-// @ts-ignore -- kdbxweb has no type declarations
 import * as kdbxweb from 'kdbxweb';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const PV: any = kdbxweb.ProtectedValue;
+// Monkey-patch surface on kdbxweb.ProtectedValue.
+//
+// The method signatures are declared as a module augmentation in
+// `app/scripts/kdbxweb.d.ts`, so once this file runs at bootstrap the
+// additional methods are type-safe to call everywhere else in the app.
+//
+// The prototype itself, however, still needs a loosely-typed write
+// handle: the augmentation makes these look like members of the class,
+// so TypeScript wants them defined at construction. We write directly
+// to the prototype at runtime, which requires an indexable view. The
+// smallest escape hatch that expresses "this is a bag of keys I'm
+// attaching methods to" is `Record<string, unknown>` on the prototype.
+const PVProto = kdbxweb.ProtectedValue.prototype as unknown as Record<string, unknown>;
 
 const ExpectedFieldRefChars: string[] = '{REF:0@I:00000000000000000000000000000000}'.split('');
 const ExpectedFieldRefByteLength: number = ExpectedFieldRefChars.length;
 
-PV.prototype.isProtected = true;
+PVProto.isProtected = true;
 
-PV.prototype.forEachChar = function (fn: (charCode: number) => void | false): void {
+PVProto.forEachChar = function (
+    this: kdbxweb.ProtectedValue,
+    fn: (charCode: number) => void | false
+): void {
     const value: Uint8Array = this.value;
     const salt: Uint8Array = this.salt;
     let b: number, b1: number, b2: number, b3: number;
@@ -75,14 +88,14 @@ PV.prototype.forEachChar = function (fn: (charCode: number) => void | false): vo
     }
 };
 
-Object.defineProperty(PV.prototype, 'length', {
-    get(): number {
+Object.defineProperty(kdbxweb.ProtectedValue.prototype, 'length', {
+    get(this: kdbxweb.ProtectedValue): number {
         return this.textLength;
     }
 });
 
-Object.defineProperty(PV.prototype, 'textLength', {
-    get(): number {
+Object.defineProperty(kdbxweb.ProtectedValue.prototype, 'textLength', {
+    get(this: kdbxweb.ProtectedValue): number {
         let textLength = 0;
         this.forEachChar(() => {
             textLength++;
@@ -91,11 +104,11 @@ Object.defineProperty(PV.prototype, 'textLength', {
     }
 });
 
-PV.prototype.includesLower = function (findLower: string): boolean {
+PVProto.includesLower = function (this: kdbxweb.ProtectedValue, findLower: string): boolean {
     return this.indexOfLower(findLower) !== -1;
 };
 
-PV.prototype.indexOfLower = function (findLower: string): number {
+PVProto.indexOfLower = function (this: kdbxweb.ProtectedValue, findLower: string): number {
     let index = -1;
     const foundSeqs: number[] = [];
     const len = findLower.length;
@@ -129,7 +142,10 @@ PV.prototype.indexOfLower = function (findLower: string): number {
     return index;
 };
 
-PV.prototype.indexOfSelfInLower = function (targetLower: string): number {
+PVProto.indexOfSelfInLower = function (
+    this: kdbxweb.ProtectedValue,
+    targetLower: string
+): number {
     let firstCharIndex = -1;
     let found = false;
     do {
@@ -151,15 +167,41 @@ PV.prototype.indexOfSelfInLower = function (targetLower: string): number {
     return firstCharIndex;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-PV.prototype.equals = function (other: any): boolean {
+// Structural shape we read from `other` when it's another ProtectedValue.
+// We avoid asserting `instanceof kdbxweb.ProtectedValue` because the
+// legacy callers pass through several `unknown` boundaries; the
+// `isProtected: true` discriminator (added by this same module) is the
+// authoritative tell.
+interface ProtectedValueLike {
+    isProtected: true;
+    byteLength: number;
+    value: Uint8Array;
+    salt: Uint8Array;
+}
+
+function isProtectedValueLike(other: unknown): other is ProtectedValueLike {
+    if (typeof other !== 'object' || other === null) {
+        return false;
+    }
+    const o = other as { isProtected?: unknown };
+    return o.isProtected === true;
+}
+
+PVProto.equals = function (this: kdbxweb.ProtectedValue, other: unknown): boolean {
     if (!other) {
         return false;
     }
-    if (!other.isProtected) {
-        return this.textLength === other.length && this.includes(other);
+    if (!isProtectedValueLike(other)) {
+        // Fallback for plain-string comparisons: kdbxweb.ProtectedValue.includes
+        // takes a string and decrypts on the fly. Match the original
+        // behaviour: agree on textLength then full plaintext compare.
+        const len = (other as { length?: unknown }).length;
+        if (typeof len !== 'number' || this.textLength !== len) {
+            return false;
+        }
+        return this.includes(other as unknown as string);
     }
-    if (other === this) {
+    if ((other as unknown) === (this as unknown)) {
         return true;
     }
     const len: number = this.byteLength;
@@ -174,7 +216,7 @@ PV.prototype.equals = function (other: any): boolean {
     return true;
 };
 
-PV.prototype.isFieldReference = function (): boolean {
+PVProto.isFieldReference = function (this: kdbxweb.ProtectedValue): boolean {
     if (this.byteLength !== ExpectedFieldRefByteLength) {
         return false;
     }
@@ -193,10 +235,9 @@ PV.prototype.isFieldReference = function (): boolean {
     return matches;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const RandomSalt: any = (kdbxweb as any).CryptoEngine.random(128);
+const RandomSalt: Uint8Array = kdbxweb.CryptoEngine.random(128);
 
-PV.prototype.saltedValue = function (): string | number {
+PVProto.saltedValue = function (this: kdbxweb.ProtectedValue): string | number {
     if (!this.byteLength) {
         return 0;
     }
@@ -210,25 +251,32 @@ PV.prototype.saltedValue = function (): string | number {
     return salted;
 };
 
-PV.prototype.dataAndSalt = function (): { data: number[]; salt: number[] } {
+PVProto.dataAndSalt = function (
+    this: kdbxweb.ProtectedValue
+): { data: number[]; salt: number[] } {
     return {
         data: [...this.value],
         salt: [...this.salt]
     };
 };
 
-PV.prototype.toBase64 = function (): string {
+// kdbxweb.ProtectedValue ships its own toBase64()/fromBase64(); we override
+// here to keep the historical "zero the intermediate buffer after we're done
+// with it" hygiene that the upstream method does not perform.
+PVProto.toBase64 = function (this: kdbxweb.ProtectedValue): string {
     const binary = this.getBinary();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const base64: string = (kdbxweb as any).ByteUtils.bytesToBase64(binary);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (kdbxweb as any).ByteUtils.zeroBuffer(binary);
+    const base64: string = kdbxweb.ByteUtils.bytesToBase64(binary);
+    kdbxweb.ByteUtils.zeroBuffer(binary);
     return base64;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-PV.fromBase64 = function (base64: string): any {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bytes = (kdbxweb as any).ByteUtils.base64ToBytes(base64);
-    return PV.fromBinary(bytes);
+// `fromBase64` is a static (not a prototype method). kdbxweb already
+// ships its own static fromBase64 — we override it here to plumb the
+// Uint8Array result of `base64ToBytes` directly through `fromBinary`
+// without the intermediate string round-trip the upstream version does.
+// The augmentation in kdbxweb.d.ts also declares it on the namespace.
+const PVStatic = kdbxweb.ProtectedValue as unknown as Record<string, unknown>;
+PVStatic.fromBase64 = function (base64: string): kdbxweb.ProtectedValue {
+    const bytes = kdbxweb.ByteUtils.base64ToBytes(base64);
+    return kdbxweb.ProtectedValue.fromBinary(kdbxweb.ByteUtils.arrayToBuffer(bytes));
 };
