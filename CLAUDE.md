@@ -78,7 +78,7 @@ See milestone: https://github.com/gynet/neokeeweb/milestone/1
 - [x] CRUD regression guard E2E (#34 — entry + group CREATE/UPDATE/DELETE, `e2e/core/crud.spec.ts`)
 - [x] CRUD persistence regression guard E2E (`e2e/core/crud-persistence.spec.ts` — IndexedDB cache roundtrip)
 - [x] Runtime persistence restored (settings-store + settings-manager fully restored; 2026-04-09 warroom regressions verified fixed via TL protocol)
-- [ ] TS strict-mode baseline → 0 (currently 74, down from initial 368. Drops `transpileOnly: true` from webpack when reached. Remaining debt: entry-model, file-model, long-tail views)
+- [x] **TS strict-mode baseline → 0** (368 → 306 → 204 → 82 → 74 → 0 in one session, -100%). `transpileOnly: true` dropped from `packages/core/webpack.config.js`, ts-loader now does real type-checking at bundle time. Full rewrite of `app-model.ts` / `entry-model.ts` / `file-model.ts` types. Module augmentation for kdbxweb `ProtectedValue` in `packages/core/app/scripts/kdbxweb.d.ts` eliminates ~14 casts. Real bug fix in `protected-value-ex.isFieldReference` (number vs string compare, papered over by downstream regex).
 - [ ] E2E test scenarios (#4 — roundtrip + clipboard + import + NaCl + OTP + CRUD + CRUD persistence done; remaining gaps tracked by #40)
 - [ ] iOS share workflow Phase 1 subset (#35 — Mode A `navigator.share` + Mode E/F docs, clipboard hygiene UX)
 - [ ] WebDAV CORS diagnostic UI (#37)
