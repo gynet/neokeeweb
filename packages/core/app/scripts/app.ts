@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import '../styles/main.scss';
 import { Events } from 'framework/events';
 import { StartProfiler } from 'comp/app/start-profiler';
@@ -24,23 +23,7 @@ import { AppView } from 'views/app-view';
 import 'hbs-helpers';
 import { Storage } from './storage';
 
-const loc = Locale as unknown as Record<string, string>;
-const features = Features as unknown as { isFrame: boolean };
-const alerts = Alerts as unknown as { error(opts: any): void };
-const settingsManager = SettingsManager as unknown as {
-    init(): void;
-    setBySettings(): void;
-};
-const idleTracker = IdleTracker as unknown as { init(): void };
-const browserExt = BrowserExtensionConnector as unknown as { init(model: any): void };
-const focusDetector = FocusDetector as unknown as { init(): void };
-const themeWatcher = ThemeWatcher as unknown as { init(): void };
-const featureTester = FeatureTester as unknown as { test(): Promise<void> };
-const kdbxwebInit = KdbxwebInit as unknown as { init(): void };
-const startProfiler = StartProfiler as unknown as {
-    milestone(name: string): void;
-    report(): void;
-};
+const loc = Locale as Record<string, string | undefined>;
 
 // Build identity — injected by webpack.DefinePlugin at build time. Emit on
 // startup so the browser console, Playwright `page.evaluate`, and manual
@@ -57,13 +40,13 @@ console.info(
 (window as unknown as Record<string, unknown>).__NEOKEEWEB_BUILD_TIME__ =
     __NEOKEEWEB_BUILD_TIME__;
 
-startProfiler.milestone('loading modules');
+StartProfiler.milestone('loading modules');
 
 $(() => {
-    startProfiler.milestone('document ready');
+    StartProfiler.milestone('document ready');
 
-    const appModel: any = new (AppModel as any)();
-    startProfiler.milestone('creating app model');
+    const appModel = new AppModel();
+    StartProfiler.milestone('creating app model');
 
     Promise.resolve()
         .then(loadConfigs)
@@ -73,20 +56,19 @@ $(() => {
         .then(initStorage)
         .then(showApp)
         .then(postInit)
-        .catch((e: any) => {
+        .catch((e: unknown) => {
             appModel.appLogger.error('Error starting app', e);
         });
 
     function ensureCanRun(): Promise<void> {
-        if (features.isFrame && !appModel.settings.allowIframes) {
+        if (Features.isFrame && !appModel.settings.allowIframes) {
             return Promise.reject(
                 'Running in iframe is not allowed (this can be changed in the app config).'
             );
         }
-        return featureTester
-            .test()
-            .catch((e: any) => {
-                alerts.error({
+        return FeatureTester.test()
+            .catch((e: unknown) => {
+                Alerts.error({
                     header: loc.appSettingsError,
                     body: loc.appNotSupportedError,
                     pre: e,
@@ -98,33 +80,33 @@ $(() => {
                 throw 'Feature testing failed: ' + e;
             })
             .then(() => {
-                startProfiler.milestone('checking features');
+                StartProfiler.milestone('checking features');
             });
     }
 
     function loadConfigs(): Promise<void> {
         return Promise.all([
-            (AppSettingsModel as any).load(),
-            (UpdateModel as any).load(),
-            (RuntimeDataModel as any).load(),
-            (FileInfoCollection as any).load()
+            AppSettingsModel.load(),
+            UpdateModel.load(),
+            RuntimeDataModel.load(),
+            FileInfoCollection.load()
         ]).then(() => {
-            startProfiler.milestone('loading configs');
+            StartProfiler.milestone('loading configs');
         });
     }
 
     function initModules(): void {
-        (KeyHandler as any).init();
-        kdbxwebInit.init();
-        focusDetector.init();
-        themeWatcher.init();
-        settingsManager.init();
-        (window as any).kw = ExportApi;
-        startProfiler.milestone('initializing modules');
+        KeyHandler.init();
+        KdbxwebInit.init();
+        FocusDetector.init();
+        ThemeWatcher.init();
+        SettingsManager.init();
+        (window as Window & { kw?: typeof ExportApi }).kw = ExportApi;
+        StartProfiler.milestone('initializing modules');
     }
 
     function showSettingsLoadError(): void {
-        alerts.error({
+        Alerts.error({
             header: loc.appSettingsError,
             body: loc.appSettingsErrorBody,
             buttons: [],
@@ -137,15 +119,15 @@ $(() => {
     function loadRemoteConfig(): Promise<void> {
         return Promise.resolve()
             .then(() => {
-                settingsManager.setBySettings();
+                SettingsManager.setBySettings();
                 const configParam = getConfigParam();
                 if (configParam) {
                     return appModel
                         .loadConfig(configParam)
                         .then(() => {
-                            settingsManager.setBySettings();
+                            SettingsManager.setBySettings();
                         })
-                        .catch((e: any) => {
+                        .catch((e: unknown) => {
                             if (!appModel.settings.cacheConfigSettings) {
                                 showSettingsLoadError();
                                 throw e;
@@ -155,7 +137,7 @@ $(() => {
                 return undefined;
             })
             .then(() => {
-                startProfiler.milestone('loading remote config');
+                StartProfiler.milestone('loading remote config');
             });
     }
 
@@ -163,25 +145,25 @@ $(() => {
         for (const prv of Object.values(Storage as unknown as Record<string, any>)) {
             prv.init();
         }
-        startProfiler.milestone('initializing storage');
+        StartProfiler.milestone('initializing storage');
     }
 
     function showApp(): Promise<void> {
         return Promise.resolve().then(() => {
             const skipHttpsWarning =
-                (localStorage as any).skipHttpsWarning || appModel.settings.skipHttpsWarning;
+                localStorage.getItem('skipHttpsWarning') || appModel.settings.skipHttpsWarning;
             const protocolIsInsecure = ['https:', 'file:', 'app:'].indexOf(location.protocol) < 0;
             const hostIsInsecure = location.hostname !== 'localhost';
             if (protocolIsInsecure && hostIsInsecure && !skipHttpsWarning) {
                 return new Promise<void>((resolve) => {
-                    alerts.error({
+                    Alerts.error({
                         header: loc.appSecWarn,
                         icon: 'user-secret',
                         esc: false,
                         enter: false,
                         click: false,
                         body: loc.appSecWarnBody1 + '\n\n' + loc.appSecWarnBody2,
-                        buttons: [{ result: '', title: loc.appSecWarnBtn, error: true }],
+                        buttons: [{ result: '', title: loc.appSecWarnBtn ?? '', error: true }],
                         complete: () => {
                             showView();
                             resolve();
@@ -197,19 +179,19 @@ $(() => {
 
     function postInit(): void {
         setTimeout(() => {
-            idleTracker.init();
-            browserExt.init(appModel);
-        }, (Timeouts as any).AutoUpdatePluginsAfterStart);
+            IdleTracker.init();
+            BrowserExtensionConnector.init(appModel);
+        }, Timeouts.AutoUpdatePluginsAfterStart);
     }
 
     function showView(): void {
-        new (AppView as any)(appModel).render();
-        startProfiler.milestone('first view rendering');
+        new AppView(appModel).render();
+        StartProfiler.milestone('first view rendering');
 
         Events.emit('app-ready');
-        startProfiler.milestone('app ready event');
+        StartProfiler.milestone('app ready event');
 
-        startProfiler.report();
+        StartProfiler.report();
     }
 
     function getConfigParam(): string | undefined {

@@ -4,6 +4,10 @@ import { ModalView } from 'views/modal-view';
 interface AlertButton {
     result: string;
     title: string;
+    // Optional styling flag — the modal template renders buttons with
+    // `error: true` as the destructive/red variant. Read by the hbs
+    // template, not this module.
+    error?: boolean;
 }
 
 interface AlertConfig {
@@ -11,9 +15,12 @@ interface AlertConfig {
     body?: string;
     icon?: string;
     buttons?: AlertButton[];
-    esc?: string;
-    click?: string;
-    enter?: string;
+    // `esc` / `click` / `enter` hold the button result string to fire
+    // when the user presses that key, OR `false` to disable that close
+    // path entirely. Both shapes are used across legacy KeeWeb callers.
+    esc?: string | false;
+    click?: string | false;
+    enter?: string | false;
     success?: (res: string, check?: boolean) => void;
     cancel?: () => void;
     complete?: (res: string, check?: boolean) => void;

@@ -145,6 +145,7 @@ declare module 'comp/browser/key-handler' {
         SHORTCUT_ACTION: number;
         SHORTCUT_OPT: number;
         SHORTCUT_SHIFT: number;
+        init(): void;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onKey(
             key: number,
