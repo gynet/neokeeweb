@@ -1,3 +1,4 @@
+import * as kdbxweb from 'kdbxweb';
 import { Events } from 'framework/events';
 import { Storage } from 'storage';
 import { SearchResultCollection } from 'collections/search-result-collection';
@@ -136,22 +137,13 @@ interface AdvancedSearch {
     user?: boolean;
 }
 
-// Structural type for kdbxweb.ProtectedValue. The real type lives in the
-// monorepo db package and is bundled in via webpack alias; it does not have a
-// matching tsconfig entry for this package yet, so we shape-type it here.
-interface ProtectedValueLike {
-    textLength: number;
-    byteLength: number;
-    getText(): string;
-}
-
 interface OpenFileParams {
     id?: string;
     name: string;
     storage?: string;
     path?: string;
     opts?: Record<string, unknown>;
-    password?: ProtectedValueLike | null;
+    password?: kdbxweb.ProtectedValue | null;
     keyFileData?: ArrayBuffer | Uint8Array | null;
     keyFileName?: string;
     keyFilePath?: string;

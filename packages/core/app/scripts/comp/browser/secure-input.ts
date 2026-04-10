@@ -96,10 +96,15 @@ class SecureInput {
                 byteLength++;
             }
         }
-        return new kdbxweb.ProtectedValue(
-            valueBytes.buffer.slice(0, byteLength),
-            saltBytes.buffer.slice(0, byteLength)
-        );
+        // `.buffer.slice` returns ArrayBuffer | SharedArrayBuffer under
+        // strict TS because Uint8Array's backing buffer is typed as
+        // ArrayBufferLike. kdbxweb.ProtectedValue's constructor wants
+        // a concrete ArrayBuffer, so copy through a fresh allocation.
+        const valueBuf = new ArrayBuffer(byteLength);
+        new Uint8Array(valueBuf).set(valueBytes.subarray(0, byteLength));
+        const saltBuf = new ArrayBuffer(byteLength);
+        new Uint8Array(saltBuf).set(saltBytes.subarray(0, byteLength));
+        return new kdbxweb.ProtectedValue(valueBuf, saltBuf);
     }
 }
 

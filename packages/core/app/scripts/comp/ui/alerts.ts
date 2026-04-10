@@ -70,7 +70,9 @@ const Alerts = {
         Alerts.alertDisplayed = true;
         const view = new ModalView(config);
         view.render();
-        view.once('result', (res: string, check: boolean) => {
+        view.once('result', (...args: unknown[]) => {
+            const res = args[0] as string;
+            const check = args[1] as boolean;
             if (res && config.success) {
                 config.success(res, check);
             }

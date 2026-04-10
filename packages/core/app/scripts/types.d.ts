@@ -171,6 +171,14 @@ declare const $: ((...args: any[]) => any) & {
     [key: string]: any;
 };
 
+// JQuery<T> generic type — legacy views/components use this to type
+// form input references. We don't ship @types/jquery (adds ~2MB of
+// types for a single legacy usage site each), so alias to a minimal
+// shape that covers the methods actually called (.val, .on, .off,
+// element indexing via [0]).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type JQuery<T = HTMLElement> = any;
+
 // Webpack-style synchronous require (used for dynamic .hbs template loading)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const require: (id: string) => any;

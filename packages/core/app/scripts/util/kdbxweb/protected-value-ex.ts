@@ -171,13 +171,18 @@ PV.prototype.isFieldReference = function (): boolean {
         return false;
     }
     let ix = 0;
+    let matches = true;
     this.forEachChar((ch: number) => {
         const expected = ExpectedFieldRefChars[ix++];
-        if (expected !== '0' && ch !== expected) {
+        // '0' is the placeholder that stands for the UUID hex digits
+        // and the REF type char; every other position must match the
+        // fixed prefix/suffix literal character code.
+        if (expected !== '0' && ch !== expected.charCodeAt(0)) {
+            matches = false;
             return false;
         }
     });
-    return true;
+    return matches;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

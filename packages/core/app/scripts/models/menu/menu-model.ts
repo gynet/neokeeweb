@@ -10,7 +10,11 @@ import { StringFormat } from 'util/formatting/string-format';
 import { Locale } from 'util/locale';
 import { Features } from 'util/features';
 
-interface DefaultTagItem {
+// DefaultTagItem extends Record<string, unknown> so it can flow into
+// MenuSectionModel's constructor (which accepts an array of
+// MenuItemModel | Record<string, unknown>) and into the section's
+// `defaultItems: Record<string, unknown>[]` slot without a cast.
+interface DefaultTagItem extends Record<string, unknown> {
     title: string;
     icon: string;
     defaultItem: boolean;
@@ -81,7 +85,7 @@ class MenuModel extends Model {
                 drop: true
             }
         ]);
-        (Colors as { AllColors: string[] }).AllColors.forEach((color: string) => {
+        Colors.AllColors.forEach((color: string) => {
             const option = {
                 cls: `fa ${color}-color`,
                 value: color,

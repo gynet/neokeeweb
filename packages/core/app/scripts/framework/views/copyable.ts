@@ -45,7 +45,11 @@ const Copyable = {
                 noInit: true
             });
             this.fieldCopyTip = tip;
-            tip.show();
+            // createTip may return undefined when Tip is disabled and
+            // the `force: true` override isn't propagated (defensive).
+            if (tip) {
+                tip.show();
+            }
         }
         setTimeout(() => {
             if (tip) {

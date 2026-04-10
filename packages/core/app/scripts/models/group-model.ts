@@ -42,6 +42,7 @@ class GroupModel extends MenuItemModel {
     group!: kdbxweb.KdbxGroup;
     file!: FileModel;
 
+
     setGroup(group: kdbxweb.KdbxGroup, file: FileModel, parentGroup?: GroupModel): void {
         const isRecycleBin = group.uuid.equals(file.db.meta.recycleBinUuid as kdbxweb.KdbxUuid);
         const id = file.subId((group.uuid as unknown as { id: string }).id);
@@ -67,7 +68,11 @@ class GroupModel extends MenuItemModel {
         this.file = file;
         this.parentGroup = parentGroup ?? null;
         this._fillByGroup(true);
-        const items = this.items as GroupCollection;
+        // `items` is inherited from MenuItemModel as `unknown[] | null`
+        // (menu items can be either plain arrays of records or
+        // domain-specific collections). setGroup always assigns a
+        // GroupCollection here, so narrow locally.
+        const items = this.items as unknown as GroupCollection;
         const entries = this.entries;
 
         const itemsArray = group.groups.map((subGroup) => {
@@ -402,7 +407,11 @@ class GroupModel extends MenuItemModel {
 
     static newGroup(group: GroupModel, file: FileModel): GroupModel {
         const model = new GroupModel();
-        const grp = file.db.createGroup(group.group);
+        // kdbxweb.Kdbx.createGroup requires an initial name; callers
+        // typically overwrite it immediately via setName(). Pass an
+        // empty string so the group exists in the db tree and then
+        // wait for the UI to commit a final name on first edit.
+        const grp = file.db.createGroup(group.group, '');
         model.setGroup(grp, file, group);
         model.group.times.update();
         model.isJustCreated = true;

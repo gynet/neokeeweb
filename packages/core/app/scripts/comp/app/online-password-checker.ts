@@ -21,7 +21,10 @@ function checkIfPasswordIsExposedOnline(
     const saltedValue = password.saltedValue();
     const cached = exposedPasswords[saltedValue];
     if (cached !== undefined) {
-        return cached;
+        // Cached result: wrap in a resolved promise so the
+        // return type covers both the "not exposed" short-circuit
+        // (false) and the async fetch/cache branches.
+        return Promise.resolve(cached);
     }
     const passwordBytes = password.getBinary();
     return crypto.subtle
