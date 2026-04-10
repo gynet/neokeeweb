@@ -125,7 +125,7 @@ class ListView extends View {
             const itemsTemplate = this.getItemsTemplate();
             const noColor = settings.colorfulIcons ? '' : 'grayscale';
 
-            const presenter = new (EntryPresenter as any)(
+            const presenter = new EntryPresenter(
                 this.getDescField(),
                 noColor,
                 this.model.activeEntryId

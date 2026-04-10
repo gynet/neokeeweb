@@ -103,7 +103,7 @@ class SelectEntryView extends View {
             this.result = this.entries[0];
         }
 
-        const presenter = new (EntryPresenter as any)(null, noColor, this.result?.id);
+        const presenter = new EntryPresenter(null, noColor, this.result?.id);
         presenter.itemOptions = this.model.itemOptions;
 
         let itemsHtml = '';

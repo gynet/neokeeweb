@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface JQueryLike {
     addClass(className: string): JQueryLike;
     removeClass(className: string): JQueryLike;

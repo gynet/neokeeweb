@@ -1,6 +1,5 @@
-// 'hbs' is a webpack alias for 'handlebars/runtime'
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — webpack alias, not a real module path
+// 'hbs' is a webpack alias for 'handlebars/runtime'; the matching
+// ambient module declaration lives in app/scripts/types.d.ts.
 import Handlebars from 'hbs';
 
 /**

@@ -1,6 +1,6 @@
-// 'locales/base.json' is resolved by webpack from app/resources/locales/
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — webpack-resolved JSON import
+// `locales/base.json` resolves via the tsconfig path mapping
+// `locales/*` -> `app/scripts/locales/*` and TypeScript's
+// `resolveJsonModule: true` setting picks up JSON imports natively.
 import Locale from 'locales/base.json';
 
 export { Locale };
