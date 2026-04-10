@@ -91,6 +91,7 @@ class AppView extends View {
         this.listenTo(this.model.settings, 'change:locale', this.setLocale);
         this.listenTo(this.model.settings, 'change:fontSize', this.setFontSize);
         this.listenTo(this.model.settings, 'change:autoSaveInterval', this.setupAutoSave);
+        this.listenTo(this.model.settings, 'change:tagStyle', () => this.model._tagsChanged());
         this.listenTo(this.model.files, 'change', this.fileListUpdated);
 
         this.listenTo(Events, 'select-all', this.selectAll);
