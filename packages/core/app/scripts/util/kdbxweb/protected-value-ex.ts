@@ -41,6 +41,14 @@ PV.prototype.forEachChar = function (fn: (charCode: number) => void | false): vo
             if (fn(((b & 0xf) << 12) | ((b1 & 0x3f) << 6) | (b2 & 0x3f)) === false) {
                 return;
             }
+            // The for-loop header will i++ again to advance past b2 to
+            // the next codepoint's leading byte. Without this continue,
+            // execution falls through into the 4-byte branch's pre-read
+            // (i++; b3 = ...), which silently consumes a byte that
+            // belongs to the NEXT codepoint — corrupting every character
+            // that follows a 3-byte UTF-8 char. Inherited upstream bug
+            // from keeweb; fixed here alongside multi-byte test coverage.
+            continue;
         }
         i++;
         b3 = value[i] ^ salt[i];
