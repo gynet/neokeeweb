@@ -20,6 +20,7 @@ class AppSettingsModel extends Model {
     declare minimizeOnFieldCopy: AppSettings['minimizeOnFieldCopy'];
     declare tableView: AppSettings['tableView'];
     declare colorfulIcons: AppSettings['colorfulIcons'];
+    declare tagStyle: AppSettings['tagStyle'];
     declare useMarkdown: AppSettings['useMarkdown'];
     declare directAutotype: AppSettings['directAutotype'];
     declare autoTypeTitleFilterEnabled: AppSettings['autoTypeTitleFilterEnabled'];

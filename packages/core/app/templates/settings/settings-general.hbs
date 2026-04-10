@@ -104,6 +104,13 @@
         <input type="checkbox" class="settings__input input-base settings__general-colorful-icons" id="settings__general-colorful-icons" {{#if colorfulIcons}}checked{{/if}} />
         <label for="settings__general-colorful-icons">{{res 'setGenColorfulIcons'}}</label>
     </div>
+    <div>
+        <label for="settings__general-tag-style">Tag sidebar style: </label>
+        <select class="settings__input input-base settings__general-tag-style" id="settings__general-tag-style">
+            <option value="cloud" {{#ifeq tagStyle "cloud"}}selected{{/ifeq}}>Cloud (pills)</option>
+            <option value="dot" {{#ifeq tagStyle "dot"}}selected{{/ifeq}}>Minimal (dots)</option>
+        </select>
+    </div>
 
     <h2 id="function">{{res 'setGenFunction'}}</h2>
     {{#if canAutoSaveOnClose}}

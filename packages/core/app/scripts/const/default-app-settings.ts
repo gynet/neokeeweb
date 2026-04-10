@@ -89,6 +89,7 @@ const DefaultAppSettings: AppSettings = {
     minimizeOnFieldCopy: false, // minimise the app on copy
     tableView: false, // view entries as a table instead of list
     colorfulIcons: true, // colorful custom icons by default
+    tagStyle: 'cloud' as 'cloud' | 'dot', // sidebar tag display: 'cloud' (flow-wrap pills) or 'dot' (vertical list with dots)
     useMarkdown: true, // use Markdown in Notes field
     directAutotype: true, // if only one matching entry is found, select that one automatically
     autoTypeTitleFilterEnabled: true, // enable the title filtering in auto-type by default

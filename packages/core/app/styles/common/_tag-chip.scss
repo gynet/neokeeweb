@@ -21,18 +21,19 @@
     transition: opacity 0.15s;
 
     // Deterministic color from --tag-hue (0-359).
-    // Apple glassmorphism — frosted tint + blur + subtle border.
-    background: hsla(var(--tag-hue, 200), 30%, 55%, 0.15);
+    // Apple glassmorphism — extra transparent per user feedback.
+    background: hsla(var(--tag-hue, 200), 30%, 55%, 0.08);
     backdrop-filter: blur(12px) saturate(1.4);
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
-    color: hsla(var(--tag-hue, 200), 70%, 82%, 1);
-    border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.18);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    // Text color matches the SVG dot fill: hsl(hue, 65%, 55%)
+    color: hsla(var(--tag-hue, 200), 65%, 65%, 1);
+    border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.12);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     letter-spacing: 0.3px;
 
     &:hover {
-        background: hsla(var(--tag-hue, 200), 35%, 58%, 0.22);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        background: hsla(var(--tag-hue, 200), 35%, 58%, 0.15);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
 }
 
@@ -45,8 +46,8 @@
 //
 // Reference: tag clouds, 1Password tag dots, tradesviz.com tag UI.
 
-// Make the tags section's scroller a flex-wrap container
-.menu__section:has(.menu__item--tag) {
+// ── Cloud mode (default): flow-wrap pills ────────────────────────
+.menu__section:has(.menu__item--tag-cloud) {
     .scroller {
         display: flex;
         flex-wrap: wrap;
@@ -56,8 +57,7 @@
     }
 }
 
-.menu__item--tag {
-    // Inline pill — NOT full width, shrink to content
+.menu__item--tag-cloud {
     display: inline-flex;
     width: auto;
     flex-shrink: 0;
@@ -67,18 +67,18 @@
         align-items: center;
         padding: 3px 10px 3px 6px;
         border-radius: 14px;
-        // Apple-style glassmorphism: frosted glass tint + backdrop blur
-        background: hsla(var(--tag-hue, 200), 30%, 55%, 0.12);
+        // Apple glassmorphism — extra transparent
+        background: hsla(var(--tag-hue, 200), 30%, 55%, 0.08);
         backdrop-filter: blur(12px) saturate(1.4);
         -webkit-backdrop-filter: blur(12px) saturate(1.4);
-        border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.15);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        border: 1px solid hsla(var(--tag-hue, 200), 25%, 70%, 0.12);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         transition: background 0.15s, box-shadow 0.15s;
         cursor: pointer;
 
         &:hover {
-            background: hsla(var(--tag-hue, 200), 35%, 60%, 0.2);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            background: hsla(var(--tag-hue, 200), 35%, 60%, 0.15);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
         }
     }
 
@@ -98,7 +98,6 @@
         line-height: 16px;
     }
 
-    // Hide drag handles and other decorations in cloud mode
     .menu__item-drag-top,
     .menu__item-edit,
     .menu__item-collapse {
@@ -109,6 +108,27 @@
         background: hsla(var(--tag-hue, 200), 35%, 58%, 0.25);
         border-color: hsla(var(--tag-hue, 200), 40%, 65%, 0.3);
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// ── Dot mode (minimal): vertical list with colored circle ────────
+.menu__item--tag-dot {
+    .menu__item-icon--image {
+        width: 10px;
+        height: 10px;
+        min-width: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .menu__item-body {
+        padding: 3px 10px;
+    }
+
+    .menu__item-title {
+        font-size: 13px;
+        font-weight: 400;
     }
 }
 

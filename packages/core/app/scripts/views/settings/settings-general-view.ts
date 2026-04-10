@@ -80,6 +80,7 @@ class SettingsGeneralView extends View {
         'change .settings__general-lock-on-os-lock': 'changeLockOnOsLock',
         'change .settings__general-table-view': 'changeTableView',
         'change .settings__general-colorful-icons': 'changeColorfulIcons',
+        'change .settings__general-tag-style': 'changeTagStyle',
         'change .settings__general-use-markdown': 'changeUseMarkdown',
         'change .settings__general-use-group-icon-for-entries': 'changeUseGroupIconForEntries',
         'change .settings__general-direct-autotype': 'changeDirectAutotype',
@@ -163,6 +164,7 @@ class SettingsGeneralView extends View {
             updateManual,
             releaseNotesLink: (Links as any).ReleaseNotes,
             colorfulIcons: settings.colorfulIcons,
+            tagStyle: settings.tagStyle || 'cloud',
             useMarkdown: settings.useMarkdown,
             useGroupIconForEntries: settings.useGroupIconForEntries,
             directAutotype: settings.directAutotype,
@@ -451,6 +453,11 @@ class SettingsGeneralView extends View {
     changeColorfulIcons(e: any): void {
         const colorfulIcons = e.target.checked || false;
         settings.colorfulIcons = colorfulIcons;
+        Events.emit('refresh');
+    }
+
+    changeTagStyle(e: any): void {
+        settings.tagStyle = e.target.value;
         Events.emit('refresh');
     }
 

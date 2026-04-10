@@ -412,6 +412,7 @@ class AppModel {
     _tagsChanged(): void {
         if (this.tags.length) {
             this.menu.tagsSection.scrollable = true;
+            const isCloud = this.settings.tagStyle !== 'dot';
             this.menu.tagsSection.setItems(
                 this.tags.map((tag) => {
                     // Deterministic hue per tag name (djb2 hash mod 360)
@@ -421,15 +422,14 @@ class AppModel {
                     }
                     const hue = Math.abs(h) % 360;
                     const count = this.tagCounts[tag] || 0;
-                    // 1Password-style colored dot via inline SVG
                     const dot = `data:image/svg+xml,${encodeURIComponent(
                         `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><circle cx='6' cy='6' r='5' fill='hsl(${hue},65%,55%)'/></svg>`
                     )}`;
                     return {
                         title: count > 0 ? `${tag} (${count})` : tag,
                         customIcon: dot,
-                        cls: 'menu__item--tag',
-                        itemStyle: `--tag-hue:${hue}`,
+                        cls: isCloud ? 'menu__item--tag menu__item--tag-cloud' : 'menu__item--tag menu__item--tag-dot',
+                        itemStyle: isCloud ? `--tag-hue:${hue}` : undefined,
                         filterKey: 'tag',
                         filterValue: tag,
                         editable: true
