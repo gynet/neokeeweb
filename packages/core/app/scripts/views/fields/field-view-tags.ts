@@ -3,13 +3,33 @@ import { FieldViewText } from 'views/fields/field-view-text';
 import { escape } from 'util/fn';
 import tagsTemplate from 'templates/details/fields/tags.hbs';
 
+/**
+ * Deterministic hue from a tag string, so the same tag always gets
+ * the same color. Simple djb2-style hash mod 360.
+ */
+function tagHue(tag: string): number {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+        hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % 360;
+}
+
 class FieldViewTags extends FieldViewText {
     hasOptions = false;
 
     tagsAutocomplete: any;
 
     renderValue(value: any): string {
-        return value ? escape(value.join(', ')) : '';
+        if (!value || !value.length) {
+            return '';
+        }
+        return (value as string[])
+            .map(
+                (tag) =>
+                    `<span class="tag-chip" style="--tag-hue:${tagHue(tag)}">${escape(tag)}</span>`
+            )
+            .join('');
     }
 
     getEditValue(value: any): string {
