@@ -230,6 +230,7 @@ class AppModel {
 
     constructor() {
         Events.on('refresh', this.refresh.bind(this));
+        Events.on('tags-style-changed', () => this._tagsChanged());
         Events.on('set-filter', this.setFilter.bind(this));
         Events.on('add-filter', this.addFilter.bind(this));
         Events.on('set-sort', this.setSort.bind(this));

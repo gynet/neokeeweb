@@ -458,7 +458,7 @@ class SettingsGeneralView extends View {
 
     changeTagStyle(e: any): void {
         settings.tagStyle = e.target.value;
-        Events.emit('refresh');
+        Events.emit('tags-style-changed');
     }
 
     changeUseMarkdown(e: any): void {
