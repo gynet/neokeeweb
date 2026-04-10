@@ -18,6 +18,7 @@ import { OpenConfigView } from 'views/open-config-view';
 import { StorageFileListView } from 'views/storage-file-list-view';
 import { omit } from 'util/fn';
 import { GeneratorView } from 'views/generator-view';
+import { CorsDiagnosticView } from 'views/cors-diagnostic-view';
 import template from 'templates/open.hbs';
 
 const logger = new Logger('open-view');
@@ -777,6 +778,10 @@ class OpenView extends View {
             icon.toggleClass('flip3d', false);
             this.busy = false;
             if (err || !files) {
+                if (typeof err === 'object' && err && err.cors) {
+                    this._showCorsDiagnostic(err.serverUrl || '', undefined);
+                    return;
+                }
                 err = err ? err.toString() : '';
                 if (err === 'browser-auth-started') {
                     return;
@@ -922,6 +927,11 @@ class OpenView extends View {
         this.busy = false;
         const views = (this as any).views;
         if (err) {
+            if (typeof err === 'object' && err && err.cors) {
+                views.openConfig.setDisabled(false);
+                this._showCorsDiagnostic(err.serverUrl || req.path, req);
+                return;
+            }
             views.openConfig.setDisabled(false);
             views.openConfig.setError(err);
         } else {
@@ -937,6 +947,11 @@ class OpenView extends View {
         this.busy = false;
         const views = (this as any).views;
         if (err) {
+            if (typeof err === 'object' && err && err.cors) {
+                views.openConfig.setDisabled(false);
+                this._showCorsDiagnostic(err.serverUrl || req.path, req);
+                return;
+            }
             views.openConfig.setDisabled(false);
             views.openConfig.setError(err);
         } else {
@@ -952,6 +967,45 @@ class OpenView extends View {
             this.displayOpenFile();
             this.displayOpenDeviceOwnerAuth();
         }
+    }
+
+    _showCorsDiagnostic(serverUrl: string, req?: any): void {
+        const views = (this as any).views;
+        // Remove any existing CORS diagnostic view
+        if (views.corsDiag) {
+            views.corsDiag.remove();
+            delete views.corsDiag;
+        }
+        const diagView = new CorsDiagnosticView({
+            serverUrl,
+            origin: window.location.origin
+        });
+        diagView.render();
+        diagView.on('test-again', () => {
+            // Re-run the stat request with the same params
+            if (req) {
+                diagView.closeModal();
+                const storage = storageProvs[req.storage];
+                if (storage) {
+                    this.busy = true;
+                    this.storageWaitId = Math.random();
+                    const retryReq = { ...req, waitId: this.storageWaitId };
+                    const configViews = (this as any).views;
+                    if (configViews.openConfig) {
+                        configViews.openConfig.setDisabled(true);
+                    }
+                    storage.stat(
+                        req.path,
+                        req.opts,
+                        this.storageStatComplete.bind(this, retryReq)
+                    );
+                }
+            }
+        });
+        diagView.on('closed', () => {
+            delete views.corsDiag;
+        });
+        views.corsDiag = diagView;
     }
 
     moveOpenFileSelection(steps: number): void {
