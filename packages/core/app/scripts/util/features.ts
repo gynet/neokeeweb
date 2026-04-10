@@ -1,13 +1,19 @@
 const MobileRegex = /iPhone|iPad|iPod|Android|BlackBerry|Opera Mini|IEMobile|WPDesktop|Windows Phone|webOS/i;
 const MinDesktopScreenWidth = 800;
 
-// `Navigator.standalone` is a non-standard Safari iOS field. `Window.chrome`
-// is a Chromium-only flag. TS doesn't know about either; we cast to any
-// for the property reads. Both are read-only feature detections.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const navAny = navigator as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const winAny = window as any;
+// Non-standard browser feature detection fields not covered by lib.dom:
+//   - `Navigator.standalone`: iOS Safari home-screen-launch flag
+//   - `Window.chrome`: Chromium-only — read as a presence check
+// We narrow once via structural interfaces here so the property reads
+// stay type-safe at the call sites in the Features object below.
+interface NavigatorWithStandalone {
+    standalone?: boolean;
+}
+interface WindowWithChrome {
+    chrome?: unknown;
+}
+const navStandalone = navigator as Navigator & NavigatorWithStandalone;
+const winChrome = window as Window & WindowWithChrome;
 
 interface FeaturesShape {
     isDesktop: boolean;
@@ -38,7 +44,7 @@ const Features: FeaturesShape = {
     isiOS: /iPad|iPhone|iPod/i.test(navigator.userAgent),
     isMobile: MobileRegex.test(navigator.userAgent) || screen.width < MinDesktopScreenWidth,
     isPopup: !!(window.parent !== window.top || window.opener),
-    isStandalone: !!navAny.standalone,
+    isStandalone: !!navStandalone.standalone,
     isFrame: window.top !== window,
     isSelfHosted: !/^http(s?):\/\/((localhost:8085)|((app|beta)\.keeweb\.info))/.test(location.href),
     isLocal: location.origin.indexOf('localhost') >= 0,
@@ -56,13 +62,13 @@ const Features: FeaturesShape = {
         return this.isMac;
     },
     get browserCssClass() {
-        if (winAny.chrome && window.navigator.userAgent.indexOf('Chrome/') > -1) {
+        if (winChrome.chrome && window.navigator.userAgent.indexOf('Chrome/') > -1) {
             return 'chrome';
         }
         if (window.navigator.userAgent.indexOf('Edge/') > -1) {
             return 'edge';
         }
-        if (navAny.standalone) {
+        if (navStandalone.standalone) {
             return 'standalone';
         }
         return '';

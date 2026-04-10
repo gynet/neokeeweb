@@ -1,5 +1,4 @@
 import { Events } from 'framework/events';
-// @ts-ignore -- features is being migrated
 import { Features } from 'util/features';
 import { pick } from 'util/fn';
 
@@ -17,8 +16,11 @@ interface TipElement extends Element {
     _tip?: Tip;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type JQ = any;
+// jQuery wrapper alias — uses the legacy JQuery<T> shim from types.d.ts
+// (which is intentionally loose for the documented "no @types/jquery"
+// reason). This local alias forwards to that centralised shim instead
+// of redeclaring its own loose type.
+type JQ = JQuery;
 
 class Tip {
     static enabled: boolean = !Features.isMobile;

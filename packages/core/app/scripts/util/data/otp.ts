@@ -124,8 +124,14 @@ class Otp {
     }
 
     private hmac(data: ArrayBuffer, callback: HmacCallback): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const subtle = window.crypto.subtle || (window.crypto as any).webkitSubtle;
+        // Safari < 11 exposed WebCrypto under `webkitSubtle` rather than
+        // the standard `subtle` name. We narrow via a structural shim
+        // rather than `as any` so the call sites below stay typed.
+        interface CryptoWithWebkit extends Crypto {
+            webkitSubtle?: SubtleCrypto;
+        }
+        const cryptoWithWebkit = window.crypto as CryptoWithWebkit;
+        const subtle: SubtleCrypto = cryptoWithWebkit.subtle ?? cryptoWithWebkit.webkitSubtle!;
         const algo = {
             name: 'HMAC',
             hash: { name: this.algorithm.replace('SHA', 'SHA-') }
@@ -195,8 +201,11 @@ class Otp {
         if (!match) {
             throw 'Not OTP url';
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const params: any = {};
+        // The OtpParams object is built incrementally from URL components;
+        // not all fields are present at construction time. We type it as
+        // a loose mutable record here, then pass to the Otp constructor
+        // which validates the required fields.
+        const params: Record<string, string> = {};
         const label = decodeURIComponent(match[2] ?? 'default');
         if (label) {
             const parts = label.split(':');
@@ -210,7 +219,7 @@ class Otp {
             const parts = part.split('=', 2);
             params[parts[0].toLowerCase()] = decodeURIComponent(parts[1]);
         });
-        return new Otp(url, params as OtpParams);
+        return new Otp(url, params as unknown as OtpParams);
     }
 
     static isSecret(str: string): boolean {
