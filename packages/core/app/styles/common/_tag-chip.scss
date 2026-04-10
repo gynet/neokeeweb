@@ -21,14 +21,16 @@
     transition: opacity 0.15s;
 
     // Deterministic color from --tag-hue (0-359).
-    // Dark theme: semi-transparent colored background + brighter text.
+    // BOLD styling — must be clearly visible on both dark and light themes.
     // The hue comes from a djb2 hash of the tag string in field-view-tags.ts.
-    background: hsla(var(--tag-hue, 200), 50%, 35%, 0.35);
-    color: hsla(var(--tag-hue, 200), 70%, 78%, 1);
-    border: 1px solid hsla(var(--tag-hue, 200), 40%, 50%, 0.3);
+    background: hsla(var(--tag-hue, 200), 65%, 30%, 0.55);
+    color: hsla(var(--tag-hue, 200), 90%, 85%, 1);
+    border: 1px solid hsla(var(--tag-hue, 200), 60%, 55%, 0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.3px;
 
     &:hover {
-        opacity: 0.85;
+        background: hsla(var(--tag-hue, 200), 65%, 35%, 0.65);
     }
 }
 
