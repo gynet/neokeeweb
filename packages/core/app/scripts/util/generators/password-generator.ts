@@ -1,11 +1,6 @@
-// @ts-ignore -- kdbxweb has no type declarations
 import * as kdbxweb from 'kdbxweb';
 import { phonetic } from 'util/generators/phonetic';
 import { shuffle } from 'util/fn';
-
-interface ProtectedValue {
-    forEachChar(fn: (charCode: number) => void): void;
-}
 
 interface PasswordGeneratorOptions {
     length: number;
@@ -128,7 +123,7 @@ const PasswordGenerator = {
         return result.substr(0, opts.length);
     },
 
-    deriveOpts(password: ProtectedValue | null | undefined): DerivedOpts {
+    deriveOpts(password: kdbxweb.ProtectedValue | null | undefined): DerivedOpts {
         const opts: DerivedOpts = { length: 0 };
         let length = 0;
         if (password) {
