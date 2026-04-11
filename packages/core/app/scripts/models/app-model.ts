@@ -1034,6 +1034,13 @@ class AppModel {
             rev
         );
         const dt = new Date();
+        // Grab the pre-existing FileInfoModel (if any) BEFORE the remove/unshift
+        // below, so we can carry forward descriptor-only fields that live
+        // exclusively on the FileInfoModel row and have no FileModel source
+        // of truth. Without this, every re-open constructs a fresh
+        // FileInfoModel with defaults, silently wiping the passkey
+        // registration (#9) on any password-fallback re-open.
+        const existingFileInfo = this.fileInfos.get(file.id);
         const fileInfo = new FileInfoModel({
             id: file.id,
             name: file.name,
@@ -1053,6 +1060,18 @@ class AppModel {
             // re-acquire the passkey callback via registration/UI.
             chalResp: typeof file.chalResp === 'function' ? null : file.chalResp
         });
+        // Passkey quick unlock (#9) carry-forward: FileInfoModel is the sole
+        // owner of these four fields (FileModel has no passkey state), so
+        // if we don't copy them from the previous row they're gone after a
+        // single password-fallback re-open. The registration ritual (button
+        // click + WebAuthn prompt + HKDF unwrap) is expensive; silently
+        // dropping it after one password unlock would be a nasty UX trap.
+        if (existingFileInfo) {
+            fileInfo.passkeyCredentialId = existingFileInfo.passkeyCredentialId;
+            fileInfo.passkeyPrfSalt = existingFileInfo.passkeyPrfSalt;
+            fileInfo.passkeyWrappedKey = existingFileInfo.passkeyWrappedKey;
+            fileInfo.passkeyCreatedDate = existingFileInfo.passkeyCreatedDate;
+        }
         switch (this.settings.rememberKeyFiles) {
             case 'data':
                 fileInfo.set({
