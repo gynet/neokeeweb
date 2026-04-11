@@ -12,19 +12,20 @@ module.exports = function loadScss(scssSource) {
 
     // 1. Generate WhiteSur icon SCSS variables from SVG files
     let whitesurVars = '';
-    try {
+    if (fs.existsSync(whitesurDir)) {
         const svgFiles = fs.readdirSync(whitesurDir).filter((f) => f.endsWith('.svg'));
         for (const file of svgFiles) {
             const filePath = path.join(whitesurDir, file);
             this.addDependency(filePath);
             const svgData = fs.readFileSync(filePath);
             const b64 = svgData.toString('base64');
-            // Convert filename to SCSS variable name: desktop.svg → $ws-icon-desktop
             const varName = file.replace(/\.svg$/, '').replace(/[^a-zA-Z0-9]/g, '-');
             whitesurVars += `$ws-icon-${varName}: url('data:image/svg+xml;base64,${b64}');\n`;
         }
-    } catch (e) {
-        // whitesur dir missing is non-fatal
+    } else {
+        return callback(
+            new Error(`WhiteSur icons directory not found: ${whitesurDir} (cwd=${process.cwd()}, __dirname=${__dirname})`)
+        );
     }
 
     // 2. Generate FA icon class definitions
