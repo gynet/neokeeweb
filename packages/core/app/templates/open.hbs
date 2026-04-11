@@ -27,7 +27,7 @@
         {{#if canOpenDemo}}
             {{#ifeq demoOpened false}}
                 <div class="open__icon open__icon-demo" tabindex="4" id="open__icon-demo">
-                    <i class="fa fa-magic open__icon-i"></i>
+                    <span class="open__icon-i open__icon-i--ws-demo"></span>
                     <div class="open__icon-text">{{res 'openDemo'}}</div>
                 </div>
             {{/ifeq}}
@@ -56,7 +56,7 @@
         {{#if canOpenDemo}}
             {{#if demoOpened}}
                 <div class="open__icon open__icon-demo" tabindex="20" id="open__icon-demo">
-                    <i class="fa fa-magic open__icon-i"></i>
+                    <span class="open__icon-i open__icon-i--ws-demo"></span>
                     <div class="open__icon-text">{{res 'openDemo'}}</div>
                 </div>
             {{/if}}

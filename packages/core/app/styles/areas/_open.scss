@@ -60,7 +60,16 @@
                 display: inline-block;
                 width: 64px;
                 height: 64px;
-                background-image: $ws-icon-gnome-tweak-tool;
+                background-image: $ws-icon-org-gnome-Software-Generic;
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+            }
+            &--ws-demo {
+                display: inline-block;
+                width: 64px;
+                height: 64px;
+                background-image: $ws-icon-org-gnome-Software-Generic;
                 background-size: contain;
                 background-repeat: no-repeat;
                 background-position: center;
