@@ -20,6 +20,19 @@ interface FileInfoProperties {
     chalResp: Record<string, unknown> | null;
     encryptedPassword: string | null;
     encryptedPasswordDate: Date | null;
+    // Passkey quick unlock (#9, Phase 2). All four fields are persisted
+    // together; presence of `passkeyCredentialId` is the gate for the
+    // open-view passkey button. Wrap-mode design: `passkeyWrappedKey`
+    // is an AES-256-GCM ciphertext of the master password string, keyed
+    // by HKDF-SHA256(prfOutput, salt=fileId, info="neokeeweb-passkey-unlock-v1").
+    // The KDBX file itself is unchanged — disabling passkey unlock is just
+    // clearing these four fields, the database remains password-unlockable.
+    passkeyCredentialId: string | null;
+    passkeyPrfSalt: string | null;
+    passkeyWrappedKey: string | null;
+    // Note: field name MUST end in `Date` for constructor auto-hydration
+    // below; renaming to `passkeyCreatedAt` would silently break reload.
+    passkeyCreatedDate: Date | null;
 }
 
 const DefaultProperties: FileInfoProperties = {
@@ -40,7 +53,11 @@ const DefaultProperties: FileInfoProperties = {
     fingerprint: null, // obsolete
     chalResp: null,
     encryptedPassword: null,
-    encryptedPasswordDate: null
+    encryptedPasswordDate: null,
+    passkeyCredentialId: null,
+    passkeyPrfSalt: null,
+    passkeyWrappedKey: null,
+    passkeyCreatedDate: null
 };
 
 class FileInfoModel extends Model {
@@ -62,6 +79,10 @@ class FileInfoModel extends Model {
     declare chalResp: Record<string, unknown> | null;
     declare encryptedPassword: string | null;
     declare encryptedPasswordDate: Date | null;
+    declare passkeyCredentialId: string | null;
+    declare passkeyPrfSalt: string | null;
+    declare passkeyWrappedKey: string | null;
+    declare passkeyCreatedDate: Date | null;
 
     constructor(data?: Partial<FileInfoProperties>) {
         const raw: Record<string, unknown> = { ...(data ?? {}) };
