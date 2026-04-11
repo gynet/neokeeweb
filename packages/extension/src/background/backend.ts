@@ -247,26 +247,60 @@ class Backend extends TypedEmitter<BackendEvents> {
         }
     }
 
+    private async reconnect(): Promise<void> {
+        // eslint-disable-next-line no-console
+        console.log('[NeoKeeWeb Connect] Stale session detected, reconnecting...');
+        if (this._transport) {
+            this._transport.removeAllListeners();
+            await this._transport.disconnect();
+            this._transport = undefined;
+        }
+        this._protocol = undefined;
+        this.setState(BackendConnectionState.ReadyToConnect);
+        await this.connect();
+    }
+
+    private async withAutoReconnect<T>(fn: () => Promise<T>): Promise<T> {
+        try {
+            return await fn();
+        } catch (e) {
+            const msg = (<Error>e).message || '';
+            const isStaleSession =
+                msg.includes('decrypt') ||
+                msg.includes('nonce') ||
+                msg.includes('timeout') ||
+                msg.includes('Timeout');
+            if (isStaleSession) {
+                await this.reconnect();
+                if (!this._protocol) {
+                    throw new Error('Reconnect failed');
+                }
+                return await fn();
+            }
+            throw e;
+        }
+    }
+
     async getLogins(url: string): Promise<KeeWebConnectGetLoginsResponseEntry[]> {
         this.checkConnection();
         if (!this._protocol) {
             throw new Error('Not connected');
         }
-        return this._protocol.getLogins(url);
+        return this.withAutoReconnect(() => this._protocol!.getLogins(url));
     }
 
     async getTotp(url: string, title: string): Promise<string> {
         if (!this._protocol) {
             throw new Error('Not connected');
         }
-        return this._protocol.getTotp(url, title);
+        return this.withAutoReconnect(() => this._protocol!.getTotp(url, title));
     }
 
     async getAnyField(url: string, title: string): Promise<string> {
         if (!this._protocol) {
             throw new Error('Not connected');
         }
-        return this._protocol.getAnyField(url, title);
+        return this.withAutoReconnect(() => this._protocol!.getAnyField(url, title));
     }
 }
 
