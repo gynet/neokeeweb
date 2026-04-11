@@ -1046,7 +1046,12 @@ class AppModel {
             syncDate: file.syncDate || dt,
             openDate: dt,
             backup: file.backup,
-            chalResp: file.chalResp
+            // chalResp on FileModel can now be a live challenge-response
+            // function (Passkey PRF groundwork, #9). FileInfoModel persists
+            // to JSON so only the legacy descriptor variant is round-trippable;
+            // drop function-typed chalResp here — the re-open flow will
+            // re-acquire the passkey callback via registration/UI.
+            chalResp: typeof file.chalResp === 'function' ? null : file.chalResp
         });
         switch (this.settings.rememberKeyFiles) {
             case 'data':

@@ -27,6 +27,23 @@ interface RemoteKey {
     keyFileData?: ArrayBuffer;
 }
 
+// chalResp on FileModel can be either:
+//   - legacy YubiKey descriptor metadata (Record<string, unknown>) — kept
+//     for FileInfoModel persistence shape compatibility; dead code at
+//     runtime since the YubiKey hardware path was stripped from web-only
+//     mode but still needed on-disk until #9 replaces it, and
+//   - a KdbxChallengeResponseFn, used by the Passkey Quick Unlock (#9)
+//     groundwork to feed a PRF-derived HMAC through the KDBX credentials
+//     chain without a native USB key.
+// Both variants flow through the same `this.chalResp` slot so
+// `FileModel.open()` can forward the function form straight into
+// `kdbxweb.Credentials` while the metadata form is ignored until TL
+// lands the full UI. Do NOT treat this as a public API yet.
+type FileModelChalResp =
+    | kdbxweb.KdbxChallengeResponseFn
+    | Record<string, unknown>
+    | null;
+
 interface FileModelProperties {
     id: string;
     uuid: string;
@@ -36,7 +53,7 @@ interface FileModelProperties {
     groupMap: Record<string, GroupModel> | null;
     keyFileName: string;
     keyFilePath: string | null;
-    chalResp: Record<string, unknown> | null;
+    chalResp: FileModelChalResp;
     passwordLength: number;
     path: string;
     opts: Record<string, unknown> | null;
@@ -90,7 +107,7 @@ class FileModel extends Model {
     declare groupMap: Record<string, GroupModel>;
     declare keyFileName: string;
     declare keyFilePath: string | null;
-    declare chalResp: Record<string, unknown> | null;
+    declare chalResp: FileModelChalResp;
     declare passwordLength: number;
     declare path: string;
     declare opts: Record<string, unknown> | null;
@@ -145,9 +162,22 @@ class FileModel extends Model {
         callback: (err?: unknown) => void
     ): void {
         try {
+            // Forward the challenge-response fn (if any) to kdbxweb.Credentials.
+            // Prior to the #9 Passkey Quick Unlock groundwork, chalResp was
+            // silently dropped here, making `params.chalResp` / `FileInfoModel
+            // .chalResp` dead code since the YubiKey hardware path was
+            // stripped. kdbxweb.Credentials accepts a (challenge) => Promise
+            // <ArrayBuffer|Uint8Array> function as its 3rd constructor arg;
+            // we only forward if `this.chalResp` is actually callable so any
+            // leftover legacy descriptor metadata is safely ignored.
+            const chalRespFn =
+                typeof this.chalResp === 'function'
+                    ? (this.chalResp as kdbxweb.KdbxChallengeResponseFn)
+                    : undefined;
             const credentials = new kdbxweb.Credentials(
                 password as kdbxweb.ProtectedValue,
-                keyFileData as ArrayBuffer
+                keyFileData as ArrayBuffer,
+                chalRespFn
             );
             const ts = logger.ts();
 
