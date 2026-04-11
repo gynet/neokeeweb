@@ -4,8 +4,9 @@ const path = require('path');
 module.exports = function loadScss(scssSource) {
     const callback = this.async();
 
-    const iconFontScssPath = path.resolve('app/styles/base/_icon-font.scss');
-    const whitesurDir = path.resolve('app/icons/whitesur');
+    const coreRoot = path.resolve(__dirname, '../..');
+    const iconFontScssPath = path.join(coreRoot, 'app/styles/base/_icon-font.scss');
+    const whitesurDir = path.join(coreRoot, 'app/icons/whitesur');
 
     this.addDependency(iconFontScssPath);
 
