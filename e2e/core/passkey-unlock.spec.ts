@@ -529,32 +529,71 @@ test.describe('Passkey Quick Unlock (#9)', () => {
                 'Password fallback must still open the database after a failed passkey attempt'
             ).toBeVisible({ timeout: 30_000 });
 
-            // Check that the FileInfo row still exists after the
-            // fallback open. We do NOT assert that the four passkey
-            // fields are preserved across a password-fallback re-open
-            // because the current `toFileInfo` path in app-model.ts
-            // constructs a fresh FileInfoModel on every successful
-            // open and does not carry the passkey descriptor forward
-            // (see lines 1037-1085 of models/app-model.ts). This is a
-            // P2 follow-up bug for SWE-Core — logged separately in
-            // /tmp/neokeeweb-agents/sdet.log — not a regression to
-            // lock in here. The test still catches the important
-            // thing: that an authenticator fault doesn't brick the
-            // open screen and that the user can fall back to typing
-            // without losing access to their data.
+            // After a password-fallback re-open, assert that the
+            // FileInfo row still exists AND that the four passkey
+            // descriptor fields survived the reconstruction inside
+            // `addToLastOpenFiles`. This is the Round-3 P1 regression
+            // guard for #9: without the carry-forward block in
+            // app-model.ts, every fallback open wiped the passkey
+            // registration (the new FileInfoModel defaults all four
+            // fields to null, and `this.fileInfos.remove(file.id)`
+            // drops the old row), forcing users to re-enroll on any
+            // password-typed open. The fix copies the fields from
+            // the pre-existing fileInfo row before the remove/unshift.
+            //
+            // We compare "after" against "before" so the test catches
+            // both a total wipe (nulls) and a partial corruption
+            // (different bytes) — either is a regression.
             const fileInfoAfter = await page.evaluate(() =>
                 localStorage.getItem('fileInfo')
             );
             expect(fileInfoAfter).toBeTruthy();
-            const after = JSON.parse(fileInfoAfter!) as Array<{ name: string }>;
+            const after = JSON.parse(fileInfoAfter!) as Array<{
+                name: string;
+                passkeyCredentialId?: string | null;
+                passkeyPrfSalt?: string | null;
+                passkeyWrappedKey?: string | null;
+                passkeyCreatedDate?: string | null;
+            }>;
+            const afterRow = after.find((f) => f.name === KDBX4_BASENAME);
             expect(
-                after.some((f) => f.name === KDBX4_BASENAME),
+                afterRow,
                 'FileInfo row for the fallback-opened file must still exist'
-            ).toBe(true);
-            // Reference fileInfoBefore to keep the snapshot meaningful
-            // for future regression work and silence the unused-var
-            // linter.
+            ).toBeTruthy();
+
+            // Parse the pre-fallback snapshot so we can compare each
+            // of the four passkey descriptor fields field-by-field.
             expect(fileInfoBefore).toBeTruthy();
+            const before = JSON.parse(fileInfoBefore!) as Array<{
+                name: string;
+                passkeyCredentialId?: string | null;
+                passkeyPrfSalt?: string | null;
+                passkeyWrappedKey?: string | null;
+                passkeyCreatedDate?: string | null;
+            }>;
+            const beforeRow = before.find((f) => f.name === KDBX4_BASENAME);
+            expect(beforeRow, 'Pre-fallback FileInfo row must exist').toBeTruthy();
+
+            expect(
+                afterRow?.passkeyCredentialId,
+                'passkeyCredentialId must survive password-fallback re-open (#9 carry-forward)'
+            ).toBe(beforeRow?.passkeyCredentialId);
+            expect(
+                afterRow?.passkeyPrfSalt,
+                'passkeyPrfSalt must survive password-fallback re-open (#9 carry-forward)'
+            ).toBe(beforeRow?.passkeyPrfSalt);
+            expect(
+                afterRow?.passkeyWrappedKey,
+                'passkeyWrappedKey must survive password-fallback re-open (#9 carry-forward)'
+            ).toBe(beforeRow?.passkeyWrappedKey);
+            expect(
+                afterRow?.passkeyCreatedDate,
+                'passkeyCreatedDate must survive password-fallback re-open (#9 carry-forward)'
+            ).toBe(beforeRow?.passkeyCreatedDate);
+            expect(
+                afterRow?.passkeyCredentialId,
+                'passkeyCredentialId must still be non-null after fallback'
+            ).toBeTruthy();
 
             await page.screenshot({
                 path: `${SCREENSHOT_DIR}/passkey-05-password-fallback-ok.png`,
