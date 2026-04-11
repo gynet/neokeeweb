@@ -212,7 +212,7 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 - [ ] iOS share workflow Phase 1 subset (#35 — Mode A `navigator.share` + Mode E/F docs + clipboard hygiene)
 - [ ] WebDAV CORS diagnostic UI (#37)
 
-**Current test counts**: **db 509 pass + 12 skip · core 428 pass · extension 128 pass** · total **1065 pass + 12 skip + 6984 expects** (1077 tests across 59 files). E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. Extension E2E: autofill-content-page, autofill-full-chain, autofill-github-repro, autofill-github-tabswitch.
+**Current test counts**: **db 509 pass + 12 skip · core 458 pass · extension 128 pass** · total **1095 pass + 12 skip** (+30 from passkey quick unlock work: 3 file-model chalResp regression guards + 10 passkey-prf wrap/unwrap + 5 FileInfoModel round-trip + 8 passkey-unlock HKDF/domain separation + 4 misc). E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. E2E specs in `e2e/core/`: app, clipboard, crud, crud-persistence, database-lifecycle, database-open, database-roundtrip, extension-protocol, features, import, otp, persistence, smoke, theme. Extension E2E: autofill-content-page, autofill-full-chain, autofill-github-repro, autofill-github-tabswitch.
 
 **Escape hatch inventory** (`core` only): **119** `@ts-ignore` / `@ts-expect-error` / `no-explicit-any` across 48 files, down from 186 at session start (-35%). Remaining top offenders: `menu-item-view.ts` 14, `types.d.ts` 14 (jQuery shim + ambient modules — deliberately kept), `import-csv-view.ts` 12, `protocol-impl.ts` 8, `menu-section-view.ts` 6, `generator-presets-view.ts` 5, `details-issues-view.ts` 5. Further cleanup is view-layer generics work requiring careful per-subclass refactor.
 
@@ -222,7 +222,7 @@ See: https://github.com/gynet/neokeeweb/milestone/1
 
 See: https://github.com/gynet/neokeeweb/milestone/2
 
-- [ ] Passkey unlock (WebAuthn PRF) — #9 — **prerequisite for #25 and #39**
+- [x] Passkey quick unlock (WebAuthn PRF, Feature A) — #9 — shipped 2026-04-11. `comp/passkey/passkey-prf.ts` (pure WebAuthn+AES-GCM) + `comp/passkey/passkey-unlock.ts` (HKDF-SHA256, `info='neokeeweb-passkey-unlock-v1'`, `salt=fileId`) + FileInfoModel passkey fields + `open-view` enable-at-open checkbox + passkey-icon unlock button + E2E spec (`e2e/core/passkey-unlock.spec.ts`, CDP virtual authenticator). Commits `ffdf5399` / `a1de7bab` / `34403462` / `6ca49366` / `ee7b0dbe`. Feature B (extension as passkey authenticator) deferred to separate issue. **Prerequisite for #25 and #39**.
 - [ ] BYOK OAuth storage adapters (Dropbox + Google Drive) — #36
 - [ ] iOS share workflow Phase 2 subset (#35 — Mode B `share_target`, Mode C/D URL scheme + Shortcut, Mode G QR handoff)
 
