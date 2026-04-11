@@ -23,6 +23,12 @@ function generateWhiteSurScssVars() {
     return vars;
 }
 const whitesurScssVars = generateWhiteSurScssVars();
+if (whitesurScssVars) {
+    const varNames = whitesurScssVars.match(/\$ws-icon-[\w-]+/g) || [];
+    console.log(`[WhiteSur] Generated ${varNames.length} icon variables: ${varNames.join(', ')}`);
+} else {
+    console.error('[WhiteSur] WARNING: No icon variables generated!');
+}
 
 process.noDeprecation = true;
 
