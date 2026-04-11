@@ -88,7 +88,7 @@ See milestone: https://github.com/gynet/neokeeweb/milestone/1
 
 See milestone: https://github.com/gynet/neokeeweb/milestone/2
 
-- [ ] Passkey unlock (WebAuthn PRF) — #9
+- [x] Passkey quick unlock (WebAuthn PRF, Feature A) — #9 — `comp/passkey/passkey-prf.ts` (pure WebAuthn+AES-GCM primitives) + `comp/passkey/passkey-unlock.ts` (HKDF-SHA256 wrap, `info='neokeeweb-passkey-unlock-v1'`, `salt=fileId`) + `FileInfoModel` descriptor fields (`passkeyCredentialId` / `passkeyPrfSalt` / `passkeyWrappedKey` / `passkeyCreatedDate`) + `open-view` enable-at-open checkbox + passkey-icon unlock button. Touch ID `saveEncryptedPassword` stub in `app-model.ts:1640` deliberately left as a no-op (web-only mode, superseded by passkey). E2E spec tracked by SDET.
 - [ ] BYOK OAuth storage adapters (Dropbox + Google Drive) — #36
 - [ ] iOS share workflow Phase 2 subset (#35 — Mode B `share_target`, Mode C/D URL scheme + Shortcut docs, Mode G QR handoff)
 
