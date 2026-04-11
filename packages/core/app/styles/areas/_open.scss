@@ -25,6 +25,10 @@
 
     &__icon {
         @include icon-btn();
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
         color: var(--open-icon-color);
         padding-top: 0;
         margin: 0.2em 0.5em;
