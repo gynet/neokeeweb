@@ -19,6 +19,11 @@ import { StorageFileListView } from 'views/storage-file-list-view';
 import { omit } from 'util/fn';
 import { GeneratorView } from 'views/generator-view';
 import { CorsDiagnosticView } from 'views/cors-diagnostic-view';
+import { isPasskeyPrfSupported } from 'comp/passkey/passkey-prf';
+import {
+    enablePasskeyForFile,
+    unlockFileWithPasskey
+} from 'comp/passkey/passkey-unlock';
 import template from 'templates/open.hbs';
 
 const logger = new Logger('open-view');
@@ -69,9 +74,10 @@ class OpenView extends View {
         'keydown .open__pass-input': 'inputKeydown',
         'keyup .open__pass-input': 'inputKeyup',
         'keypress .open__pass-input': 'inputKeypress',
-        'click .open__pass-enter-btn': 'openDb',
+        'click .open__pass-enter-btn': 'openDbClick',
         'click .open__settings-key-file': 'openKeyFile',
         'click .open__last-item': 'openLast',
+        'change .open__passkey-enable-check': 'passkeyEnableToggled',
         'click .open__icon-generate': 'toggleGenerator',
         'click .open__message-cancel-btn': 'openMessageCancelClick',
         dragover: 'dragover',
@@ -99,6 +105,20 @@ class OpenView extends View {
     reading?: string;
     dragTimeout?: ReturnType<typeof setTimeout>;
     storageWaitId: number | null = null;
+
+    // Passkey quick unlock state (#9). `passkeyAvailable` is cached at
+    // construction time because probing is cheap but doing it on every
+    // keystroke would churn for no reason. The three `passkey*` fields
+    // mirror what `showOpenFileInfo` pulled off FileInfoModel — null
+    // means "no credential registered, show enable-passkey checkbox
+    // instead". `enablePasskeyRequested` is the user's intent to turn
+    // passkey unlock on as part of the current open click; consumed
+    // and cleared in `openDbComplete` after wrapping the password.
+    passkeyAvailable = isPasskeyPrfSupported();
+    passkeyCredentialId: string | null = null;
+    passkeyPrfSalt: string | null = null;
+    passkeyWrappedKey: string | null = null;
+    enablePasskeyRequested = false;
 
     constructor(model: any) {
         super(model);
@@ -157,6 +177,7 @@ class OpenView extends View {
             canRemoveLatest: this.model.settings.canRemoveLatest,
             canOpenYubiKey: false,
             canUseChalRespYubiKey: false,
+            passkeyAvailable: this.passkeyAvailable,
             showMore,
             showLogo
         });
@@ -178,6 +199,13 @@ class OpenView extends View {
             rev: null,
             opts: null
         };
+        // Also clear passkey state so the next file selection starts
+        // from a clean slate — stale credential IDs from a previously
+        // selected file would make the button offer the wrong unlock.
+        this.passkeyCredentialId = null;
+        this.passkeyPrfSalt = null;
+        this.passkeyWrappedKey = null;
+        this.enablePasskeyRequested = false;
     }
 
     windowFocused(): void {
@@ -381,8 +409,49 @@ class OpenView extends View {
         this.focusInput();
     }
 
-    displayOpenChalResp(): void {
-        // No-op: YubiKey challenge-response removed in web-only fork
+    displayOpenPasskey(): void {
+        // Called from render() (template hook) and again whenever the
+        // password input contents change or a new file is selected from
+        // the last-opened list. Toggles both:
+        //
+        //   1. The `.open__pass-enter-btn--passkey` BEM modifier, which
+        //      swaps the enter-arrow icon for a fingerprint icon on the
+        //      unlock button when the selected file has a registered
+        //      passkey AND the user hasn't started typing a password.
+        //
+        //   2. The visibility of the "Enable passkey for this file"
+        //      checkbox below the password field, shown only when the
+        //      file does NOT yet have a passkey AND the browser PRF
+        //      probe passed. The checkbox lets the user turn on quick
+        //      unlock at the next open without visiting settings.
+        const el = (this as any).el;
+        if (!el) return;
+
+        const hasFile = !!this.params.id && !!this.params.name;
+        const passEmpty = !this.passwordInput.length;
+        const hasRegisteredPasskey =
+            !!this.passkeyCredentialId &&
+            !!this.passkeyPrfSalt &&
+            !!this.passkeyWrappedKey;
+
+        // Button modifier: light up the passkey icon only when there's
+        // a credential to use AND the password field is empty (so the
+        // user can't accidentally blow away their typing). If they have
+        // started typing, fall back to the normal enter-arrow path.
+        const canUsePasskey = this.passkeyAvailable && hasRegisteredPasskey && passEmpty;
+        const enterBtn = el.querySelector('.open__pass-enter-btn') as HTMLElement | null;
+        if (enterBtn) {
+            enterBtn.classList.toggle('open__pass-enter-btn--passkey', canUsePasskey);
+        }
+
+        // Checkbox row: offer enable-at-open when the browser supports
+        // PRF, a file is being opened, and it doesn't yet have a passkey.
+        const canOfferEnable =
+            this.passkeyAvailable && hasFile && !hasRegisteredPasskey;
+        const enableRow = el.querySelector('.open__passkey-enable') as HTMLElement | null;
+        if (enableRow) {
+            enableRow.classList.toggle('hide', !canOfferEnable);
+        }
     }
 
     displayOpenDeviceOwnerAuth(): void {
@@ -509,6 +578,7 @@ class OpenView extends View {
 
     inputInput(): void {
         this.displayOpenDeviceOwnerAuth();
+        this.displayOpenPasskey();
     }
 
     toggleCapsLockWarning(on: boolean): void {
@@ -620,9 +690,28 @@ class OpenView extends View {
         this.params.opts = fileInfo.opts;
         this.setEncryptedPassword(fileInfo);
 
+        // Pull passkey descriptor off FileInfoModel. Presence of all
+        // three fields gates the passkey button; any one missing means
+        // the credential is incomplete (e.g. the user cleared storage
+        // manually) and we show the enable flow instead.
+        this.passkeyCredentialId = fileInfo.passkeyCredentialId || null;
+        this.passkeyPrfSalt = fileInfo.passkeyPrfSalt || null;
+        this.passkeyWrappedKey = fileInfo.passkeyWrappedKey || null;
+        this.enablePasskeyRequested = false;
+
         this.displayOpenFile();
         this.displayOpenKeyFile();
         this.displayOpenDeviceOwnerAuth();
+        this.displayOpenPasskey();
+
+        // Reset the enable-passkey checkbox to unchecked any time we
+        // switch to a new file — the user must re-tick it explicitly.
+        const checkboxEl = (this as any).el?.querySelector(
+            '.open__passkey-enable-check'
+        ) as HTMLInputElement | null;
+        if (checkboxEl) {
+            checkboxEl.checked = false;
+        }
 
         if (fileWasClicked) {
             this.focusInput(true);
@@ -640,8 +729,16 @@ class OpenView extends View {
         this.params.rev = null;
         this.params.fileData = null;
         this.encryptedPassword = null;
+        // A freshly-imported local file has no persisted FileInfo yet,
+        // so there's no passkey state to surface — make sure we don't
+        // accidentally show a button from a previously selected entry.
+        this.passkeyCredentialId = null;
+        this.passkeyPrfSalt = null;
+        this.passkeyWrappedKey = null;
+        this.enablePasskeyRequested = false;
         this.displayOpenFile();
         this.displayOpenDeviceOwnerAuth();
+        this.displayOpenPasskey();
         if (keyFilePath) {
             this.params.keyFileName = keyFilePath.match(/[^/\\]*$/)?.[0] || keyFilePath;
             this.params.keyFilePath = keyFilePath;
@@ -668,6 +765,30 @@ class OpenView extends View {
         }
     }
 
+    /**
+     * Click dispatcher for `.open__pass-enter-btn`. The same DOM node
+     * drives three unlock flows depending on BEM state:
+     *
+     *   - `--passkey`   → run the passkey get() ceremony, unwrap the
+     *                     master password, then follow the normal
+     *                     `openDb()` path with the unwrapped value.
+     *   - `--touch-id`  → legacy Touch ID flow (dead stub in web-only
+     *                     mode, kept for UI parity — calls `openDb()`).
+     *   - default       → typed-password open.
+     *
+     * Kept as a thin switch so the click handler stays readable.
+     */
+    openDbClick(): void {
+        const btn = (this as any).el?.querySelector(
+            '.open__pass-enter-btn'
+        ) as HTMLElement | null;
+        if (btn && btn.classList.contains('open__pass-enter-btn--passkey')) {
+            this.openDbWithPasskey();
+            return;
+        }
+        this.openDb();
+    }
+
     openDb(): void {
         if (this.params.id && this.model.files.get(this.params.id)) {
             this.emit('close');
@@ -681,9 +802,95 @@ class OpenView extends View {
         this.busy = true;
         this.params.password = this.passwordInput.value;
         this.params.encryptedPassword = null;
+
+        // Capture the typed plaintext BEFORE openFile consumes the
+        // ProtectedValue. We need the raw string for the enable-passkey
+        // flow that runs after a successful open. Stash it on `this`
+        // so `openDbComplete` can pick it up; clear unconditionally in
+        // openDbComplete to avoid lingering cleartext.
+        if (this.enablePasskeyRequested) {
+            try {
+                this.capturedPasswordForEnable = (
+                    this.params.password as any
+                )?.getText?.() as string | undefined;
+            } catch (e) {
+                logger.info('Could not capture plaintext for passkey enable', e);
+                this.capturedPasswordForEnable = undefined;
+            }
+        }
+
         (this as any).afterPaint(() => {
             this.model.openFile(this.params, (err: any) => this.openDbComplete(err));
         });
+    }
+
+    capturedPasswordForEnable: string | undefined = undefined;
+
+    /**
+     * Unlock a file whose FileInfo already carries a registered passkey
+     * credential. Runs the WebAuthn get() ceremony, HKDF-derives the
+     * wrap key, AES-256-GCM unwraps the stored master password, then
+     * hands the resulting ProtectedValue to the normal open flow.
+     *
+     * On user cancel / UV failure / GCM tag mismatch / credential gone,
+     * falls back to the password input path — matches Touch ID UX. A
+     * `NotAllowedError` specifically means the user declined UV, which
+     * is expected, not a bug, so we downgrade the log level.
+     */
+    async openDbWithPasskey(): Promise<void> {
+        if (
+            !this.params.id ||
+            !this.passkeyCredentialId ||
+            !this.passkeyPrfSalt ||
+            !this.passkeyWrappedKey
+        ) {
+            return;
+        }
+        if (this.busy || !this.params.name) {
+            return;
+        }
+
+        const fileId = this.params.id;
+        this.$el.toggleClass('open--opening', true);
+        this.inputEl.attr('disabled', 'disabled');
+        this.busy = true;
+
+        let protectedPassword: any;
+        try {
+            protectedPassword = await unlockFileWithPasskey(fileId, {
+                credentialId: this.passkeyCredentialId,
+                prfSalt: this.passkeyPrfSalt,
+                wrappedKey: this.passkeyWrappedKey
+            });
+        } catch (e: any) {
+            if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
+                logger.info('Passkey UV cancelled, falling back to password', e.name);
+            } else {
+                logger.error('Passkey unlock failed, falling back to password', e);
+            }
+            this.busy = false;
+            this.$el.toggleClass('open--opening', false);
+            this.inputEl.removeAttr('disabled');
+            this.focusInput(true);
+            return;
+        }
+
+        this.params.password = protectedPassword;
+        this.params.encryptedPassword = null;
+        // Do not re-enable passkey on a passkey-unlocked open — the
+        // credential is already registered and the checkbox path is
+        // explicitly for first-time enablement.
+        this.enablePasskeyRequested = false;
+        this.capturedPasswordForEnable = undefined;
+
+        (this as any).afterPaint(() => {
+            this.model.openFile(this.params, (err: any) => this.openDbComplete(err));
+        });
+    }
+
+    passkeyEnableToggled(e: any): void {
+        const target = e?.target as HTMLInputElement | undefined;
+        this.enablePasskeyRequested = !!target?.checked;
     }
 
     openDbComplete(err: any): void {
@@ -692,6 +899,10 @@ class OpenView extends View {
         const showInputError = err && !err.userCanceled;
         this.inputEl.removeAttr('disabled').toggleClass('input--error', !!showInputError);
         if (err) {
+            // Always clear any captured plaintext password on failure —
+            // even if the user requested enable, we should not hold it
+            // past the open attempt. The next retry will recapture.
+            this.capturedPasswordForEnable = undefined;
             logger.error('Error opening file', err);
             this.focusInput(true);
             this.inputEl[0].selectionStart = 0;
@@ -714,8 +925,74 @@ class OpenView extends View {
                     pre: this.errorToString(err)
                 });
             }
-        } else {
-            this.emit('close');
+            return;
+        }
+
+        // Successful open path. Run the enable-passkey flow BEFORE we
+        // emit 'close' so the user sees any registration error or
+        // success toast in the open modal context, not in an already-
+        // transitioning view.
+        const capturedPw = this.capturedPasswordForEnable;
+        this.capturedPasswordForEnable = undefined;
+        if (this.enablePasskeyRequested && capturedPw && this.params.id) {
+            // Deliberately fire-and-forget: we don't want to block the
+            // UI transition on the WebAuthn UV ceremony, and the flow
+            // only needs to persist to FileInfoCollection which is a
+            // synchronous write-through to SettingsStore.
+            const fileId = this.params.id;
+            const fileName = this.params.name;
+            this.registerPasskeyForFile(fileId, fileName, capturedPw);
+        }
+        this.emit('close');
+    }
+
+    /**
+     * Async tail of the enable-at-open flow. Registers a fresh passkey,
+     * wraps the plaintext master password under the PRF-derived AES
+     * key, and persists the four base64 fields to FileInfoModel via
+     * FileInfoCollection.save().
+     *
+     * Runs after the open has completed so the user has already seen
+     * their database unlock — the passkey prompt that pops afterwards
+     * is clearly "this is registration, not unlock" from UX context.
+     */
+    async registerPasskeyForFile(
+        fileId: string,
+        fileName: string,
+        masterPasswordText: string
+    ): Promise<void> {
+        try {
+            const result = await enablePasskeyForFile(
+                fileId,
+                fileName,
+                masterPasswordText
+            );
+            const fileInfo = this.model.fileInfos.get(fileId);
+            if (!fileInfo) {
+                logger.info(
+                    'FileInfo gone after open, not persisting passkey registration'
+                );
+                return;
+            }
+            fileInfo.set({
+                passkeyCredentialId: result.credentialIdBase64,
+                passkeyPrfSalt: result.prfSaltBase64,
+                passkeyWrappedKey: result.wrappedKeyBase64,
+                passkeyCreatedDate: result.createdDate
+            });
+            this.model.fileInfos.save();
+            logger.info('Passkey quick unlock enabled for file', fileName);
+        } catch (e: any) {
+            if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
+                logger.info('Passkey registration cancelled by user', e.name);
+                return;
+            }
+            logger.error('Passkey registration failed', e);
+            alerts.error({
+                header: loc.openError,
+                body: loc.openPasskeyRegisterError || 'Passkey registration failed',
+                pre: this.errorToString(e)
+            });
         }
     }
 

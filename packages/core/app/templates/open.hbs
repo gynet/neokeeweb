@@ -89,6 +89,7 @@
             <div class="open__pass-enter-btn" tabindex="24">
                 <i class="fa fa-level-down-alt rotate-90 open__pass-enter-btn-icon-enter"></i>
                 <i class="fa fa-fingerprint open__pass-enter-btn-icon-touch-id"></i>
+                <i class="fa fa-key open__pass-enter-btn-icon-passkey"></i>
             </div>
             <div class="open__pass-opening-icon"><i class="fa fa-spinner spin"></i></div>
         </div>
@@ -102,6 +103,13 @@
                  tabindex="26" title="YubiKey">
                 <div class="open__settings-yubikey__text">YK</div> <i class="fa fa-usb-token open__settings-yubikey-img"></i>
             </div>
+            {{#if passkeyAvailable}}
+                <label class="open__passkey-enable hide" tabindex="27" title="{{res 'openEnablePasskey'}}">
+                    <input type="checkbox" class="open__passkey-enable-check" />
+                    <i class="fa fa-key open__passkey-enable-icon"></i>
+                    <span class="open__passkey-enable-text">{{res 'openEnablePasskey'}}</span>
+                </label>
+            {{/if}}
         </div>
         <div class="open__last">
             {{#each lastOpenFiles as |file|}}

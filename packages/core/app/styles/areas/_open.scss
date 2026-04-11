@@ -151,7 +151,8 @@
             }
             &-icon-enter {
                 display: block;
-                .open__pass-enter-btn--touch-id & {
+                .open__pass-enter-btn--touch-id &,
+                .open__pass-enter-btn--passkey & {
                     display: none;
                 }
             }
@@ -161,12 +162,44 @@
                     display: block;
                 }
             }
+            &-icon-passkey {
+                display: none;
+                .open__pass-enter-btn--passkey & {
+                    display: block;
+                }
+            }
         }
         &-opening-icon {
             display: none;
             .open--opening & {
                 display: block;
             }
+        }
+    }
+
+    // Enable-passkey-at-open checkbox (#9, Phase 2). Shown only when
+    // the selected file does not yet have a registered passkey AND the
+    // browser supports WebAuthn PRF — see displayOpenPasskey() in
+    // open-view.ts. Sits below the password field, visually parallel
+    // to the key-file / yubikey toggles.
+    &__passkey-enable {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        color: var(--muted-color);
+        padding: 0.3em 0;
+        margin-right: $base-spacing;
+        &-icon {
+            margin: 0 0.4em 0 0.2em;
+        }
+        &-text {
+            font-size: 0.9em;
+        }
+        &:hover {
+            color: var(--medium-color);
+        }
+        &.hide {
+            display: none;
         }
     }
 
