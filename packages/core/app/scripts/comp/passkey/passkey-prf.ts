@@ -290,8 +290,12 @@ export async function registerPasskey(
     if (clientExtensions.prf?.enabled !== true) {
         const prfDump = JSON.stringify(clientExtensions.prf ?? null);
         const allExt = JSON.stringify(clientExtensions);
+        const attachment = credential.authenticatorAttachment ?? 'unknown';
         throw new PasskeyPrfNotSupportedError(
-            `${PRF_UNSUPPORTED_MESSAGE}\n\nprf field: ${prfDump}\nall extensions: ${allExt}`
+            `${PRF_UNSUPPORTED_MESSAGE}\n\n` +
+            `authenticator: ${attachment}\n` +
+            `prf field: ${prfDump}\n` +
+            `all extensions: ${allExt}`
         );
     }
 
