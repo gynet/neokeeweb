@@ -151,6 +151,36 @@ Cloud provider support may return in Phase 2 with user-provided OAuth credential
 
 **Storage**: file-based. Use your existing sync (iCloud Drive, Syncthing, WebDAV, etc.) — KDBX is already encrypted, safe to store anywhere. NeoKeeWeb opens the file, edits, saves. Sync is not our job.
 
+#### Passkey PRF Compatibility
+
+Passkey quick unlock requires the [WebAuthn PRF extension](https://www.w3.org/TR/webauthn-3/#prf-extension), which is not universally supported. PRF support depends on **both** the browser and the credential provider (authenticator).
+
+**macOS**
+
+| Browser | iCloud Keychain | Google Password Manager | 1Password / Bitwarden / Strongbox | YubiKey 5.2.3+ |
+|---------|----------------|------------------------|----------------------------------|----------------|
+| Safari  | macOS 15+      | N/A                    | No                               | Yes            |
+| Chrome  | macOS 15+      | **No**                 | No                               | Yes            |
+| Firefox | N/A (no iCloud Keychain access) | N/A             | No                               | Yes            |
+
+- **Recommended on macOS**: Chrome or Safari + iCloud Keychain (macOS 15 Sequoia or newer).
+- Firefox cannot access iCloud Keychain — it uses its own WebAuthn implementation which does not integrate with macOS credential providers.
+- Third-party password managers (Strongbox, 1Password, Bitwarden) can intercept passkey creation and silently drop PRF. Disable them in **System Settings → Passwords → Password Options** if passkey registration fails.
+
+**Windows**
+
+| Browser | Windows Hello | Google Password Manager | YubiKey 5.2.3+ |
+|---------|--------------|------------------------|----------------|
+| Chrome  | Yes          | **No**                 | Yes            |
+| Edge    | Yes          | N/A                    | Yes            |
+| Firefox | Yes          | N/A                    | Yes            |
+
+- **Recommended on Windows**: Any browser + Windows Hello.
+
+**Linux**
+
+No platform authenticator supports PRF. Use a **YubiKey 5.2.3+** or equivalent FIDO2 hardware key.
+
 ### Phase 3: Per-Entry Hardware Encryption
 **Goal**: True hardware-backed per-entry crypto.
 - Mark sensitive entries for YubiKey-required decryption (#25)
