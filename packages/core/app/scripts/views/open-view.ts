@@ -500,6 +500,18 @@ class OpenView extends View {
             hasFile &&
             !hasRegisteredPasskey &&
             probeResolved;
+        logger.debug('displayOpenPasskey', {
+            passkeyAvailable: this.passkeyAvailable,
+            hasFile,
+            hasRegisteredPasskey,
+            probeResolved,
+            prfState,
+            showEnableRow,
+            paramsName: this.params.name,
+            paramsId: this.params.id,
+            paramsFileData: !!this.params.fileData,
+            capability: this.passkeyCapability
+        });
         const prfDisabled = prfState === 'unsupported';
 
         const enableRow = el.querySelector('.open__passkey-enable') as HTMLElement | null;
