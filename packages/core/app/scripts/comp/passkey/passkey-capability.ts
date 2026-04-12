@@ -166,7 +166,17 @@ export async function probePasskeyCapability(): Promise<PasskeyCapability> {
     if (clientCaps && Object.prototype.hasOwnProperty.call(clientCaps, 'extension:prf')) {
         const prfFlag = clientCaps['extension:prf'];
         if (prfFlag === false) {
-            return decorateUnsupported(platform, /* fromClientCaps */ true);
+            // Browser reports no PRF support for its built-in
+            // authenticator, but a FIDO2 hardware key (YubiKey 5.2.3+)
+            // may still support PRF via CTAP2 hmac-secret. Return
+            // 'unknown' instead of 'unsupported' so the checkbox stays
+            // enabled and users with hardware keys can still try.
+            return {
+                prf: 'unknown',
+                reason: 'This browser does not support the WebAuthn PRF extension with its built-in authenticator.',
+                recommendation: 'Plug in a YubiKey 5.2.3+ or equivalent FIDO2 key and try again. Alternatively, use Chrome or Safari with iCloud Keychain.',
+                platform
+            };
         }
         // prfFlag === true means the BROWSER supports PRF, but that is
         // necessary-not-sufficient: our flow uses authenticatorAttachment
