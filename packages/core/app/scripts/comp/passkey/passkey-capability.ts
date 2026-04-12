@@ -347,11 +347,16 @@ function parseOsFromUaString(ua: string): { os: PasskeyOs; osVersion?: string } 
 
     const macMatch = ua.match(/Mac OS X (\d+)[_.](\d+)(?:[_.](\d+))?/);
     if (macMatch) {
-        // NOTE: Chromium freezes macOS version at 10_15_7 for privacy,
-        // so this branch is unreliable for distinguishing macOS 14 vs
-        // macOS 15. Callers should treat UA-string-derived macOS
-        // versions with suspicion. Safari and Firefox do not freeze
-        // and still report real values (e.g. 14_6_1).
+        const major = parseInt(macMatch[1], 10);
+        const minor = parseInt(macMatch[2], 10);
+        // Both Chromium and Firefox freeze the macOS UA version at
+        // 10_15_7. When we see 10.15 we know the real version is
+        // macOS 11+ but cannot determine the exact release — return
+        // os without version so the caller falls back to 'unknown'
+        // rather than falsely concluding macOS < 15.
+        if (major === 10 && minor === 15) {
+            return { os: 'macos' }; // version omitted — frozen
+        }
         const ver = `${macMatch[1]}.${macMatch[2]}` + (macMatch[3] ? `.${macMatch[3]}` : '');
         return { os: 'macos', osVersion: ver };
     }

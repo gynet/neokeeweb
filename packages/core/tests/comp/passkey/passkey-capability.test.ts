@@ -80,12 +80,12 @@ afterEach(() => {
 // ---------------------------------------------------------------------
 
 describe('parseOsFromUaString', () => {
-    test('detects macOS with frozen 10_15_7', () => {
+    test('detects macOS with frozen 10_15_7 — version omitted', () => {
         const { os, osVersion } = parseOsFromUaString(
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         );
         expect(os).toBe('macos');
-        expect(osVersion).toBe('10.15.7');
+        expect(osVersion).toBeUndefined();
     });
 
     test('detects macOS with real 14_6_1 (Safari)', () => {
