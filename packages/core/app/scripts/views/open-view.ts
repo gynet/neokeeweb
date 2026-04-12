@@ -161,14 +161,25 @@ class OpenView extends View {
         // Sonoma walked all the way through Touch ID registration only
         // to hit PasskeyPrfNotSupportedError at the very end.
         if (this.passkeyAvailable) {
-            void probePasskeyCapability().then((cap) => {
-                this.passkeyCapability = cap;
-                // The view may have been removed before the probe
-                // resolved (fast nav). Guard on `el` existing.
-                if ((this as any).el) {
-                    this.displayOpenPasskey();
-                }
-            });
+            void probePasskeyCapability()
+                .then((cap) => {
+                    this.passkeyCapability = cap;
+                    if ((this as any).el) {
+                        this.displayOpenPasskey();
+                    }
+                })
+                .catch((err) => {
+                    logger.error('Passkey capability probe failed', err);
+                    this.passkeyCapability = {
+                        prf: 'unknown',
+                        reason: 'Capability probe failed.',
+                        recommendation: 'Try registering a passkey — it may still work.',
+                        platform: { os: 'unknown', browser: 'unknown' }
+                    };
+                    if ((this as any).el) {
+                        this.displayOpenPasskey();
+                    }
+                });
         }
     }
 
