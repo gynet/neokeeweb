@@ -60,6 +60,45 @@ const PRF_OUTPUT_BYTES = 32;
 const AES_256_KEY_BYTES = 32;
 
 /**
+ * User-actionable message used by both `registerPasskey` and
+ * `evaluatePrf` when the authenticator (or an intercepting browser
+ * password-manager extension) silently refuses the WebAuthn PRF
+ * extension. Surfaced verbatim by the open view via the locale key
+ * `openPasskeyPrfUnsupported` so that the toast and the thrown
+ * error.message stay in sync for log triage.
+ *
+ * Mentions both Chrome/Edge platform options and the Firefox
+ * extension-interception failure mode in one string — we deliberately
+ * do NOT browser-sniff and emit different copy. The check is the
+ * same in both browsers; the message is the same in both browsers.
+ */
+const PRF_UNSUPPORTED_MESSAGE =
+    "This authenticator did not enable the WebAuthn PRF extension needed for passkey unlock. " +
+    "On Chrome/Edge, use Touch ID, Windows Hello, or a YubiKey with firmware 5.2.3 or newer. " +
+    "On Firefox, third-party password-manager browser extensions (Bitwarden, 1Password, Proton Pass, etc.) " +
+    "can intercept passkey registration — disable them or use the built-in browser passkey flow.";
+
+/**
+ * Marker error thrown when the authenticator either refuses to enable
+ * PRF at create() time or returns no PRF result at get() time.
+ *
+ * Distinct from a generic `Error` so callers (open-view, app-model)
+ * can branch on `e.name === 'PasskeyPrfNotSupportedError'` and either
+ * (a) auto-clear a now-useless persisted credential, or
+ * (b) show a specific, actionable toast instead of the generic
+ *     "Passkey registration failed" string.
+ *
+ * Distinct from `NotAllowedError` / `AbortError` (user cancel), which
+ * are reported by the browser itself, NOT by us.
+ */
+export class PasskeyPrfNotSupportedError extends Error {
+    constructor(message: string = PRF_UNSUPPORTED_MESSAGE) {
+        super(message);
+        this.name = 'PasskeyPrfNotSupportedError';
+    }
+}
+
+/**
  * Best-effort check for WebAuthn PRF support in the current context.
  *
  * This can only return `true` probabilistically: the real PRF support
@@ -116,9 +155,14 @@ export interface RegisterPasskeyResult {
     prfSalt: Uint8Array;
     /**
      * 32-byte PRF output if the authenticator evaluated PRF at
-     * registration time; `null` if the authenticator only supports
-     * eval-at-get and the caller must call `evaluatePrf` once before
-     * wrapping the first key.
+     * registration time; `null` if the authenticator enabled PRF
+     * (the strict check passed) but did not honor eval-at-create.
+     * In that case the caller must call `evaluatePrf` once with the
+     * same salt to materialize the bytes before wrapping anything.
+     *
+     * NOTE: as of #9 round 5 we throw `PasskeyPrfNotSupportedError`
+     * when `prf.enabled !== true`, so `null` here only signals the
+     * narrow eval-at-get-only case — never "PRF was refused".
      */
     prfOutput: Uint8Array | null;
 }
@@ -157,6 +201,8 @@ export async function registerPasskey(
     const prfSalt = randomBytes(PRF_OUTPUT_BYTES);
 
     const publicKey: PublicKeyCredentialCreationOptions = {
+        // Cast at the bottom literal — `hints` is WebAuthn L3 and
+        // not present in the older lib.dom shape this project uses.
         rp: { name: opts.rpName, id: rpId },
         user: {
             id: toBufferSource(opts.userId),
@@ -170,7 +216,14 @@ export async function registerPasskey(
         ],
         authenticatorSelection: {
             authenticatorAttachment: 'platform',
-            residentKey: 'preferred',
+            // `required` (vs `preferred`) makes the authenticator
+            // create a discoverable credential and refuses degraded
+            // fallbacks. In Firefox this filters out some browser
+            // password-manager extensions that don't honor full
+            // discoverable-credential semantics, pushing the user
+            // toward the built-in passkey flow which is the only
+            // path that supports the PRF extension we need.
+            residentKey: 'required',
             userVerification: 'required'
         },
         timeout: 60_000,
@@ -183,14 +236,26 @@ export async function registerPasskey(
             // not use. The authenticator MAY ignore this at create
             // time and only support eval-at-get, in which case the
             // result will not contain a `results.first` field and we
-            // return prfOutput: null to the caller.
+            // return prfOutput: null to the caller (provided that
+            // `enabled === true` — see strict check below).
             prf: {
                 eval: {
                     first: toBufferSource(prfSalt)
                 }
             }
-        } as unknown as AuthenticationExtensionsClientInputs
+        } as unknown as AuthenticationExtensionsClientInputs,
+        // WebAuthn L3 `hints` array — biases the browser UI toward
+        // the client-device's own platform authenticator over any
+        // hooked browser extension or roaming security key. Widely
+        // honored as of Chrome 122 / Firefox 122 / Edge 122. Older
+        // TS DOM lib doesn't know this field yet — see the
+        // post-construction cast assignment below.
     };
+    // Attach `hints` after the literal so we don't have to satisfy
+    // the older lib.dom `PublicKeyCredentialCreationOptions` shape
+    // for an L3 field. WebAuthn L3 spec:
+    //   https://www.w3.org/TR/webauthn-3/#dom-publickeycredentialcreationoptions-hints
+    (publicKey as unknown as { hints: string[] }).hints = ['client-device'];
 
     const credential = (await navigator.credentials.create({
         publicKey
@@ -207,6 +272,27 @@ export async function registerPasskey(
             results?: { first?: ArrayBuffer };
         };
     };
+
+    // Strict PRF-enabled check. Per WebAuthn spec, when we pass
+    // `extensions.prf.eval` to create(), the authenticator can:
+    //
+    //   (a) Accept PRF: `prf.enabled === true`, optionally with
+    //       `prf.results.first` if it supports eval-at-create.
+    //   (b) Refuse PRF: `prf.enabled === false`, OR the `prf` field
+    //       is omitted entirely. The credential is signed and stored
+    //       on the authenticator but is *useless* for our wrap/unwrap
+    //       flow forever — no future get() call can recover PRF on a
+    //       credential that wasn't enabled at create() time.
+    //
+    // Before this strict check we silently fell through case (b) and
+    // tried to rescue with `evaluatePrf()` at the call site, which
+    // would also fail with the cryptic "did not return a PRF result"
+    // error AND leave a garbage credential persisted on FileInfo.
+    // We now throw fast, with an actionable message, BEFORE the
+    // caller has a chance to write anything to FileInfoModel.
+    if (clientExtensions.prf?.enabled !== true) {
+        throw new PasskeyPrfNotSupportedError();
+    }
 
     let prfOutput: Uint8Array | null = null;
     const firstResult = clientExtensions.prf?.results?.first;
@@ -267,7 +353,14 @@ export async function evaluatePrf(opts: EvaluatePrfOptions): Promise<Uint8Array>
     };
     const firstResult = clientExtensions.prf?.results?.first;
     if (!firstResult) {
-        throw new Error('WebAuthn authenticator did not return a PRF result');
+        // Same disease as the create-time refusal in registerPasskey:
+        // the authenticator either was never PRF-capable for this
+        // credential, OR a browser password-manager extension hooked
+        // the get() call and returned an assertion without PRF data.
+        // Either way the stored wrappedKey can never be unwrapped on
+        // this authenticator — caller (passkey-unlock.ts) handles the
+        // auto-clear-and-tell-user-to-re-enroll path.
+        throw new PasskeyPrfNotSupportedError();
     }
     if (firstResult.byteLength !== PRF_OUTPUT_BYTES) {
         throw new Error(

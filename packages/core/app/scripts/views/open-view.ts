@@ -22,6 +22,7 @@ import { CorsDiagnosticView } from 'views/cors-diagnostic-view';
 import { isPasskeyPrfSupported } from 'comp/passkey/passkey-prf';
 import {
     enablePasskeyForFile,
+    PasskeyPrfNotSupportedError,
     unlockFileWithPasskey
 } from 'comp/passkey/passkey-unlock';
 import template from 'templates/open.hbs';
@@ -865,6 +866,46 @@ class OpenView extends View {
         } catch (e: any) {
             if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
                 logger.info('Passkey UV cancelled, falling back to password', e.name);
+            } else if (
+                e instanceof PasskeyPrfNotSupportedError ||
+                (e && e.name === 'PasskeyPrfNotSupportedError')
+            ) {
+                // The authenticator (or a hooking extension) refused
+                // to return a PRF result. The credential persisted
+                // on FileInfo cannot be unwrapped on this device any
+                // more — leaving it in place would lock the user
+                // into a permanently-broken passkey button on every
+                // future open. Auto-clear the four passkey fields
+                // and tell the user to re-enroll. Same FileInfo row,
+                // same file id — only the passkey descriptor is
+                // wiped. Next reopen will show the enable checkbox
+                // again instead of the broken passkey icon.
+                logger.error('Passkey unlock: PRF refused, auto-clearing broken credential', e);
+                const fileInfo = this.model.fileInfos.get(fileId);
+                if (fileInfo) {
+                    fileInfo.set({
+                        passkeyCredentialId: null,
+                        passkeyPrfSalt: null,
+                        passkeyWrappedKey: null,
+                        passkeyCreatedDate: null
+                    });
+                    this.model.fileInfos.save();
+                }
+                this.passkeyCredentialId = null;
+                this.passkeyPrfSalt = null;
+                this.passkeyWrappedKey = null;
+                alerts.error({
+                    header: loc.openError,
+                    body:
+                        loc.openPasskeyBrokenCleared ||
+                        'Your previous passkey registration was removed because it cannot decrypt — please re-enable passkey unlock with a compatible authenticator.'
+                });
+                this.busy = false;
+                this.$el.toggleClass('open--opening', false);
+                this.inputEl.removeAttr('disabled');
+                this.displayOpenPasskey();
+                this.focusInput(true);
+                return;
             } else {
                 logger.error('Passkey unlock failed, falling back to password', e);
             }
@@ -985,6 +1026,24 @@ class OpenView extends View {
         } catch (e: any) {
             if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
                 logger.info('Passkey registration cancelled by user', e.name);
+                return;
+            }
+            // Specific PRF-not-supported branch — the authenticator
+            // (or a Bitwarden / 1Password / Proton Pass extension that
+            // hooked navigator.credentials.create) signed the
+            // credential but did not enable PRF. The persisted
+            // FileInfo state is untouched at this point because
+            // `enablePasskeyForFile` throws BEFORE we reach the
+            // `fileInfo.set(...)` call below — verified in passkey-prf
+            // round-5 strict check. Surface the actionable copy.
+            if (e instanceof PasskeyPrfNotSupportedError ||
+                (e && e.name === 'PasskeyPrfNotSupportedError')) {
+                logger.error('Passkey registration: authenticator did not enable PRF', e);
+                alerts.error({
+                    header: loc.openError,
+                    body: loc.openPasskeyPrfUnsupported ||
+                        'This authenticator does not support the PRF extension needed for passkey unlock.'
+                });
                 return;
             }
             logger.error('Passkey registration failed', e);

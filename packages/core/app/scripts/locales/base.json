@@ -231,6 +231,8 @@
   "openPasskeyRegisterError": "Passkey registration failed. You can still open the file with your master password.",
   "openPasskeyUnlockError": "Passkey unlock failed. Please type your master password.",
   "openPasskeyNotSupported": "This browser or device does not support passkey quick unlock.",
+  "openPasskeyPrfUnsupported": "This authenticator does not support the PRF extension needed for passkey unlock. On Chrome/Edge, use Touch ID, Windows Hello, or a YubiKey with firmware 5.2.3 or newer. On Firefox, third-party password-manager browser extensions can intercept passkey registration — disable them or use the built-in browser passkey flow.",
+  "openPasskeyBrokenCleared": "Your previous passkey registration was removed because it can no longer decrypt. Please re-enable passkey unlock with a compatible authenticator.",
   "detAttDownload": "Shift-click the attachment button to download it or",
   "detAttDelToRemove": "Delete to remove",
   "detAttSave": "Save as …",

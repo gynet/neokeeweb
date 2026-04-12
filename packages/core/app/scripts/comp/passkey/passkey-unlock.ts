@@ -33,10 +33,16 @@ import * as kdbxweb from 'kdbxweb';
 
 import {
     evaluatePrf,
+    PasskeyPrfNotSupportedError,
     registerPasskey,
     unwrapKey,
     wrapKey
 } from 'comp/passkey/passkey-prf';
+
+// Re-export for view-layer error branching without forcing the view
+// to import the prf primitive module directly. Keeps the seam at
+// the unlock layer where the rest of the high-level surface lives.
+export { PasskeyPrfNotSupportedError };
 
 /**
  * HKDF `info` label. Bumping this is how we migrate the wrap derivation
