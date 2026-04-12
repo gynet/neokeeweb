@@ -16,7 +16,7 @@ const ConnectState: FunctionComponent = () => {
             {canUseOnlyAppConnection ? (
                 <p>
                     {res('optionsConnectionModeAppOnly')}{' '}
-                    <a href="https://keeweb.info/" target="_blank" rel="noreferrer">
+                    <a href="https://github.com/gynet/neokeeweb" target="_blank" rel="noreferrer">
                         {res('optionsConnectionModeAppDownloadLink')}
                     </a>
                 </p>

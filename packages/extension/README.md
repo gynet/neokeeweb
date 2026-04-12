@@ -1,48 +1,67 @@
-# KeeWeb Connect: browser extension
+# NeoKeeWeb Connect — Browser Extension
 
-<img src="xcode/KeeWeb%20Connect/Assets.xcassets/AppIcon.appiconset/icon_128x128%402x.png" width="128" alt="KeeWeb Connect logo" />
+Browser extension for [NeoKeeWeb](https://github.com/gynet/neokeeweb), a modern open-source KeePass-compatible password manager.
 
-This is a browser extension for [KeeWeb](https://keeweb.info).
-Although KeeWeb supports auto-typing, browser extensions provide seamless integration
-consistent across all operating systems.
+## Features
 
-<img src="img/chrome/button.png" width="233" alt="KeeWeb Connect button" />
-
-<img src="img/chrome/menu.png" width="646" alt="KeeWeb Connect menu" />
+- **Smart Autofill** — one-click credential fill with automatic form detection
+- **TOTP/OTP** — insert one-time 2FA codes directly
+- **End-to-End Encrypted** — NaCl (Curve25519 + XSalsa20 + Poly1305) for all communication
+- **Keyboard Shortcuts** — Ctrl+Shift+U (Cmd+Shift+U on macOS) + 8 more customizable commands
+- **Context Menu** — right-click options for username, password, OTP, and custom fields
+- **Web-Only Mode** — no native app required, connects to a NeoKeeWeb tab
+- **Self-Hostable** — works with any NeoKeeWeb instance
+- **11 Languages** — EN, DE, FR, ES, CS, NL, JA, PL, UK, ZH-CN, ZH-TW
+- **Manifest V3** — modern extension architecture
 
 ## Installation
 
-The extension can be installed from the official stores, depending on your browser:
+Install from the official stores:
 
-- [Chrome](https://chrome.google.com/webstore/detail/keeweb-connect/pikpfmjfkekaeinceagbebpfkmkdlcjk)
-- [Firefox](https://addons.mozilla.org/firefox/addon/keeweb-connect/)
-- [Edge](https://microsoftedge.microsoft.com/addons/detail/keeweb-connect/nmggpehkjmeaeocmaijenpejbepckinm)
-- [Safari](https://apps.apple.com/app/keeweb-connect/id1565748094)
-- Other browsers: [how to set up](https://github.com/keeweb/keeweb/wiki/Browser-AutoFill#other-browsers)
+- [Chrome Web Store](https://chrome.google.com/webstore/detail/neokeeweb-connect/) *(coming soon)*
+- [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/neokeeweb-connect/) *(coming soon)*
 
-## Translations
-
-If you would like to translate the extension, it's already waiting for you on OneSky: https://keeweb.oneskyapp.com/collaboration/project?id=382232
+Or load the unpacked extension for development (see below).
 
 ## Building
 
-The project is built with `npm`:
+Requires [Bun](https://bun.sh) runtime.
 
-Production build:
 ```sh
-npm start
+# Install dependencies (from monorepo root)
+bun install
+
+# Build for all browsers
+bun run start
+
+# Build for a specific browser
+bun run build-chrome
+bun run build-firefox
+bun run build-edge
+
+# Development watch mode
+bun run watch-chrome
+bun run watch-firefox
 ```
 
-Build a development version and watch:
-```sh
-npm run watch
-```
+Built output goes to `dist/{chrome,firefox,edge}/`.
+
+The Firefox build also runs `web-ext build` to produce a `.zip` for AMO submission.
+
+## Loading Unpacked (Development)
+
+**Chrome**: Go to `chrome://extensions/`, enable Developer mode, click "Load unpacked", select `dist/chrome/`.
+
+**Firefox**: Go to `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on", select `dist/firefox/manifest.json`.
 
 ## Protocol
 
-KeeWeb implements [keepassxc-protocol](https://github.com/keepassxreboot/keepassxc-browser/blob/develop/keepassxc-protocol.md)
-with several modifications for KeeWeb listed [here](docs/keeweb-connect-protocol.md).
+NeoKeeWeb implements [keepassxc-protocol](https://github.com/keepassxreboot/keepassxc-browser/blob/develop/keepassxc-protocol.md) with modifications listed in [docs/keeweb-connect-protocol.md](docs/keeweb-connect-protocol.md).
+
+## Privacy
+
+No data collection. No analytics. No telemetry. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 
-[MIT](https://github.com/keeweb/keeweb-connect/blob/master/LICENSE)
+[MIT](https://github.com/gynet/neokeeweb/blob/master/LICENSE)

@@ -17,7 +17,7 @@ import type {
 
 // -- Reproduce the pure logic from settings-model.ts --
 
-const DEFAULT_KEEWEB_URL = 'https://app.keeweb.info/';
+const DEFAULT_KEEWEB_URL = 'https://gynet.github.io/neokeeweb/';
 
 function resolveKeeWebUrl(customUrl: string | undefined, defaultUrl: string): string {
     return customUrl || defaultUrl;
@@ -39,7 +39,7 @@ function filterShortcuts(commands: Array<{ shortcut?: string; name?: string }>) 
 
 describe('Default Settings Values', () => {
     it('should have the correct default KeeWeb URL', () => {
-        expect(DEFAULT_KEEWEB_URL).toBe('https://app.keeweb.info/');
+        expect(DEFAULT_KEEWEB_URL).toBe('https://gynet.github.io/neokeeweb/');
     });
 
     it('should use default URL when no custom URL is set', () => {
@@ -170,10 +170,10 @@ describe('BackgroundMessageFromPage Interface', () => {
     it('should accept open-tab action', () => {
         const msg: BackgroundMessageFromPageOpenTab = {
             action: 'open-tab',
-            url: 'https://app.keeweb.info/'
+            url: 'https://gynet.github.io/neokeeweb/'
         };
         expect(msg.action).toBe('open-tab');
-        expect(msg.url).toBe('https://app.keeweb.info/');
+        expect(msg.url).toBe('https://gynet.github.io/neokeeweb/');
     });
 
     it('should work as discriminated union', () => {

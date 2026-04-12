@@ -114,7 +114,7 @@ describe('Auto Command Detection', () => {
 });
 
 describe('URL Validation', () => {
-    const keeWebUrl = 'https://app.keeweb.info/';
+    const keeWebUrl = 'https://gynet.github.io/neokeeweb/';
 
     it('should accept http URLs', () => {
         expect(isValidUrl('http://example.com', keeWebUrl)).toBe(true);
@@ -143,8 +143,8 @@ describe('URL Validation', () => {
     });
 
     it('should reject the KeeWeb URL itself', () => {
-        expect(isValidUrl('https://app.keeweb.info/', keeWebUrl)).toBe(false);
-        expect(isValidUrl('https://app.keeweb.info/page', keeWebUrl)).toBe(false);
+        expect(isValidUrl('https://gynet.github.io/neokeeweb/', keeWebUrl)).toBe(false);
+        expect(isValidUrl('https://gynet.github.io/neokeeweb/page', keeWebUrl)).toBe(false);
     });
 
     it('should accept URLs that are not the KeeWeb URL', () => {
