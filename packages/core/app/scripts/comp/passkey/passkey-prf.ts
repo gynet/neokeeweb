@@ -218,7 +218,15 @@ export async function registerPasskey(
             { type: 'public-key', alg: -257 } // RS256
         ],
         authenticatorSelection: {
-            authenticatorAttachment: 'platform',
+            // No authenticatorAttachment constraint — allows both
+            // platform (iCloud Keychain, Windows Hello) and cross-
+            // platform (YubiKey) authenticators. Needed because:
+            //   1. YubiKey 5.2.3+ supports PRF and is the only
+            //      option on Linux and in Chrome PWA on macOS
+            //   2. 'platform' silently filters out YubiKey from
+            //      the browser's authenticator picker
+            // The hints: ['client-device'] below still biases the
+            // UI toward platform authenticators where available.
             residentKey: 'required',
             userVerification: 'required'
         },
