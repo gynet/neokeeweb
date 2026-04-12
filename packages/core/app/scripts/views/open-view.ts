@@ -1157,12 +1157,16 @@ class OpenView extends View {
                 let body =
                     loc.openPasskeyPrfUnsupported ||
                     'This authenticator does not support the PRF extension needed for passkey unlock.';
-                if (this.passkeyCapability) {
+                if (this.passkeyCapability &&
+                    this.passkeyCapability.prf !== 'supported') {
                     const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
                     body = msg.reason;
                     if (msg.recommendation) {
                         body = `${body} ${msg.recommendation}`;
                     }
+                }
+                if (e instanceof Error && e.message) {
+                    body += `\n\n${e.message}`;
                 }
                 alerts.error({
                     header: loc.openError,
