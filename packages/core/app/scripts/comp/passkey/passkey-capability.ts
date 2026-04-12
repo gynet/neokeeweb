@@ -165,15 +165,27 @@ export async function probePasskeyCapability(): Promise<PasskeyCapability> {
     const clientCaps = await tryGetClientCapabilities();
     if (clientCaps && Object.prototype.hasOwnProperty.call(clientCaps, 'extension:prf')) {
         const prfFlag = clientCaps['extension:prf'];
+        if (prfFlag === false) {
+            return decorateUnsupported(platform, /* fromClientCaps */ true);
+        }
+        // prfFlag === true means the BROWSER supports PRF, but that is
+        // necessary-not-sufficient: our flow uses authenticatorAttachment
+        // 'platform', so the platform authenticator must also support it.
+        // Chrome on macOS 14 Sonoma reports extension:prf true (it works
+        // with YubiKey) but iCloud Keychain on Sonoma does not expose PRF.
+        // Cross-check against platform version before trusting the flag.
         if (prfFlag === true) {
+            if (platform.os === 'macos') {
+                const major = parseMajor(platform.osVersion);
+                if (major !== undefined && major < MACOS_PRF_MIN_MAJOR) {
+                    return decorateUnsupported(platform, /* fromClientCaps */ false);
+                }
+            }
             return {
                 prf: 'supported',
                 reason: 'Browser reports WebAuthn PRF extension support.',
                 platform
             };
-        }
-        if (prfFlag === false) {
-            return decorateUnsupported(platform, /* fromClientCaps */ true);
         }
     }
 

@@ -255,6 +255,29 @@ describe('probePasskeyCapability', () => {
         expect(cap.prf).toBe('supported');
     });
 
+    test('getClientCapabilities reports extension:prf=true BUT macOS 14 → unsupported (platform override)', async () => {
+        setGlobal('PublicKeyCredential', {
+            getClientCapabilities: async () => ({ 'extension:prf': true })
+        });
+        setGlobal('navigator', {
+            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/146.0.7680.178',
+            userAgentData: {
+                platform: 'macOS',
+                brands: [{ brand: 'Google Chrome', version: '146' }],
+                getHighEntropyValues: async () => ({
+                    platform: 'macOS',
+                    platformVersion: '14.0.0'
+                })
+            }
+        });
+        const cap = await probePasskeyCapability();
+        expect(cap.prf).toBe('unsupported');
+        expect(cap.reason).toContain('macOS');
+        expect(cap.reason).toContain('Sequoia');
+        expect(cap.platform.os).toBe('macos');
+        expect(cap.platform.osVersion).toBe('14.0.0');
+    });
+
     test('getClientCapabilities reports extension:prf=false → unsupported (generic)', async () => {
         setGlobal('PublicKeyCredential', {
             getClientCapabilities: async () => ({ 'extension:prf': false })
