@@ -218,14 +218,13 @@ export async function registerPasskey(
             { type: 'public-key', alg: -257 } // RS256
         ],
         authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            // `required` (vs `preferred`) makes the authenticator
-            // create a discoverable credential and refuses degraded
-            // fallbacks. In Firefox this filters out some browser
-            // password-manager extensions that don't honor full
-            // discoverable-credential semantics, pushing the user
-            // toward the built-in passkey flow which is the only
-            // path that supports the PRF extension we need.
+            // No `authenticatorAttachment: 'platform'` — on macOS,
+            // forcing 'platform' makes Chrome route to Google Password
+            // Manager silently, which does NOT support PRF. Omitting
+            // it lets the OS show the full provider picker so the user
+            // can explicitly select iCloud Keychain (which does support
+            // PRF on macOS 15+). The `hints: ['client-device']` below
+            // still biases the UI toward platform authenticators.
             residentKey: 'required',
             userVerification: 'required'
         },
