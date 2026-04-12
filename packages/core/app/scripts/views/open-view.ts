@@ -514,15 +514,20 @@ class OpenView extends View {
                     checkbox.removeAttribute('disabled');
                 }
             }
+            const label = enableRow.querySelector(
+                '.open__passkey-enable-label'
+            ) as HTMLElement | null;
             if (showEnableRow && this.passkeyCapability &&
                 (prfState === 'unsupported' || prfState === 'unknown')) {
                 const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
                 const tip = msg.recommendation
-                    ? msg.reason + ' ' + msg.recommendation
+                    ? msg.reason + '\n' + msg.recommendation
                     : msg.reason;
                 enableRow.setAttribute('title', tip);
+                if (label) label.setAttribute('title', tip);
             } else {
                 enableRow.removeAttribute('title');
+                if (label) label.removeAttribute('title');
             }
         }
     }
