@@ -291,7 +291,11 @@ export async function registerPasskey(
     // We now throw fast, with an actionable message, BEFORE the
     // caller has a chance to write anything to FileInfoModel.
     if (clientExtensions.prf?.enabled !== true) {
-        throw new PasskeyPrfNotSupportedError();
+        const prfDump = JSON.stringify(clientExtensions.prf ?? null);
+        const allExt = JSON.stringify(clientExtensions);
+        throw new PasskeyPrfNotSupportedError(
+            `${PRF_UNSUPPORTED_MESSAGE}\n\nprf field: ${prfDump}\nall extensions: ${allExt}`
+        );
     }
 
     let prfOutput: Uint8Array | null = null;
