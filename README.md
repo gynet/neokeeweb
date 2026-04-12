@@ -166,6 +166,7 @@ Passkey quick unlock requires the [WebAuthn PRF extension](https://www.w3.org/TR
 - **Recommended on macOS**: Chrome or Safari + iCloud Keychain (macOS 15 Sequoia or newer).
 - Firefox cannot access iCloud Keychain — it uses its own WebAuthn implementation which does not integrate with macOS credential providers.
 - Third-party password managers (Strongbox, 1Password, Bitwarden) can intercept passkey creation and silently drop PRF. Disable them in **System Settings → Passwords → Password Options** if passkey registration fails.
+- **Chrome PWA (installed web app) does not work** — Chrome's standalone window bypasses macOS ASAuthorization and cannot access iCloud Keychain. Use a regular Chrome tab or Safari instead.
 
 **Windows**
 
