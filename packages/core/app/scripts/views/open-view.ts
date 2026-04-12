@@ -1148,15 +1148,7 @@ class OpenView extends View {
             if (e instanceof PasskeyPrfNotSupportedError ||
                 (e && e.name === 'PasskeyPrfNotSupportedError')) {
                 logger.error('Passkey registration: authenticator did not enable PRF', e);
-                // Enrich the toast with OS-specific guidance from the
-                // capability probe if it resolved. Without this the
-                // user sees a wall of generic copy ("use Touch ID /
-                // Windows Hello / YubiKey") when we actually know
-                // their exact OS + version and could have told them
-                // "upgrade to macOS 15 Sequoia" specifically.
-                let body =
-                    loc.openPasskeyPrfUnsupported ||
-                    'This authenticator does not support the PRF extension needed for passkey unlock.';
+                let body: string;
                 if (this.passkeyCapability &&
                     this.passkeyCapability.prf !== 'supported') {
                     const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
@@ -1164,9 +1156,11 @@ class OpenView extends View {
                     if (msg.recommendation) {
                         body = `${body} ${msg.recommendation}`;
                     }
-                }
-                if (e instanceof Error && e.message) {
-                    body += `\n\n${e.message}`;
+                } else {
+                    body = e instanceof Error && e.message
+                        ? e.message
+                        : (loc.openPasskeyPrfUnsupported ||
+                           'This authenticator does not support the PRF extension needed for passkey unlock.');
                 }
                 alerts.error({
                     header: loc.openError,

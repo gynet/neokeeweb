@@ -73,10 +73,13 @@ const AES_256_KEY_BYTES = 32;
  * same in both browsers; the message is the same in both browsers.
  */
 const PRF_UNSUPPORTED_MESSAGE =
-    "This authenticator did not enable the WebAuthn PRF extension needed for passkey unlock. " +
-    "On Chrome/Edge, use Touch ID, Windows Hello, or a YubiKey with firmware 5.2.3 or newer. " +
-    "On Firefox, third-party password-manager browser extensions (Bitwarden, 1Password, Proton Pass, etc.) " +
-    "can intercept passkey registration — disable them or use the built-in browser passkey flow.";
+    "This authenticator did not enable the WebAuthn PRF extension needed for passkey unlock.\n\n" +
+    "On macOS, third-party credential providers (Strongbox, 1Password, Bitwarden, etc.) can intercept " +
+    "passkey creation and silently drop PRF support. Go to System Settings → Passwords → Password Options " +
+    "and disable all providers except iCloud Keychain, then try again.\n\n" +
+    "On Firefox, third-party password-manager browser extensions can also intercept — disable them " +
+    "or use the built-in browser passkey flow.\n\n" +
+    "Alternatively, use a YubiKey with firmware 5.2.3 or newer (PRF via hardware key works on any OS).";
 
 /**
  * Marker error thrown when the authenticator either refuses to enable
