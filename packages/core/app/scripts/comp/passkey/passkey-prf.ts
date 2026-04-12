@@ -383,18 +383,19 @@ export async function evaluatePrf(opts: EvaluatePrfOptions): Promise<Uint8Array>
  */
 export async function wrapKey(
     keyBytes: Uint8Array,
-    prfOutput: Uint8Array
+    prfOutput: Uint8Array,
+    aad?: Uint8Array
 ): Promise<Uint8Array> {
     assertPrfOutputLength(prfOutput);
 
     const iv = randomBytes(AES_GCM_IV_BYTES);
     const aesKey = await importAesGcmKey(prfOutput);
+    const params: AesGcmParams = { name: 'AES-GCM', iv: toBufferSource(iv) };
+    if (aad) {
+        params.additionalData = toBufferSource(aad);
+    }
     const ciphertext = new Uint8Array(
-        await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv: toBufferSource(iv) },
-            aesKey,
-            toBufferSource(keyBytes)
-        )
+        await crypto.subtle.encrypt(params, aesKey, toBufferSource(keyBytes))
     );
     const out = new Uint8Array(iv.byteLength + ciphertext.byteLength);
     out.set(iv, 0);
@@ -408,7 +409,8 @@ export async function wrapKey(
  */
 export async function unwrapKey(
     wrapped: Uint8Array,
-    prfOutput: Uint8Array
+    prfOutput: Uint8Array,
+    aad?: Uint8Array
 ): Promise<Uint8Array> {
     assertPrfOutputLength(prfOutput);
 
@@ -421,8 +423,12 @@ export async function unwrapKey(
     const iv = wrapped.subarray(0, AES_GCM_IV_BYTES);
     const body = wrapped.subarray(AES_GCM_IV_BYTES);
     const aesKey = await importAesGcmKey(prfOutput);
+    const params: AesGcmParams = { name: 'AES-GCM', iv: toBufferSource(iv) };
+    if (aad) {
+        params.additionalData = toBufferSource(aad);
+    }
     const plaintext = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: toBufferSource(iv) },
+        params,
         aesKey,
         toBufferSource(body)
     );

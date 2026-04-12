@@ -52,6 +52,12 @@ export { PasskeyPrfNotSupportedError };
  */
 const HKDF_INFO_V1 = 'neokeeweb-passkey-unlock-v1';
 
+const AAD_VERSION = 'neokeeweb-passkey-wrap-v1';
+
+function buildAad(fileId: string): Uint8Array {
+    return new TextEncoder().encode(fileId + '|' + AAD_VERSION);
+}
+
 /** RP name for navigator.credentials.create() display. */
 const PASSKEY_RP_NAME = 'NeoKeeWeb';
 
@@ -126,7 +132,8 @@ export async function enablePasskeyForFile(
         try {
             const passwordBytes = stringToUtf8Bytes(masterPasswordText);
             try {
-                const wrapped = await wrapKey(passwordBytes, wrapKeyBytes);
+                const aad = buildAad(fileId);
+                const wrapped = await wrapKey(passwordBytes, wrapKeyBytes, aad);
                 return {
                     credentialIdBase64: bytesToBase64(registration.credentialId),
                     prfSaltBase64: bytesToBase64(registration.prfSalt),
@@ -159,10 +166,15 @@ export async function enablePasskeyForFile(
  * @param descriptor - base64 credentialId / prfSalt / wrappedKey from
  *                 FileInfoModel.
  */
+export interface PasskeyUnlockResult {
+    password: kdbxweb.ProtectedValue;
+    migratedWrappedKey?: string;
+}
+
 export async function unlockFileWithPasskey(
     fileId: string,
     descriptor: PasskeyCredentialDescriptor
-): Promise<kdbxweb.ProtectedValue> {
+): Promise<PasskeyUnlockResult> {
     const credentialIdBytes = base64ToBytes(descriptor.credentialId);
     const prfSaltBytes = base64ToBytes(descriptor.prfSalt);
     const wrappedBytes = base64ToBytes(descriptor.wrappedKey);
@@ -175,10 +187,25 @@ export async function unlockFileWithPasskey(
     try {
         const wrapKeyBytes = await deriveWrapKey(prfOutput, fileId);
         try {
-            const plaintextBytes = await unwrapKey(wrappedBytes, wrapKeyBytes);
+            const aad = buildAad(fileId);
+            let plaintextBytes: Uint8Array;
+            let migrated = false;
+            try {
+                plaintextBytes = await unwrapKey(wrappedBytes, wrapKeyBytes, aad);
+            } catch {
+                // Legacy blob without AAD — retry without it and flag for migration
+                plaintextBytes = await unwrapKey(wrappedBytes, wrapKeyBytes);
+                migrated = true;
+            }
             try {
                 const text = utf8BytesToString(plaintextBytes);
-                return kdbxweb.ProtectedValue.fromString(text);
+                const password = kdbxweb.ProtectedValue.fromString(text);
+                let migratedWrappedKey: string | undefined;
+                if (migrated) {
+                    const rewrapped = await wrapKey(plaintextBytes, wrapKeyBytes, aad);
+                    migratedWrappedKey = bytesToBase64(rewrapped);
+                }
+                return { password, migratedWrappedKey };
             } finally {
                 zeroBytes(plaintextBytes);
             }

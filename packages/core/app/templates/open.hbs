@@ -113,13 +113,6 @@
                 </div>
             {{/if}}
         </div>
-        {{#if passkeyAvailable}}
-            <div class="open__passkey-diag hide">
-                <i class="fa fa-info-circle open__passkey-diag-icon"></i>
-                <span class="open__passkey-diag-text"></span>
-                <span class="open__passkey-diag-rec hide"></span>
-            </div>
-        {{/if}}
         <div class="open__last">
             {{#each lastOpenFiles as |file|}}
                 <div class="open__last-item" data-id="{{file.id}}" title="{{file.path}}" tabindex="{{add @index 30}}"

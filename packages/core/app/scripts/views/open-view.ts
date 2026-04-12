@@ -493,46 +493,36 @@ class OpenView extends View {
         //     diagnostic line as a soft warning.
         const probeResolved = this.passkeyCapability !== null;
         const prfState = this.passkeyCapability?.prf ?? null;
-        const canOfferEnable =
+        const showEnableRow =
             this.passkeyAvailable &&
             hasFile &&
             !hasRegisteredPasskey &&
-            probeResolved &&
-            prfState !== 'unsupported';
+            probeResolved;
+        const prfDisabled = prfState === 'unsupported';
 
         const enableRow = el.querySelector('.open__passkey-enable') as HTMLElement | null;
         if (enableRow) {
-            enableRow.classList.toggle('hide', !canOfferEnable);
-        }
-
-        // Diagnostic line. Shown whenever a file is being opened AND
-        // the PRF probe has decided the environment is broken or
-        // ambiguous. We intentionally do NOT gate on
-        // `!hasRegisteredPasskey` — a user with a stale/broken passkey
-        // from an earlier session on macOS 14 Sonoma ALSO needs to see
-        // "your OS does not support PRF" because the unlock path will
-        // fail the same way the register path did.
-        const diagRow = el.querySelector('.open__passkey-diag') as HTMLElement | null;
-        if (diagRow) {
-            const showDiag =
-                this.passkeyAvailable &&
-                hasFile &&
-                probeResolved &&
-                (prfState === 'unsupported' || prfState === 'unknown');
-            diagRow.classList.toggle('hide', !showDiag);
-            if (showDiag && this.passkeyCapability) {
-                const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
-                const textEl = diagRow.querySelector(
-                    '.open__passkey-diag-text'
-                ) as HTMLElement | null;
-                if (textEl) textEl.textContent = msg.reason;
-                const recEl = diagRow.querySelector(
-                    '.open__passkey-diag-rec'
-                ) as HTMLElement | null;
-                if (recEl) {
-                    recEl.textContent = msg.recommendation ?? '';
-                    recEl.classList.toggle('hide', !msg.recommendation);
+            enableRow.classList.toggle('hide', !showEnableRow);
+            enableRow.classList.toggle('open__passkey-enable--disabled', prfDisabled);
+            const checkbox = enableRow.querySelector(
+                '.open__passkey-enable-check'
+            ) as HTMLInputElement | null;
+            if (checkbox) {
+                if (prfDisabled) {
+                    checkbox.setAttribute('disabled', 'disabled');
+                } else {
+                    checkbox.removeAttribute('disabled');
                 }
+            }
+            if (showEnableRow && this.passkeyCapability &&
+                (prfState === 'unsupported' || prfState === 'unknown')) {
+                const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
+                const tip = msg.recommendation
+                    ? msg.reason + ' ' + msg.recommendation
+                    : msg.reason;
+                enableRow.setAttribute('title', tip);
+            } else {
+                enableRow.removeAttribute('title');
             }
         }
     }
@@ -963,11 +953,20 @@ class OpenView extends View {
 
         let protectedPassword: any;
         try {
-            protectedPassword = await unlockFileWithPasskey(fileId, {
+            const unlockResult = await unlockFileWithPasskey(fileId, {
                 credentialId: this.passkeyCredentialId,
                 prfSalt: this.passkeyPrfSalt,
                 wrappedKey: this.passkeyWrappedKey
             });
+            protectedPassword = unlockResult.password;
+            if (unlockResult.migratedWrappedKey) {
+                const fileInfo = this.model.fileInfos.get(fileId);
+                if (fileInfo) {
+                    fileInfo.passkeyWrappedKey = unlockResult.migratedWrappedKey;
+                    this.model.fileInfos.save();
+                    logger.info('Migrated passkey wrapped key to AAD format');
+                }
+            }
         } catch (e: any) {
             if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
                 logger.info('Passkey UV cancelled, falling back to password', e.name);

@@ -11,6 +11,7 @@ import { IconUrlFormat } from 'util/formatting/icon-url-format';
 import { Logger } from 'util/logger';
 import { Locale } from 'util/locale';
 import { StringFormat } from 'util/formatting/string-format';
+import { FileInfoCollection } from 'collections/file-info-collection';
 
 const logger = new Logger('file');
 
@@ -688,6 +689,18 @@ class FileModel extends Model {
                 encryptedPassword: null,
                 encryptedPasswordDate: null
             });
+        }
+
+        if (!error && this.passwordChanged) {
+            const fi = FileInfoCollection.get(this.id);
+            if (fi && fi.passkeyWrappedKey) {
+                logger.info('Password changed — clearing stale passkey registration');
+                fi.passkeyCredentialId = null;
+                fi.passkeyPrfSalt = null;
+                fi.passkeyWrappedKey = null;
+                fi.passkeyCreatedDate = null;
+                FileInfoCollection.save();
+            }
         }
 
         if (!(this as unknown as Record<string, unknown>).open) {

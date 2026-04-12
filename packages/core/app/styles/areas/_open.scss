@@ -208,38 +208,10 @@
         }
     }
 
-    // Preemptive PRF capability diagnostic (#9 follow-up). Rendered
-    // when `probePasskeyCapability()` detects an environment that
-    // cannot support WebAuthn PRF (e.g. macOS 14 Sonoma) or is
-    // ambiguous (e.g. Linux with no hardware key plugged in). Sits
-    // directly below the enable-passkey checkbox so the user reads
-    // "why would I enable this" and "why can't I enable this" in the
-    // same visual block.
-    &__passkey-diag {
-        display: block;
-        padding: 0.2em 0 0.4em 0;
-        margin-right: $base-spacing;
-        color: var(--muted-color);
-        font-size: 0.85em;
-        line-height: 1.35;
-        max-width: 28em;
-        &.hide {
-            display: none;
-        }
-        &-icon {
-            margin: 0 0.4em 0 0.2em;
-        }
-        &-text {
-            // Inline so the recommendation text flows right after
-            // the reason on wide screens and wraps on narrow screens.
-        }
-        &-rec {
-            display: inline;
-            margin-left: 0.3em;
-            opacity: 0.85;
-            &.hide {
-                display: none;
-            }
+    &__passkey-enable--disabled {
+        opacity: 0.45;
+        .open__passkey-enable-label {
+            cursor: not-allowed;
         }
     }
 
