@@ -339,6 +339,7 @@ class OpenView extends View {
                             this.displayOpenFile();
                             this.displayOpenKeyFile();
                             this.displayOpenDeviceOwnerAuth();
+                            this.displayOpenPasskey();
                             success = true;
                             break;
                         case 'xml':
@@ -459,7 +460,7 @@ class OpenView extends View {
         const el = (this as any).el;
         if (!el) return;
 
-        const hasFile = !!this.params.id && !!this.params.name;
+        const hasFile = !!this.params.name && (!!this.params.id || !!this.params.fileData);
         const passEmpty = !this.passwordInput.length;
         const hasRegisteredPasskey =
             !!this.passkeyCredentialId &&
