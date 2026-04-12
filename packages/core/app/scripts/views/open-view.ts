@@ -83,6 +83,7 @@ class OpenView extends View {
         'click .open__settings-key-file': 'openKeyFile',
         'click .open__last-item': 'openLast',
         'change .open__passkey-enable-check': 'passkeyEnableToggled',
+        'click .open__passkey-clear': 'passkeyCleared',
         'click .open__icon-generate': 'toggleGenerator',
         'click .open__message-cancel-btn': 'openMessageCancelClick',
         dragover: 'dragover',
@@ -529,6 +530,13 @@ class OpenView extends View {
                 enableRow.removeAttribute('title');
                 if (label) label.removeAttribute('title');
             }
+        }
+
+        // "Remove passkey" link: shown when file HAS a registered passkey
+        const clearRow = el.querySelector('.open__passkey-clear') as HTMLElement | null;
+        if (clearRow) {
+            const showClear = this.passkeyAvailable && hasFile && hasRegisteredPasskey;
+            clearRow.classList.toggle('hide', !showClear);
         }
     }
 
@@ -1041,6 +1049,25 @@ class OpenView extends View {
     passkeyEnableToggled(e: any): void {
         const target = e?.target as HTMLInputElement | undefined;
         this.enablePasskeyRequested = !!target?.checked;
+    }
+
+    passkeyCleared(): void {
+        if (!this.params.id) return;
+        const fileInfo = this.model.fileInfos.get(this.params.id);
+        if (fileInfo) {
+            fileInfo.set({
+                passkeyCredentialId: null,
+                passkeyPrfSalt: null,
+                passkeyWrappedKey: null,
+                passkeyCreatedDate: null
+            });
+            this.model.fileInfos.save();
+        }
+        this.passkeyCredentialId = null;
+        this.passkeyPrfSalt = null;
+        this.passkeyWrappedKey = null;
+        this.displayOpenPasskey();
+        logger.info('Passkey registration cleared for file', this.params.name);
     }
 
     openDbComplete(err: any): void {

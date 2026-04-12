@@ -227,6 +227,7 @@
   "openChalRespErrorEmptyMac": "First time using this feature on macOS? KeeWeb must be added to the Input Monitoring section of security settings.",
   "openPasskeyUnlock": "Unlock with passkey",
   "openEnablePasskey": "Remember with passkey",
+  "openClearPasskey": "Remove passkey",
   "openPasskeyRegisterSuccess": "Passkey quick unlock enabled",
   "openPasskeyRegisterError": "Passkey registration failed. You can still open the file with your master password.",
   "openPasskeyUnlockError": "Passkey unlock failed. Please type your master password.",

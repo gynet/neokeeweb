@@ -215,6 +215,28 @@
         }
     }
 
+    &__passkey-clear {
+        display: inline-block;
+        padding: 0.3em 0;
+        cursor: pointer;
+        color: var(--muted-color);
+        font-size: 0.9em;
+        user-select: none;
+        &.hide {
+            display: none;
+        }
+        &:hover {
+            color: var(--medium-color);
+        }
+        &-icon {
+            margin: 0 0.1em 0 0.4em;
+        }
+        &-x {
+            font-size: 0.65em;
+            margin-right: 0.3em;
+        }
+    }
+
     &__config {
         display: flex;
         align-items: stretch;
