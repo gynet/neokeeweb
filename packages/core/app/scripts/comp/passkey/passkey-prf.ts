@@ -229,20 +229,14 @@ export async function registerPasskey(
         timeout: 60_000,
         attestation: 'none',
         extensions: {
-            // WebAuthn PRF extension, create-time eval hint. Spec:
-            // https://www.w3.org/TR/webauthn-3/#prf-extension
-            // The `first` slot is the single PRF input we care about;
-            // `second` is for double-evaluation scenarios which we do
-            // not use. The authenticator MAY ignore this at create
-            // time and only support eval-at-get, in which case the
-            // result will not contain a `results.first` field and we
-            // return prfOutput: null to the caller (provided that
-            // `enabled === true` — see strict check below).
-            prf: {
-                eval: {
-                    first: toBufferSource(prfSalt)
-                }
-            }
+            // WebAuthn PRF extension — request PRF capability check at
+            // create time WITHOUT eval. Some authenticators (notably
+            // Apple iCloud Keychain on macOS 15+) reject the entire PRF
+            // extension when eval is present at create time. By passing
+            // just `prf: {}` we ask "do you support PRF?" and get back
+            // `prf.enabled: true/false`. The actual PRF eval happens in
+            // a follow-up get() call via evaluatePrf().
+            prf: {}
         } as unknown as AuthenticationExtensionsClientInputs,
         // WebAuthn L3 `hints` array — biases the browser UI toward
         // the client-device's own platform authenticator over any
@@ -298,13 +292,10 @@ export async function registerPasskey(
         );
     }
 
-    let prfOutput: Uint8Array | null = null;
-    const firstResult = clientExtensions.prf?.results?.first;
-    if (firstResult && firstResult.byteLength === PRF_OUTPUT_BYTES) {
-        prfOutput = new Uint8Array(firstResult);
-    }
-
-    return { credentialId, prfSalt, prfOutput };
+    // prfOutput is always null from create — we no longer pass eval at
+    // create time. The caller (enablePasskeyForFile) will do a follow-up
+    // evaluatePrf() get() call to materialize the 32-byte PRF output.
+    return { credentialId, prfSalt, prfOutput: null };
 }
 
 /**
