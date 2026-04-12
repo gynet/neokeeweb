@@ -505,16 +505,18 @@ class OpenView extends View {
             enableRow.classList.toggle('hide', !canOfferEnable);
         }
 
-        // Diagnostic line. Shown only on the open-a-file path when a
-        // file has been picked but no credential exists yet — no point
-        // in telling the user "your OS does not support PRF" if they
-        // are not even looking at a passkey-relevant screen.
+        // Diagnostic line. Shown whenever a file is being opened AND
+        // the PRF probe has decided the environment is broken or
+        // ambiguous. We intentionally do NOT gate on
+        // `!hasRegisteredPasskey` — a user with a stale/broken passkey
+        // from an earlier session on macOS 14 Sonoma ALSO needs to see
+        // "your OS does not support PRF" because the unlock path will
+        // fail the same way the register path did.
         const diagRow = el.querySelector('.open__passkey-diag') as HTMLElement | null;
         if (diagRow) {
             const showDiag =
                 this.passkeyAvailable &&
                 hasFile &&
-                !hasRegisteredPasskey &&
                 probeResolved &&
                 (prfState === 'unsupported' || prfState === 'unknown');
             diagRow.classList.toggle('hide', !showDiag);
