@@ -105,12 +105,37 @@ async function removeVirtualAuthenticator(auth: VirtualAuthenticator): Promise<v
 }
 
 /**
+ * Pin the preemptive PRF capability probe to `supported` before the
+ * open view constructs itself. The probe normally inspects the host
+ * OS/browser to decide whether to render the enable-passkey checkbox
+ * at all — on a macOS 14 Sonoma CI runner or dev machine that probe
+ * would report `unsupported` (Apple added PRF in macOS 15 Sequoia)
+ * and hide the checkbox, breaking this spec even though the CDP
+ * virtual authenticator is perfectly capable of PRF.
+ *
+ * The override hook is read by `passkey-capability.ts` at probe time
+ * and returned verbatim, short-circuiting the OS detection logic.
+ */
+async function overridePasskeyCapability(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+        (window as unknown as Record<string, unknown>)[
+            '__neokeeweb_passkey_capability_override'
+        ] = {
+            prf: 'supported',
+            reason: 'E2E override',
+            platform: { os: 'macos', browser: 'chrome', osVersion: '15.0.0' }
+        };
+    });
+}
+
+/**
  * Clear localStorage + FilesCache IndexedDB so each test starts from a
  * blank slate. Matches the clean-slate pattern from crud-persistence.spec.ts
  * — essential here because FileInfo rows from test 1 would otherwise
  * leak into test 2 and make the "no passkey yet" assertion meaningless.
  */
 async function resetPersistence(page: Page): Promise<void> {
+    await overridePasskeyCapability(page);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await page.evaluate(async () => {

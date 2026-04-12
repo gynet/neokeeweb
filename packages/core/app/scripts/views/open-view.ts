@@ -25,6 +25,10 @@ import {
     PasskeyPrfNotSupportedError,
     unlockFileWithPasskey
 } from 'comp/passkey/passkey-unlock';
+import {
+    probePasskeyCapability,
+    PasskeyCapability
+} from 'comp/passkey/passkey-capability';
 import template from 'templates/open.hbs';
 
 const logger = new Logger('open-view');
@@ -121,6 +125,13 @@ class OpenView extends View {
     passkeyWrappedKey: string | null = null;
     enablePasskeyRequested = false;
 
+    // Deep PRF capability probe result (#9 follow-up). Null until the
+    // async `probePasskeyCapability()` resolves. While null, the view
+    // hides the enable-passkey checkbox to avoid a flash of "this works"
+    // followed by "oh wait, your OS does not support PRF". See
+    // `displayOpenPasskey()` for the three-state render logic.
+    passkeyCapability: PasskeyCapability | null = null;
+
     constructor(model: any) {
         super(model);
         (window as any).$ = $;
@@ -139,6 +150,25 @@ class OpenView extends View {
             this.passwordInput.reset();
         });
         this.listenTo(Events, 'user-idle', this.userIdle);
+
+        // Kick off the deep PRF capability probe. Fire-and-forget: the
+        // probe never throws (the module catches all failures and maps
+        // them to `prf: 'unknown'`). When it resolves we cache the
+        // result and re-run `displayOpenPasskey()` to flip the checkbox
+        // + diagnostic line into their final visibility state. This is
+        // the fix for the #9 post-ship report where users on macOS 14
+        // Sonoma walked all the way through Touch ID registration only
+        // to hit PasskeyPrfNotSupportedError at the very end.
+        if (this.passkeyAvailable) {
+            void probePasskeyCapability().then((cap) => {
+                this.passkeyCapability = cap;
+                // The view may have been removed before the probe
+                // resolved (fast nav). Guard on `el` existing.
+                if ((this as any).el) {
+                    this.displayOpenPasskey();
+                }
+            });
+        }
     }
 
     render(): this | undefined {
@@ -447,12 +477,85 @@ class OpenView extends View {
 
         // Checkbox row: offer enable-at-open when the browser supports
         // PRF, a file is being opened, and it doesn't yet have a passkey.
+        //
+        // Three-state gate from the deep capability probe:
+        //
+        //   - capability === null (probe still resolving, or view
+        //     constructed before probe kicked off): HIDE checkbox to
+        //     avoid a UI flash.
+        //   - capability.prf === 'unsupported': HIDE checkbox and
+        //     render the diagnostic line below with OS-specific
+        //     upgrade guidance. The user walks away knowing WHY
+        //     before they have a chance to click anything.
+        //   - capability.prf === 'supported': SHOW checkbox normally.
+        //   - capability.prf === 'unknown': SHOW checkbox (so users
+        //     with hardware keys can still opt in) and render the
+        //     diagnostic line as a soft warning.
+        const probeResolved = this.passkeyCapability !== null;
+        const prfState = this.passkeyCapability?.prf ?? null;
         const canOfferEnable =
-            this.passkeyAvailable && hasFile && !hasRegisteredPasskey;
+            this.passkeyAvailable &&
+            hasFile &&
+            !hasRegisteredPasskey &&
+            probeResolved &&
+            prfState !== 'unsupported';
+
         const enableRow = el.querySelector('.open__passkey-enable') as HTMLElement | null;
         if (enableRow) {
             enableRow.classList.toggle('hide', !canOfferEnable);
         }
+
+        // Diagnostic line. Shown only on the open-a-file path when a
+        // file has been picked but no credential exists yet — no point
+        // in telling the user "your OS does not support PRF" if they
+        // are not even looking at a passkey-relevant screen.
+        const diagRow = el.querySelector('.open__passkey-diag') as HTMLElement | null;
+        if (diagRow) {
+            const showDiag =
+                this.passkeyAvailable &&
+                hasFile &&
+                !hasRegisteredPasskey &&
+                probeResolved &&
+                (prfState === 'unsupported' || prfState === 'unknown');
+            diagRow.classList.toggle('hide', !showDiag);
+            if (showDiag && this.passkeyCapability) {
+                const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
+                const textEl = diagRow.querySelector(
+                    '.open__passkey-diag-text'
+                ) as HTMLElement | null;
+                if (textEl) textEl.textContent = msg.reason;
+                const recEl = diagRow.querySelector(
+                    '.open__passkey-diag-rec'
+                ) as HTMLElement | null;
+                if (recEl) {
+                    recEl.textContent = msg.recommendation ?? '';
+                    recEl.classList.toggle('hide', !msg.recommendation);
+                }
+            }
+        }
+    }
+
+    /**
+     * Resolve a capability probe result into a localized reason +
+     * recommendation pair. Prefers locale keys when the probe supplied
+     * them (so non-English UIs get the right copy), with an English
+     * fallback from the probe itself for anything not yet translated.
+     */
+    formatPasskeyDiagMessage(cap: PasskeyCapability): {
+        reason: string;
+        recommendation?: string;
+    } {
+        let reason = cap.reason;
+        if (cap.reasonKey && typeof loc[cap.reasonKey] === 'string') {
+            const template = loc[cap.reasonKey] as string;
+            const ver = cap.platform.osVersion ?? '';
+            reason = template.replace('{0}', ver);
+        }
+        let recommendation: string | undefined = cap.recommendation;
+        if (cap.recommendationKey && typeof loc[cap.recommendationKey] === 'string') {
+            recommendation = loc[cap.recommendationKey] as string;
+        }
+        return { reason, recommendation };
     }
 
     displayOpenDeviceOwnerAuth(): void {
@@ -1039,10 +1142,25 @@ class OpenView extends View {
             if (e instanceof PasskeyPrfNotSupportedError ||
                 (e && e.name === 'PasskeyPrfNotSupportedError')) {
                 logger.error('Passkey registration: authenticator did not enable PRF', e);
+                // Enrich the toast with OS-specific guidance from the
+                // capability probe if it resolved. Without this the
+                // user sees a wall of generic copy ("use Touch ID /
+                // Windows Hello / YubiKey") when we actually know
+                // their exact OS + version and could have told them
+                // "upgrade to macOS 15 Sequoia" specifically.
+                let body =
+                    loc.openPasskeyPrfUnsupported ||
+                    'This authenticator does not support the PRF extension needed for passkey unlock.';
+                if (this.passkeyCapability) {
+                    const msg = this.formatPasskeyDiagMessage(this.passkeyCapability);
+                    body = msg.reason;
+                    if (msg.recommendation) {
+                        body = `${body} ${msg.recommendation}`;
+                    }
+                }
                 alerts.error({
                     header: loc.openError,
-                    body: loc.openPasskeyPrfUnsupported ||
-                        'This authenticator does not support the PRF extension needed for passkey unlock.'
+                    body
                 });
                 return;
             }
