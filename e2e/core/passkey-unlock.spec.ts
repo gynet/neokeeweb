@@ -595,6 +595,139 @@ test.describe('Passkey Quick Unlock (#9)', () => {
         }
     });
 
+    test('PRF-incapable authenticator at register → toast + nothing persisted', async ({
+        context,
+        page
+    }) => {
+        // Round-5 regression guard for the strict `prf.enabled === true`
+        // check in passkey-prf.ts. Reproduces the Chrome bug the user
+        // hit in real testing: an authenticator (or a hooking
+        // browser password-manager extension on Firefox) signs the
+        // credential but does NOT enable PRF. Pre-fix behaviour was
+        // to silently fall through and try to rescue with a get()
+        // call, leaving a garbage credential persisted on FileInfo
+        // and surfacing the cryptic "did not return a PRF result"
+        // error. Post-fix: throw `PasskeyPrfNotSupportedError`
+        // immediately, show the actionable toast, and do not write
+        // any of the four passkey fields to FileInfoModel.
+        test.setTimeout(120_000);
+
+        const auth = await addVirtualAuthenticator(context, page, { hasPrf: false });
+
+        try {
+            // First open with typed password — same two-open pattern
+            // as test 1, because the enable checkbox only appears on
+            // the second open of a file with a persisted FileInfo id.
+            await uploadFile(page);
+            await page.locator('.open__pass-input').fill(KDBX4_PASSWORD);
+            await page.locator('.open__pass-enter-btn').click();
+            await expect(page.locator('.list__item').first()).toBeVisible({
+                timeout: 30_000
+            });
+
+            // Reload to drop in-memory state and trigger the
+            // recent-files path so the enable checkbox shows up.
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            const recentItem = page.locator('.open__last-item').first();
+            await expect(recentItem).toBeVisible({ timeout: 10_000 });
+            await recentItem.click();
+
+            const pwInput = page.locator('.open__pass-input');
+            await expect(pwInput).not.toHaveAttribute('readonly', '', {
+                timeout: 10_000
+            });
+
+            // Enable-passkey checkbox should be visible because the
+            // file has no passkey yet AND `isPasskeyPrfSupported()`
+            // returns true (PublicKeyCredential exists). The fact
+            // that the underlying authenticator can't actually do
+            // PRF is something we can only learn from the
+            // `prf.enabled` field after `create()` runs — exactly
+            // what the strict check is testing.
+            await expect(page.locator('.open__passkey-enable')).toBeVisible({
+                timeout: 5_000
+            });
+            await page.locator('.open__passkey-enable-label').click();
+            await expect(page.locator('.open__passkey-enable-check')).toBeChecked();
+
+            // Submit. Open succeeds (typed password is correct), the
+            // fire-and-forget `registerPasskeyForFile` tail kicks
+            // off, the `create()` call returns a credential with
+            // `prf.enabled === undefined` (the bad authenticator
+            // doesn't speak PRF), and the strict check throws
+            // `PasskeyPrfNotSupportedError`. The view's catch block
+            // surfaces the actionable toast.
+            await pwInput.fill(KDBX4_PASSWORD);
+            await page.locator('.open__pass-enter-btn').click();
+
+            // Database opens — the failure is in the post-open
+            // registration tail, NOT in the open itself.
+            await expect(page.locator('.list__item').first()).toBeVisible({
+                timeout: 30_000
+            });
+
+            // Wait for the alerts.error toast to appear. The header
+            // is `loc.openError` and the body contains the actionable
+            // string from `loc.openPasskeyPrfUnsupported` ("PRF
+            // extension needed for passkey unlock").
+            const modal = page.locator('.modal').filter({
+                hasText: /PRF extension needed for passkey unlock/i
+            });
+            await expect(
+                modal,
+                'PRF-unsupported toast should explain the actionable fix to the user'
+            ).toBeVisible({ timeout: 15_000 });
+
+            await page.screenshot({
+                path: `${SCREENSHOT_DIR}/passkey-07-prf-register-toast.png`,
+                fullPage: true
+            });
+
+            // Critical assertion: nothing was persisted to FileInfo.
+            // The strict check throws BEFORE
+            // `registerPasskeyForFile` reaches the `fileInfo.set(...)`
+            // call, so all four passkey fields remain null on the
+            // localStorage row. Without this guarantee the next open
+            // would surface the broken passkey button instead of the
+            // enable-checkbox row.
+            const raw = await page.evaluate(() =>
+                localStorage.getItem('fileInfo')
+            );
+            expect(raw).toBeTruthy();
+            const parsed = JSON.parse(raw!) as Array<{
+                name: string;
+                passkeyCredentialId?: string | null;
+                passkeyPrfSalt?: string | null;
+                passkeyWrappedKey?: string | null;
+                passkeyCreatedDate?: string | null;
+            }>;
+            const row = parsed.find((f) => f.name === KDBX4_BASENAME);
+            expect(
+                row,
+                'FileInfo row must still exist after a failed passkey enable'
+            ).toBeTruthy();
+            expect(
+                row?.passkeyCredentialId ?? null,
+                'passkeyCredentialId must NOT be persisted when PRF is refused'
+            ).toBeNull();
+            expect(
+                row?.passkeyPrfSalt ?? null,
+                'passkeyPrfSalt must NOT be persisted when PRF is refused'
+            ).toBeNull();
+            expect(
+                row?.passkeyWrappedKey ?? null,
+                'passkeyWrappedKey must NOT be persisted when PRF is refused'
+            ).toBeNull();
+            expect(
+                row?.passkeyCreatedDate ?? null,
+                'passkeyCreatedDate must NOT be persisted when PRF is refused'
+            ).toBeNull();
+        } finally {
+            await removeVirtualAuthenticator(auth);
+        }
+    });
+
     test('No WebAuthn support → enable-passkey checkbox never renders', async ({
         browser
     }) => {
