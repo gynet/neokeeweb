@@ -278,7 +278,7 @@ describe('probePasskeyCapability', () => {
         expect(cap.platform.osVersion).toBe('14.0.0');
     });
 
-    test('getClientCapabilities reports extension:prf=false → unsupported (generic)', async () => {
+    test('getClientCapabilities reports extension:prf=false → unknown (hardware key might work)', async () => {
         setGlobal('PublicKeyCredential', {
             getClientCapabilities: async () => ({ 'extension:prf': false })
         });
@@ -287,10 +287,8 @@ describe('probePasskeyCapability', () => {
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/146.0.0.0'
         });
         const cap = await probePasskeyCapability();
-        expect(cap.prf).toBe('unsupported');
-        // Windows platform + clientCaps=false → generic message, not
-        // the macOS-specific one.
-        expect(cap.reason).not.toContain('Sequoia');
+        expect(cap.prf).toBe('unknown');
+        expect(cap.recommendation).toContain('YubiKey');
     });
 
     test('getClientCapabilities throws → falls back to UA path (macOS 14 → unsupported)', async () => {
