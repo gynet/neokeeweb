@@ -272,20 +272,13 @@ test.describe('Passkey Quick Unlock (#9)', () => {
                 'Enable-passkey row should appear on second open of a file with no credential'
             ).toBeVisible({ timeout: 5_000 });
 
-            // The native checkbox lives inside a .open__passkey-enable
-            // label and has no explicit size in CSS, so Chromium
-            // reports it as not-visible — both `.check()` and
-            // `.check({ force: true })` refuse to act on a zero-size
-            // element. Drive the state change directly via the DOM
-            // and dispatch a `change` event ourselves, which is what
-            // the view's `passkeyEnableToggled` handler reads from.
-            // This is equivalent to the user ticking the checkbox,
-            // because the handler only inspects `target.checked`.
+            // Click the visible label to tick the checkbox. The native
+            // <input> is hidden by the global input[type='checkbox']
+            // rule in base/_forms.scss; the sibling <label for=...>
+            // draws the fake box via :before and is the real click
+            // target. This matches what an actual user does.
             const checkbox = page.locator('.open__passkey-enable-check');
-            await checkbox.evaluate((el: HTMLInputElement) => {
-                el.checked = true;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            });
+            await page.locator('.open__passkey-enable-label').click();
             await expect(checkbox).toBeChecked();
 
             // 4. Submit. The existing open path runs; the
@@ -425,10 +418,8 @@ test.describe('Passkey Quick Unlock (#9)', () => {
             await expect(page.locator('.open__passkey-enable')).toBeVisible({
                 timeout: 5_000
             });
-            await page.locator('.open__passkey-enable-check').evaluate((el: HTMLInputElement) => {
-                el.checked = true;
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            });
+            await page.locator('.open__passkey-enable-label').click();
+            await expect(page.locator('.open__passkey-enable-check')).toBeChecked();
             await pwInput.fill(KDBX4_PASSWORD);
             await page.locator('.open__pass-enter-btn').click();
             await expect(page.locator('.list__item').first()).toBeVisible({

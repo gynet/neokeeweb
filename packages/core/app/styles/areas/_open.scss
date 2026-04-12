@@ -182,24 +182,29 @@
     // browser supports WebAuthn PRF — see displayOpenPasskey() in
     // open-view.ts. Sits below the password field, visually parallel
     // to the key-file / yubikey toggles.
+    //
+    // Markup follows the gen__check / modal__check pattern: native
+    // <input type="checkbox"> is hidden by the global rule in
+    // base/_forms.scss and a sibling <label for> draws the fake box
+    // via :before, then renders the key icon + locale string after it.
     &__passkey-enable {
-        display: inline-flex;
-        align-items: center;
-        cursor: pointer;
-        color: var(--muted-color);
+        display: inline-block;
         padding: 0.3em 0;
         margin-right: $base-spacing;
-        &-icon {
-            margin: 0 0.4em 0 0.2em;
-        }
-        &-text {
-            font-size: 0.9em;
-        }
-        &:hover {
-            color: var(--medium-color);
-        }
         &.hide {
             display: none;
+        }
+        &-label {
+            cursor: pointer;
+            color: var(--muted-color);
+            font-size: 0.9em;
+            user-select: none;
+            &:hover {
+                color: var(--medium-color);
+            }
+        }
+        &-icon {
+            margin: 0 0.4em 0 0.4em;
         }
     }
 
