@@ -116,7 +116,6 @@ class ListView extends View {
             this.itemsEl.on('scroll', () => this.renderVisibleItems());
             (this.views.search as any).render();
             this.setTableView();
-            this.updateListClasses();
 
             this.createScroll({
                 root: this.$el.find('.list__items')[0],
@@ -166,6 +165,7 @@ class ListView extends View {
         } else {
             this.itemsEl.html(this.emptyTemplate({}, DefaultTemplateOptions));
         }
+        this.updateListClasses();
         this.pageResized();
         return this;
     }
