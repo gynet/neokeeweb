@@ -14,11 +14,14 @@
 }
 
 // Common sizing for WhiteSur entry icons
+// FA <i> elements are inline by default — display: inline-block is required
+// for width/height to take effect and for background-image to render.
 body.whitesur-icons {
     .list__item-icon[data-icon-id],
     .menu__item-icon[data-icon-id],
     .icon-select__icon[data-icon-id],
     .details__header-icon[data-icon-id] {
+        display: inline-block;
         width: 18px;
         height: 18px;
     }
