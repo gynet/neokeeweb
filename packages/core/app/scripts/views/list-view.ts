@@ -21,6 +21,7 @@ const settings = AppSettingsModel as unknown as {
     colorfulIcons: boolean;
     largeListIcons: boolean;
     showFavicons: boolean;
+    entryIconStyle: string;
     listViewWidth: number;
     tableViewColumns?: string[];
 };
@@ -382,6 +383,7 @@ class ListView extends View {
 
     updateListClasses(): void {
         document.body.classList.toggle('large-icons', !!settings.largeListIcons);
+        document.body.classList.toggle('whitesur-icons', settings.entryIconStyle === 'whitesur');
     }
 
     setDefaultSize(): void {

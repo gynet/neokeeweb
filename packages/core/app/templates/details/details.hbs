@@ -29,6 +29,7 @@
         {{else}}
         <i class="details__header-icon fa fa-{{icon}}"
            {{#if canEditIcon}}title="{{res 'detSetIcon'}}"{{/if}}
+           {{#if iconId}} data-icon-id="{{iconId}}"{{/if}}
         ></i>
         {{/if}}
     </div>

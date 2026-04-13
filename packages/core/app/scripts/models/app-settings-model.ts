@@ -44,6 +44,7 @@ class AppSettingsModel extends Model {
     declare useGroupIconForEntries: AppSettings['useGroupIconForEntries'];
     declare largeListIcons: AppSettings['largeListIcons'];
     declare showFavicons: AppSettings['showFavicons'];
+    declare entryIconStyle: AppSettings['entryIconStyle'];
     declare enableUsb: AppSettings['enableUsb'];
     declare fieldLabelDblClickAutoType: AppSettings['fieldLabelDblClickAutoType'];
     declare auditPasswords: AppSettings['auditPasswords'];

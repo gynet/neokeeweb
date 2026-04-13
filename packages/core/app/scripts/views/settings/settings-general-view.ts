@@ -82,6 +82,7 @@ class SettingsGeneralView extends View {
         'change .settings__general-colorful-icons': 'changeColorfulIcons',
         'change .settings__general-large-list-icons': 'changeLargeListIcons',
         'change .settings__general-show-favicons': 'changeShowFavicons',
+        'change .settings__general-entry-icon-style': 'changeEntryIconStyle',
         'change .settings__general-tag-style': 'changeTagStyle',
         'change .settings__general-use-markdown': 'changeUseMarkdown',
         'change .settings__general-use-group-icon-for-entries': 'changeUseGroupIconForEntries',
@@ -168,6 +169,7 @@ class SettingsGeneralView extends View {
             colorfulIcons: settings.colorfulIcons,
             largeListIcons: settings.largeListIcons,
             showFavicons: settings.showFavicons,
+            entryIconStyle: settings.entryIconStyle || 'classic',
             tagStyle: settings.tagStyle || 'cloud',
             useMarkdown: settings.useMarkdown,
             useGroupIconForEntries: settings.useGroupIconForEntries,
@@ -467,6 +469,11 @@ class SettingsGeneralView extends View {
 
     changeShowFavicons(e: any): void {
         settings.showFavicons = e.target.checked || false;
+        Events.emit('refresh');
+    }
+
+    changeEntryIconStyle(e: any): void {
+        settings.entryIconStyle = e.target.value;
         Events.emit('refresh');
     }
 
