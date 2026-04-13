@@ -20,13 +20,14 @@ function generateWhiteSurScssVars() {
             vars += `$ws-icon-${varName}: url('data:image/svg+xml;base64,${b64}');\n`;
         }
     }
-    // Entry icons: 00-name.svg → $ws-entry-icon-0, $ws-entry-icon-1, ...
+    // Entry icons: 00-name.png → $ws-entry-icon-0, $ws-entry-icon-1, ...
+    // PNGs used instead of SVGs to avoid nested data-URI rendering bugs in CSS background-image
     const entryDir = path.join(rootDir, 'app/icons/whitesur-entry');
     if (fs.existsSync(entryDir)) {
-        for (const file of fs.readdirSync(entryDir).filter((f) => /^\d{2}-.*\.svg$/.test(f))) {
+        for (const file of fs.readdirSync(entryDir).filter((f) => /^\d{2}-.*\.png$/.test(f))) {
             const b64 = fs.readFileSync(path.join(entryDir, file)).toString('base64');
             const idx = parseInt(file.slice(0, 2), 10);
-            vars += `$ws-entry-icon-${idx}: url('data:image/svg+xml;base64,${b64}');\n`;
+            vars += `$ws-entry-icon-${idx}: url('data:image/png;base64,${b64}');\n`;
         }
     }
     return vars;
