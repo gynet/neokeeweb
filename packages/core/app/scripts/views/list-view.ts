@@ -95,6 +95,7 @@ class ListView extends View {
         this.listenTo(Events, 'filter', this.filterChanged);
         this.listenTo(Events, 'entry-updated', this.entryUpdated);
         this.listenTo(Events, 'set-locale', this.render);
+        this.listenTo(Events, 'refresh', this.updateListClasses);
 
         this.listenTo(this.model.settings, 'change:tableView', this.setTableView);
 
