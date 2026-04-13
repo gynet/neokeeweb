@@ -2,11 +2,9 @@
 // Replaces Font Awesome glyphs with PNG background images when body.whitesur-icons is set.
 // Pure rendering-layer — no KDBX format changes.
 
-// Mixin: apply WhiteSur icon background by numeric KeePass icon ID.
-// NO width/height here — sizing is handled by per-context rules AFTER the includes.
+// Mixin: apply WhiteSur icon by numeric KeePass icon ID
 @mixin ws-entry-icon($id, $var) {
     body.whitesur-icons &[data-icon-id="#{$id}"] {
-        display: inline-block;
         background-image: $var;
         background-size: contain;
         background-repeat: no-repeat;
@@ -15,7 +13,36 @@
     }
 }
 
-// Map each KeePass icon ID (0-68) to its WhiteSur PNG variable (background only, no sizing)
+// Common sizing for WhiteSur entry icons
+body.whitesur-icons {
+    .list__item-icon[data-icon-id],
+    .menu__item-icon[data-icon-id],
+    .icon-select__icon[data-icon-id],
+    .details__header-icon[data-icon-id] {
+        width: 18px;
+        height: 18px;
+    }
+    &.large-icons {
+        .list__item-icon[data-icon-id] {
+            width: 28px;
+            height: 28px;
+        }
+        .menu__item-icon[data-icon-id] {
+            width: 24px;
+            height: 24px;
+        }
+    }
+    .icon-select__icon[data-icon-id] {
+        width: 28px;
+        height: 28px;
+    }
+    .details__header-icon[data-icon-id] {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+// Map each KeePass icon ID (0-68) to its WhiteSur PNG variable
 .list__item-icon,
 .menu__item-icon,
 .icon-select__icon,
@@ -89,36 +116,4 @@
     @include ws-entry-icon(66, $ws-entry-icon-66);
     @include ws-entry-icon(67, $ws-entry-icon-67);
     @include ws-entry-icon(68, $ws-entry-icon-68);
-}
-
-// Per-context sizing AFTER mixin includes — source order wins at equal specificity.
-// :not([data-icon-id=""]) excludes system menu items (All Items, Trash, etc.)
-body.whitesur-icons {
-    .list__item-icon[data-icon-id]:not([data-icon-id=""]) {
-        width: 18px;
-        height: 18px;
-    }
-    .menu__item-icon[data-icon-id]:not([data-icon-id=""]) {
-        width: 18px;
-        height: 18px;
-    }
-    .icon-select__icon[data-icon-id]:not([data-icon-id=""]) {
-        width: 28px;
-        height: 28px;
-    }
-    .details__header-icon[data-icon-id]:not([data-icon-id=""]) {
-        width: 32px;
-        height: 32px;
-    }
-    // Large-icons overrides
-    &.large-icons {
-        .list__item-icon[data-icon-id]:not([data-icon-id=""]) {
-            width: 28px;
-            height: 28px;
-        }
-        .menu__item-icon[data-icon-id]:not([data-icon-id=""]) {
-            width: 24px;
-            height: 24px;
-        }
-    }
 }
