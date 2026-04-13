@@ -105,6 +105,14 @@
         <label for="settings__general-colorful-icons">{{res 'setGenColorfulIcons'}}</label>
     </div>
     <div>
+        <input type="checkbox" class="settings__input input-base settings__general-large-list-icons" id="settings__general-large-list-icons" {{#if largeListIcons}}checked{{/if}} />
+        <label for="settings__general-large-list-icons">{{res 'setGenLargeListIcons'}}</label>
+    </div>
+    <div>
+        <input type="checkbox" class="settings__input input-base settings__general-show-favicons" id="settings__general-show-favicons" {{#if showFavicons}}checked{{/if}} />
+        <label for="settings__general-show-favicons">{{res 'setGenShowFavicons'}}</label>
+    </div>
+    <div>
         <label for="settings__general-tag-style">Tag sidebar style: </label>
         <select class="settings__input input-base settings__general-tag-style" id="settings__general-tag-style">
             <option value="cloud" {{#ifeq tagStyle "cloud"}}selected{{/ifeq}}>Cloud (pills)</option>

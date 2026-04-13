@@ -203,6 +203,16 @@
             @include mobile {
                 margin-right: 4px;
             }
+            .list--large-icons & {
+                width: 24px;
+                height: 24px;
+                font-size: 1.3em;
+            }
+            &--favicon {
+                vertical-align: text-bottom;
+                object-fit: contain;
+                border-radius: 2px;
+            }
             &--custom {
                 vertical-align: text-bottom;
                 &.yellow {

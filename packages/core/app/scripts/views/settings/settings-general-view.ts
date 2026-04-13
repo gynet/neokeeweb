@@ -80,6 +80,8 @@ class SettingsGeneralView extends View {
         'change .settings__general-lock-on-os-lock': 'changeLockOnOsLock',
         'change .settings__general-table-view': 'changeTableView',
         'change .settings__general-colorful-icons': 'changeColorfulIcons',
+        'change .settings__general-large-list-icons': 'changeLargeListIcons',
+        'change .settings__general-show-favicons': 'changeShowFavicons',
         'change .settings__general-tag-style': 'changeTagStyle',
         'change .settings__general-use-markdown': 'changeUseMarkdown',
         'change .settings__general-use-group-icon-for-entries': 'changeUseGroupIconForEntries',
@@ -164,6 +166,8 @@ class SettingsGeneralView extends View {
             updateManual,
             releaseNotesLink: (Links as any).ReleaseNotes,
             colorfulIcons: settings.colorfulIcons,
+            largeListIcons: settings.largeListIcons,
+            showFavicons: settings.showFavicons,
             tagStyle: settings.tagStyle || 'cloud',
             useMarkdown: settings.useMarkdown,
             useGroupIconForEntries: settings.useGroupIconForEntries,
@@ -453,6 +457,16 @@ class SettingsGeneralView extends View {
     changeColorfulIcons(e: any): void {
         const colorfulIcons = e.target.checked || false;
         settings.colorfulIcons = colorfulIcons;
+        Events.emit('refresh');
+    }
+
+    changeLargeListIcons(e: any): void {
+        settings.largeListIcons = e.target.checked || false;
+        Events.emit('refresh');
+    }
+
+    changeShowFavicons(e: any): void {
+        settings.showFavicons = e.target.checked || false;
         Events.emit('refresh');
     }
 

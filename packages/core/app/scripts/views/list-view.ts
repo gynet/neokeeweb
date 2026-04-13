@@ -19,6 +19,8 @@ import emptyTemplate from 'templates/list-empty.hbs';
 const loc = Locale as unknown as Record<string, any>;
 const settings = AppSettingsModel as unknown as {
     colorfulIcons: boolean;
+    largeListIcons: boolean;
+    showFavicons: boolean;
     listViewWidth: number;
     tableViewColumns?: string[];
 };
@@ -114,6 +116,7 @@ class ListView extends View {
             this.itemsEl.on('scroll', () => this.renderVisibleItems());
             (this.views.search as any).render();
             this.setTableView();
+            this.updateListClasses();
 
             this.createScroll({
                 root: this.$el.find('.list__items')[0],
@@ -375,6 +378,13 @@ class ListView extends View {
         const isTable = this.model.settings.tableView;
         this.dragView.setCoord(isTable ? 'y' : 'x');
         this.setDefaultSize();
+    }
+
+    updateListClasses(): void {
+        const el = this.el as HTMLElement | undefined;
+        if (el) {
+            el.classList.toggle('list--large-icons', !!settings.largeListIcons);
+        }
     }
 
     setDefaultSize(): void {

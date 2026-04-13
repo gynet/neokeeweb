@@ -1,5 +1,8 @@
 import { DateFormat } from 'comp/i18n/date-format';
 import { Locale } from 'util/locale';
+import { AppSettingsModel } from 'models/app-settings-model';
+
+const appSettings = AppSettingsModel as unknown as { showFavicons: boolean };
 
 // Structural shapes for the only fields the presenter reads off the
 // underlying models. EntryModel and GroupModel are JS models with
@@ -79,6 +82,27 @@ class EntryPresenter {
 
     get customIcon(): string | undefined {
         return this.entry ? this.entry.customIcon : undefined;
+    }
+
+    get favicon(): string | undefined {
+        if (!appSettings.showFavicons || !this.entry || this.entry.customIcon) {
+            return undefined;
+        }
+        const url = this.entry.displayUrl;
+        if (!url) {
+            return undefined;
+        }
+        try {
+            const host = new URL(
+                url.includes('://') ? url : 'https://' + url
+            ).hostname;
+            if (!host || host === 'localhost') {
+                return undefined;
+            }
+            return `https://icons.duckduckgo.com/ip3/${host}.ico`;
+        } catch {
+            return undefined;
+        }
     }
 
     get color(): string | undefined {

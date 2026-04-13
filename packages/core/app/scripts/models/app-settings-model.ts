@@ -42,6 +42,8 @@ class AppSettingsModel extends Model {
     declare cacheConfigSettings: AppSettings['cacheConfigSettings'];
     declare allowIframes: AppSettings['allowIframes'];
     declare useGroupIconForEntries: AppSettings['useGroupIconForEntries'];
+    declare largeListIcons: AppSettings['largeListIcons'];
+    declare showFavicons: AppSettings['showFavicons'];
     declare enableUsb: AppSettings['enableUsb'];
     declare fieldLabelDblClickAutoType: AppSettings['fieldLabelDblClickAutoType'];
     declare auditPasswords: AppSettings['auditPasswords'];

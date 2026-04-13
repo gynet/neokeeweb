@@ -448,6 +448,8 @@
   "setGenColorfulIcons": "Colorful custom icons in the list",
   "setGenUseMarkdown": "Markdown in notes",
   "setGenUseGroupIconForEntries": "Automatically use group icon for new entries",
+  "setGenLargeListIcons": "Large icons in entry list",
+  "setGenShowFavicons": "Show website favicons when no custom icon is set",
   "setGenDirectAutotype": "If only one matching entry is found, select that one automatically for auto-type",
   "setGenAutoTypeTitleFilterEnabled": "Filter entries by title in auto-type",
   "setGenFunction": "Function",

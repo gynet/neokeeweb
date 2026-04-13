@@ -37,6 +37,8 @@ interface AppSettings {
     cacheConfigSettings: boolean;
     allowIframes: boolean;
     useGroupIconForEntries: boolean;
+    largeListIcons: boolean;
+    showFavicons: boolean;
     enableUsb: boolean;
     fieldLabelDblClickAutoType: boolean;
     auditPasswords: boolean;
@@ -111,6 +113,8 @@ const DefaultAppSettings: AppSettings = {
     cacheConfigSettings: false, // cache config settings and use them if the config can't be loaded
     allowIframes: false, // allow displaying the app in IFrames
     useGroupIconForEntries: false, // automatically use group icon when creating new entries
+    largeListIcons: false, // use larger icons (24px) in the entry list
+    showFavicons: false, // show website favicons in the entry list when no custom icon is set
     enableUsb: true, // enable interaction with USB devices
     fieldLabelDblClickAutoType: false, // trigger auto-type by doubleclicking field label
     auditPasswords: true, // enable password audit
