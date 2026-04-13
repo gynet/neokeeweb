@@ -128,11 +128,19 @@
             width: 0.8em;
             position: relative;
             top: 0.1em;
+            body.large-icons & {
+                width: 1.2em;
+                font-size: 1.2em;
+            }
             &--image {
                 width: 12px;
                 height: 12px;
                 position: relative;
                 top: 1px;
+                body.large-icons & {
+                    width: 20px;
+                    height: 20px;
+                }
             }
             &--no-icon {
                 // WhiteSur macOS-style folder icons replace FA font glyphs
@@ -142,6 +150,10 @@
                 background-position: center;
                 width: 18px;
                 height: 18px;
+                body.large-icons & {
+                    width: 24px;
+                    height: 24px;
+                }
                 &:before {
                     content: none;
                 }

@@ -381,10 +381,7 @@ class ListView extends View {
     }
 
     updateListClasses(): void {
-        const el = this.el as HTMLElement | undefined;
-        if (el) {
-            el.classList.toggle('list--large-icons', !!settings.largeListIcons);
-        }
+        document.body.classList.toggle('large-icons', !!settings.largeListIcons);
     }
 
     setDefaultSize(): void {

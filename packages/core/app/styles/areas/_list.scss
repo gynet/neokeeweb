@@ -203,7 +203,7 @@
             @include mobile {
                 margin-right: 4px;
             }
-            .list--large-icons & {
+            body.large-icons & {
                 width: 24px;
                 height: 24px;
                 font-size: 1.3em;
