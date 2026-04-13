@@ -5,7 +5,7 @@
         {{~else if favicon~}}
             <img src="{{favicon}}" class="list__item-icon list__item-icon--favicon" loading="lazy" />
         {{~else~}}
-            <i class="fa fa-{{icon}} {{#if color}}{{color}}-color{{/if}} list__item-icon" {{#if iconId}}data-icon-id="{{iconId}}"{{/if}}></i>
+            <i class="fa fa-{{icon}} {{#if color}}{{color}}-color{{/if}} list__item-icon" data-icon-id="{{iconId}}"></i>
         {{~/if~}}
     </div>
     {{#if columns.title}}<div class="list__table-cell">{{#if title}}{{title}}{{else}}({{res 'noTitle'}}){{/if}}</div>{{/if}}

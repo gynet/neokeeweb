@@ -13,7 +13,8 @@
             <i class="menu__item-icon fa {{#if icon}}fa-{{icon}}{{else}}menu__item-icon--no-icon{{/if}}
                 {{~#if iconCls}} {{iconCls}}{{/if~}}"
                 {{~#if iconStyle}} style="{{iconStyle}}"{{/if~}}
-                {{~#if iconId}} data-icon-id="{{iconId}}"{{/if~}}></i>
+                data-icon-id="{{iconId}}"
+                ></i>
         {{~/if}}
         <span class="menu__item-title">{{#if title}}{{title}}{{else}}({{res 'noTitle'}}){{/if}}</span>
         {{#if options}}
