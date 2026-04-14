@@ -4,6 +4,7 @@ import * as HmacBlockTransform from './crypto/hmac-block-transform';
 import * as KeyEncryptorKdf from './crypto/key-encryptor-kdf';
 import { ProtectSaltGenerator } from './crypto/protect-salt-generator';
 import { ProtectedValue } from './crypto/protected-value';
+import * as PrfWrap from './crypto/prf-wrap';
 
 import * as Consts from './defs/consts';
 import * as XmlNames from './defs/xml-names';
@@ -37,6 +38,7 @@ export {
     KeyEncryptorKdf,
     ProtectSaltGenerator,
     ProtectedValue,
+    PrfWrap,
     Consts,
     XmlNames,
     KdbxError,
