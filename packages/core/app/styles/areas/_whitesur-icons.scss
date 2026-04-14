@@ -5,6 +5,7 @@
 // Mixin: apply WhiteSur icon by numeric KeePass icon ID
 @mixin ws-entry-icon($id, $var) {
     body.whitesur-icons &[data-icon-id="#{$id}"] {
+        display: inline-block;
         background-image: $var;
         background-size: contain;
         background-repeat: no-repeat;
