@@ -14,32 +14,36 @@
     }
 }
 
-// Common sizing for WhiteSur entry icons
+// Sizing for WhiteSur entry icons — macOS-scale, prominent.
+// Uses !important to defeat base FA font-metric sizing (.fa + body.large-icons rules).
 body.whitesur-icons {
-    .list__item-icon[data-icon-id],
-    .menu__item-icon[data-icon-id],
-    .icon-select__icon[data-icon-id],
-    .details__header-icon[data-icon-id] {
-        width: 18px;
-        height: 18px;
+    .list__item-icon[data-icon-id]:not([data-icon-id=""]) {
+        width: 24px !important;
+        height: 24px !important;
+        flex-shrink: 0;
+    }
+    .menu__item-icon[data-icon-id]:not([data-icon-id=""]) {
+        width: 22px !important;
+        height: 22px !important;
+        flex-shrink: 0;
+    }
+    .icon-select__icon[data-icon-id]:not([data-icon-id=""]) {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    .details__header-icon[data-icon-id]:not([data-icon-id=""]) {
+        width: 48px !important;
+        height: 48px !important;
     }
     &.large-icons {
-        .list__item-icon[data-icon-id] {
-            width: 28px;
-            height: 28px;
+        .list__item-icon[data-icon-id]:not([data-icon-id=""]) {
+            width: 36px !important;
+            height: 36px !important;
         }
-        .menu__item-icon[data-icon-id] {
-            width: 24px;
-            height: 24px;
+        .menu__item-icon[data-icon-id]:not([data-icon-id=""]) {
+            width: 28px !important;
+            height: 28px !important;
         }
-    }
-    .icon-select__icon[data-icon-id] {
-        width: 28px;
-        height: 28px;
-    }
-    .details__header-icon[data-icon-id] {
-        width: 32px;
-        height: 32px;
     }
 }
 
