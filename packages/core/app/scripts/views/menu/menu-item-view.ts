@@ -110,7 +110,6 @@ class MenuItemView extends View {
     changeIcon(_model: any, icon: string | undefined): void {
         this.iconEl[0].className =
             'menu__item-icon fa ' + (icon ? 'fa-' + icon : 'menu__item-icon--no-icon');
-        this.iconEl[0].setAttribute('data-icon-id', String(this.model.iconId ?? ''));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -13,7 +13,6 @@ interface PresentedEntry {
     entry: true;
     id: string;
     icon: string;
-    iconId?: number;
     customIcon?: string;
     color?: string;
     title: string;
@@ -79,10 +78,6 @@ class EntryPresenter {
 
     get icon(): string {
         return this.entry ? this.entry.icon : this.group!.icon || 'folder';
-    }
-
-    get iconId(): number | undefined {
-        return this.entry ? this.entry.iconId : undefined;
     }
 
     get customIcon(): string | undefined {

@@ -39,7 +39,6 @@ interface AppSettings {
     useGroupIconForEntries: boolean;
     largeListIcons: boolean;
     showFavicons: boolean;
-    entryIconStyle: 'classic' | 'whitesur';
     enableUsb: boolean;
     fieldLabelDblClickAutoType: boolean;
     auditPasswords: boolean;
@@ -116,7 +115,6 @@ const DefaultAppSettings: AppSettings = {
     useGroupIconForEntries: false, // automatically use group icon when creating new entries
     largeListIcons: false, // use larger icons (24px) in the entry list
     showFavicons: false, // show website favicons in the entry list when no custom icon is set
-    entryIconStyle: 'classic' as const, // built-in icon rendering: 'classic' (Font Awesome) or 'whitesur' (macOS-style SVG)
     enableUsb: true, // enable interaction with USB devices
     fieldLabelDblClickAutoType: false, // trigger auto-type by doubleclicking field label
     auditPasswords: true, // enable password audit

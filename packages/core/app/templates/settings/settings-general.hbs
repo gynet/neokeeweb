@@ -113,13 +113,6 @@
         <label for="settings__general-show-favicons">{{res 'setGenShowFavicons'}}</label>
     </div>
     <div>
-        <label for="settings__general-entry-icon-style">{{res 'setGenEntryIconStyle'}} </label>
-        <select class="settings__input input-base settings__general-entry-icon-style" id="settings__general-entry-icon-style">
-            <option value="classic" {{#ifeq entryIconStyle "classic"}}selected{{/ifeq}}>Classic (Font Awesome)</option>
-            <option value="whitesur" {{#ifeq entryIconStyle "whitesur"}}selected{{/ifeq}}>WhiteSur (macOS)</option>
-        </select>
-    </div>
-    <div>
         <label for="settings__general-tag-style">Tag sidebar style: </label>
         <select class="settings__input input-base settings__general-tag-style" id="settings__general-tag-style">
             <option value="cloud" {{#ifeq tagStyle "cloud"}}selected{{/ifeq}}>Cloud (pills)</option>

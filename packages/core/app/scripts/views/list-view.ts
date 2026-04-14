@@ -21,7 +21,6 @@ const settings = AppSettingsModel as unknown as {
     colorfulIcons: boolean;
     largeListIcons: boolean;
     showFavicons: boolean;
-    entryIconStyle: string;
     listViewWidth: number;
     tableViewColumns?: string[];
 };
@@ -95,7 +94,6 @@ class ListView extends View {
         this.listenTo(Events, 'filter', this.filterChanged);
         this.listenTo(Events, 'entry-updated', this.entryUpdated);
         this.listenTo(Events, 'set-locale', this.render);
-        this.listenTo(Events, 'refresh', this.updateListClasses);
 
         this.listenTo(this.model.settings, 'change:tableView', this.setTableView);
 
@@ -384,7 +382,6 @@ class ListView extends View {
 
     updateListClasses(): void {
         document.body.classList.toggle('large-icons', !!settings.largeListIcons);
-        document.body.classList.toggle('whitesur-icons', settings.entryIconStyle === 'whitesur');
     }
 
     setDefaultSize(): void {
