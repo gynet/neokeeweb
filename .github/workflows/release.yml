@@ -1,0 +1,139 @@
+name: Release self-host bundle
+
+# Produces a static-site tarball + zip users can drop onto any HTTP server
+# (nginx, Caddy, S3+CF, GitHub Pages, `python3 -m http.server`, ...). This is
+# the "I don't want to use gynet.github.io/neokeeweb, I want to host it
+# myself" artifact. Same bytes the Pages deploy publishes — just repackaged.
+#
+# Triggers:
+#   - push of a tag `v*`   -> attach archives to the matching GitHub Release
+#   - workflow_dispatch    -> upload as workflow artifact (testable without a tag)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create/upload GitHub Releases
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Build all packages (db first, then core — core's kdbxweb alias points at packages/db/dist)
+        run: bun run build
+        env:
+          # Pin the build's embedded commit SHA to the CI commit so the
+          # live-demo drift check in deploy-pages.yml stays consistent.
+          GITHUB_SHA: ${{ github.sha }}
+
+      - name: Verify static assets present in dist
+        run: |
+          set -e
+          cd packages/core/dist
+          test -f index.html
+          test -f js/app.js
+          test -f css/app.css
+          test -f manifest.json
+          test -f browserconfig.xml
+          test -f icons/favicon-32x32.png
+          test -f icons/apple-touch-icon.png
+          test -f icons/safari-pinned-tab.svg
+          echo "All required static assets present."
+
+      - name: Verify build SHA injected into bundle
+        run: |
+          set -e
+          cd packages/core/dist
+          grep -q "${GITHUB_SHA}" js/app.js \
+            || { echo "::error::build SHA ${GITHUB_SHA} not found in js/app.js — DefinePlugin/webpack injection broken"; exit 1; }
+          echo "Build SHA ${GITHUB_SHA} confirmed in bundle."
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+
+      - name: Compute version label
+        id: version
+        run: |
+          set -e
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version label: ${VERSION}"
+
+      - name: Stage release folder (dist + DEPLOY.md)
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          STAGE="staging/neokeeweb-web-${VERSION}"
+          rm -rf staging
+          mkdir -p "${STAGE}"
+          cp -r packages/core/dist/. "${STAGE}/"
+          cat > "${STAGE}/DEPLOY.md" <<'DEPLOYEOF'
+          # NeoKeeWeb — Self-Host Deploy
+
+          Extract this archive and serve the resulting folder from **any** static web
+          server (nginx, Caddy, Apache, GitHub Pages, S3+CloudFront, Vercel static,
+          Netlify, `python3 -m http.server`, `bunx serve`, etc.). Then open the URL
+          the server prints in your browser.
+
+          WebCrypto and the service worker require an `http(s)://` origin — opening
+          `index.html` directly via `file://` will **not** work.
+
+          Quick local test:
+
+              python3 -m http.server 8080
+              # or: bunx serve .
+              # or: npx serve .
+
+          Source and documentation: https://github.com/gynet/neokeeweb
+          DEPLOYEOF
+          ls -la "${STAGE}"
+
+      - name: Create zip + tar.gz + sha256
+        id: pack
+        run: |
+          set -e
+          VERSION="${{ steps.version.outputs.version }}"
+          BASE="neokeeweb-web-${VERSION}"
+          mkdir -p artifacts
+          cd staging
+          # Archives contain the top-level `${BASE}/` folder so extracting doesn't
+          # spray files into the user's CWD.
+          zip -rq "../artifacts/${BASE}.zip" "${BASE}"
+          tar -czf "../artifacts/${BASE}.tar.gz" "${BASE}"
+          cd ../artifacts
+          sha256sum "${BASE}.zip" > "${BASE}.zip.sha256"
+          sha256sum "${BASE}.tar.gz" > "${BASE}.tar.gz.sha256"
+          ls -la
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload as workflow artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: neokeeweb-web-${{ steps.version.outputs.version }}
+          path: artifacts/*
+          retention-days: 30
+
+      - name: Attach to GitHub Release (tag push only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/${{ steps.pack.outputs.base }}.zip
+            artifacts/${{ steps.pack.outputs.base }}.zip.sha256
+            artifacts/${{ steps.pack.outputs.base }}.tar.gz
+            artifacts/${{ steps.pack.outputs.base }}.tar.gz.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -23,6 +23,12 @@ packages/
   extension/  @neokeeweb/extension  Browser extension for autofill (TypeScript, Preact)
 ```
 
+## CI/CD Workflows
+
+- `.github/workflows/ci.yml` — test + typecheck + extension E2E (Chromium + Firefox).
+- `.github/workflows/deploy-pages.yml` — build + deploy `packages/core/dist/` to GitHub Pages, then verify the live URL.
+- `.github/workflows/release.yml` — self-host release bundle. On tag push `v*` it builds, packages `packages/core/dist/` into `neokeeweb-web-<tag>.{zip,tar.gz}` + sha256, and attaches to the GitHub Release. On `workflow_dispatch` it uploads the same bundle as a workflow artifact (versioned `dev-<short-sha>`) so it's testable without cutting a tag. Same build path as `deploy-pages.yml`, so the SHA-drift guarantee holds.
+
 ## Architecture Decisions
 
 - **Web-only**: No Electron/desktop. PWA-first approach.

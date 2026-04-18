@@ -197,6 +197,20 @@ No platform authenticator supports PRF. Use a **YubiKey 5.2.3+** or equivalent F
 
 See [GitHub Issues](https://github.com/gynet/neokeeweb/issues) for full backlog.
 
+## Self-hosting
+
+Don't want to use [the hosted demo](https://gynet.github.io/neokeeweb/)? Grab
+the static self-host bundle from the [Releases page](https://github.com/gynet/neokeeweb/releases):
+
+- `neokeeweb-web-<version>.zip` / `.tar.gz` — extract and serve with any static
+  web server (nginx, Caddy, Apache, S3+CloudFront, `python3 -m http.server`,
+  `bunx serve`, etc.). See `DEPLOY.md` inside the archive for 30-second setup.
+- `*.sha256` — checksum for each archive.
+- The bundle is the same build the Pages demo publishes; all KDBX handling runs
+  100% in the browser (WebCrypto), so a plain static host is sufficient. A real
+  `http(s)://` origin is required — `file://` won't work (WebCrypto / service
+  worker restrictions).
+
 ## License
 
 [MIT](LICENSE)
