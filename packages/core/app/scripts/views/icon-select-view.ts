@@ -115,8 +115,12 @@ class IconSelectView extends View {
             url = 'http://' + url;
         }
         if (useService) {
+            // Favicon proxy. The browser cannot read cross-origin image
+            // bytes without CORS; this endpoint fetches + re-emits with
+            // Access-Control-Allow-Origin so we can embed the result as
+            // a custom KDBX icon.
             return (
-                'https://services.keeweb.info/favicon/' +
+                'https://keewebx.app/api/favicon/' +
                 url.replace(/^.*:\/+/, '').replace(/\/.*/, '')
             );
         }
